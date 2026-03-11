@@ -1,10 +1,14 @@
-const express = require('express')
+import morgan from 'morgan'
+import cors from 'cors'
+import usuarioRoutes from './modulos/usuarios/routes/usuario_routes.js'
+
+import express from 'express'
 const app = express()
-
-const usuarioRoutes = require('./modules/usuarios/routes/usuarioRoutes')
-
 app.use(express.json())
+app.use(morgan('dev'))
+app.use(cors())
+
 
 app.use('/api/usuarios', usuarioRoutes)
 
-module.exports = app
+export default app
