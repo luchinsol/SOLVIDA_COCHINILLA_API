@@ -11,5 +11,6 @@ const db = pgp({
     rejectUnauthorized: false
   }
 });
+// AÑADIR LA CONEXIÓN DEL SERVIDOR DE BASE DE DATOS.
 
 export default db;
