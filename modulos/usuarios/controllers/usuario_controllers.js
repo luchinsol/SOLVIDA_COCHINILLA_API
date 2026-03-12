@@ -5,6 +5,22 @@
 
 import {listarRolesService} from '../services/usuario_services.js'
 
+export const login = async (req, res) => {
+
+  const {nickname, contrasena} = req.body
+  try {
+
+    const result = await loginService(nickname, contrasena)
+    res.json(result)
+    console.log("en controller-login",result)
+
+  } catch (error){
+
+    res.status(500).json({error: error.message})
+  }
+
+}
+
 export const getRoles = async (_, res) => {
 
   try {
