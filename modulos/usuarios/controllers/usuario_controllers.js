@@ -3,14 +3,15 @@
 // Se importan los servicios necesarios para manejar la lógica de negocio.
 // Interactuan con el cliente y devuelven respuestas adecuadas.
 
-import {listarRolesService} from '../services/usuario_services.js'
+import {listarRolesService,loginService} from '../services/usuario_services.js'
 
 export const login = async (req, res) => {
 
   const {nickname, contrasena} = req.body
   try {
-
+    console.log("en controller-login",nickname, contrasena)
     const result = await loginService(nickname, contrasena)
+    console.log("..en controller-login",result);
     res.json(result)
     console.log("en controller-login",result)
 
