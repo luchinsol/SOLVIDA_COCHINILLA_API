@@ -5,6 +5,15 @@
 
 import db from '../../../config/database.js'
 
+export const login = async (nickname, contrasena) => {
+  const result = await db.query(
+    'SELECT * FROM public.usuario WHERE nickname = $1 AND contrasena  = $2',
+    [nickname, contrasena]
+  )
+  console.log("..en repository-login",result)
+  return result
+}
+
 export const listarRolesRepo = async () => {
 
   const result = await db.query(
