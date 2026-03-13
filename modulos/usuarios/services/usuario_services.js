@@ -1,6 +1,7 @@
 // CAPA DE LOGICA DE NEGOCIO - SERVICIOS
 // Aquí se maneja la lógica de negocio, se realizan validaciones y se llaman a los repos
 
+// olas bolas
 import { listarRolesRepo} from '../repositories/usuario_repositories.js'
 
 
