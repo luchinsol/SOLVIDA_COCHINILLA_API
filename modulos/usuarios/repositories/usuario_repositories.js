@@ -6,19 +6,27 @@
 import db from '../../../config/database.js'
 
 export const login = async (nickname, contrasena) => {
-  const result = await db.query(
+  const result = await db.oneOrNone(
     'SELECT * FROM public.usuario WHERE nickname = $1 AND contrasena  = $2',
     [nickname, contrasena]
   )
-  console.log("..en repository-login",result)
+ // console.log("..en repository-login",result)
   return result
 }
 
-export const listarRolesRepo = async () => {
-
+// CRUD DE USUARIOS
+export const listarUsuariosRepo = async () => {
   const result = await db.query(
-    'SELECT * FROM public.rol'
+    'SELECT * FROM public.usuario'
   )
-  console.log("..en repository",result)
   return result
-}
+}   
+
+export const crearUsuarioRepo = async (usuario) => {
+  const result = await db.one(
+    'INSERT INTO public.usuario (nickname, contrasena, rol_id) VALUES ($1, $2, $3) RETURNING *',  
+    [usuario.nickname, usuario.contrasena, usuario.rol_id]
+  )
+  return result
+}   
+
