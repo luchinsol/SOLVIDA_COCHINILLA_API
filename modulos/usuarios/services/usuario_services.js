@@ -9,7 +9,7 @@ import { listarRolesRepo,login} from '../repositories/usuario_repositories.js'
 
 export const loginService = async (nickname, contrasena) => {
   const result = await login(nickname, contrasena)
-  console.log("..en service-login",result)
+ // console.log("..en service-login",result)
   return result
 }
 
