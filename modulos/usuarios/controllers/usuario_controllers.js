@@ -9,9 +9,9 @@ import {
 } from "../services/usuario_services.js";
 
 export const login = async (req, res) => {
-  const { nickname, contrasena } = req.body;
+  const { nombre, password_hash } = req.body;
   try {
-    const usuario = await loginService(nickname, contrasena);
+    const usuario = await loginService(nombre, password_hash);
     if (!usuario) {
       return res.status(401).json({ error: "Credenciales inválidas" });
     }
