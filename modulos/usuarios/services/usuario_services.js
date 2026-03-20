@@ -2,13 +2,13 @@
 // Aquí se maneja la lógica de negocio, se realizan validaciones y se llaman a los repos
 
 
-import { listarRolesRepo,login} from '../repositories/usuario_repositories.js'
+import { login} from '../repositories/usuario_repositories.js'
 
 // olas bolas
 
 
-export const loginService = async (nickname, contrasena) => {
-  const result = await login(nickname, contrasena)
+export const loginService = async (nombre, password_hash) => {
+  const result = await login(nombre, password_hash)
  // console.log("..en service-login",result)
   return result
 }
