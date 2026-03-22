@@ -49,9 +49,10 @@ export const getUsuarios = async (_, res) => {
 
 export const putUsuarios = async (req, res) => {
   const { id } = req.params;
-  const { nombre, email } = req.body;
+ 
   try {
-    const putUsuario = await updateUsuarioService(id, nombre, email);
+     const usuario = req.body;
+    const putUsuario = await updateUsuarioService(id, usuario);
 
     res.json(putUsuario);
   } catch (error) {
@@ -73,7 +74,7 @@ export const postUsuarios = async (req, res) => {
     };
     const postUsuario = await createUsuarioService(usuario);
 
-    res.json(postUsuario);
+    res.status(201).json(postUsuario);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

@@ -25,8 +25,8 @@ export const createUsuarioService = async (usuario) => {
   return newUsuario;
 }
 
-export const updateUsuarioService = async (id, nombre, email, password_hash) => {
-  const updatedUsuario = await actualizarUsuarioRepo(id, nombre, email, password_hash);
+export const updateUsuarioService = async (id, usuario) => {
+  const updatedUsuario = await actualizarUsuarioRepo(id, usuario);
   return updatedUsuario;
 }
 
