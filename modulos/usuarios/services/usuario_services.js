@@ -2,7 +2,7 @@
 // Aquí se maneja la lógica de negocio, se realizan validaciones y se llaman a los repos
 
 
-import { login} from '../repositories/usuario_repositories.js'
+import { login,listarUsuariosRepo,crearUsuarioRepo,actualizarUsuarioRepo,eliminarUsuarioRepo} from '../repositories/usuario_repositories.js'
 
 // olas bolas
 
@@ -13,11 +13,24 @@ export const loginService = async (nombre, password_hash) => {
   return result
 }
 
-export const listarRolesService = async () => {
+export const listarUsuariosService = async () => {
   console.log('en service')
-  const roles = await listarRolesRepo() // Ensure the function is executed
-  console.log('..en service', roles)
-  return roles
+  const usuarios = await listarUsuariosRepo() // Ensure the function is executed
+  console.log('..en service', usuarios)
+  return usuarios
 }
 
-// hola sariwis estoy enojado
+export const createUsuarioService = async (usuario) => {
+  const newUsuario = await crearUsuarioRepo(usuario);
+  return newUsuario;
+}
+
+export const updateUsuarioService = async (id, nombre, email, password_hash) => {
+  const updatedUsuario = await actualizarUsuarioRepo(id, nombre, email, password_hash);
+  return updatedUsuario;
+}
+
+export const deleteUsuarioService = async (id) => {
+  const deleted = await eliminarUsuarioRepo(id);
+  return deleted;
+}
