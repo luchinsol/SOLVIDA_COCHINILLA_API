@@ -1,6 +1,7 @@
 import morgan from 'morgan'
 import cors from 'cors'
 import usuarioRoutes from './modulos/usuarios/routes/usuario_routes.js'
+import rolesRoutes from './modulos/usuarios/routes/roles_routes.js'
 
 import express from 'express'
 const app = express()
@@ -10,5 +11,6 @@ app.use(cors())
 
 
 app.use('/api/usuarios', usuarioRoutes)
+app.use('/api/roles', rolesRoutes)
 
 export default app

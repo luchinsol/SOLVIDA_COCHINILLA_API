@@ -4,14 +4,19 @@
 // Interactuan con el cliente y devuelven respuestas adecuadas.
 import jwt from "jsonwebtoken";
 import {
-  listarRolesService,
+  listarUsuariosService,
+  createUsuarioService,
+  updateUsuarioService,
+  deleteUsuarioService,
   loginService,
 } from "../services/usuario_services.js";
 
+// CONTROLLER LOGIN
+
 export const login = async (req, res) => {
-  const { nombre, password_hash } = req.body;
+  const { nickname, password } = req.body;
   try {
-    const usuario = await loginService(nombre, password_hash);
+    const usuario = await loginService(nickname, password);
     if (!usuario) {
       return res.status(401).json({ error: "Credenciales inválidas" });
     }
@@ -30,13 +35,57 @@ export const login = async (req, res) => {
   }
 };
 
-export const getRoles = async (_, res) => {
-  try {
-    const roles = await listarRolesService();
+// CONTROLLER USUARIOS
 
-    res.json(roles);
-    console.log("en controller");
-    console.log(roles);
+export const getUsuarios = async (_, res) => {
+  try {
+    const usuarios = await listarUsuariosService();
+
+    res.json(usuarios);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const putUsuarios = async (req, res) => {
+  const { id } = req.params;
+ 
+  try {
+     const usuario = req.body;
+    const putUsuario = await updateUsuarioService(id, usuario);
+
+    res.json(putUsuario);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const postUsuarios = async (req, res) => {
+  console.log("en controller", req.body)
+  const { nombre, rol_id, correo, password, nickname, activo } = req.body;
+  try {
+    const usuario = {
+      nombre: nombre ?? null,
+      rol_id: rol_id ?? null,
+      correo: correo ?? null,
+      password: password ?? null,
+      nickname: nickname ?? null,
+      activo: activo ?? true,
+    };
+    const postUsuario = await createUsuarioService(usuario);
+
+    res.status(201).json(postUsuario);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const deleteUsuarios = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const deleteUsuario = await deleteUsuarioService(id);
+
+    res.json(deleteUsuario);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
