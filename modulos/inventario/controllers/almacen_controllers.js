@@ -1,4 +1,4 @@
-import { obtenerTodosAlmacenesService,crearAlmacenService,actualizarAlmacenService,eliminarAlmacenService } from "../services/almacen_services";
+import { obtenerTodosAlmacenesService,crearAlmacenService,actualizarAlmacenService,eliminarAlmacenService } from "../services/almacen_services.js";
 
 export const obtenerTodosAlmacenesController = async (req, res) => {
     try {

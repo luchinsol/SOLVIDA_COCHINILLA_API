@@ -1,4 +1,4 @@
-import { obtenerTodosAlmacenesRepo,crearAlmacenRepo,actualizarAlmacenRepo,eliminarAlmacenRepo } from "../repositories/almacen_repositories";
+import { obtenerTodosAlmacenesRepo,crearAlmacenRepo,actualizarAlmacenRepo,eliminarAlmacenRepo } from "../repositories/almacen_repositories.js";
 
 export const obtenerTodosAlmacenesService = async () => {
     const almacenes = await obtenerTodosAlmacenesRepo();
