@@ -1,5 +1,5 @@
 import express from 'express'
-import { obtenerTodosAlmacenesController, crearAlmacenController, actualizarAlmacenController, eliminarAlmacenController } from '../controllers/almacen_controllers.js'
+import { obtenerTodosAlmacenesController, crearAlmacenController, actualizarAlmacenController, eliminarAlmacenController } from '../controllers/almacen_controllers.js';
 
 const almacenRoutes = express.Router()
 
