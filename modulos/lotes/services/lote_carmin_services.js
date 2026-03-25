@@ -12,7 +12,7 @@ import {
   actualizarResultadosAnalisisLoteCarminRepo,
   actualizarObservacionesLoteCarminRepo,
   bloquearLoteCarminRepo
-} from '../repositories/lote_carmin_repository.js'
+} from '../repositories/lote_carmin_repositories.js'
 
 import db from '../../../config/database.js'
 

@@ -7,7 +7,7 @@ import {
   iniciarProcesoMezcladoService,
   finalizarProcesoMezcladoService,
   eliminarProcesoMezcladoService
-} from '../services/proceso_mezclado_service.js'
+} from '../services/proceso_mezclado_services.js'
 
 // LISTAR
 export const listarProcesoMezclado = async (req, res) => {

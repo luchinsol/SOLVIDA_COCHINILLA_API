@@ -6,7 +6,7 @@ import {
   crearComposicion,
   actualizarComposicion,
   eliminarComposicion
-} from '../controllers/composicion_lote_carmin_controller.js'
+} from '../controllers/composicion_lote_carmin_controllers.js'
 
 const composicionCarminRoutes = express.Router()
 

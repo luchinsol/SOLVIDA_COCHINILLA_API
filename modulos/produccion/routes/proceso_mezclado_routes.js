@@ -7,7 +7,7 @@ import {
   iniciarProcesoMezclado,
   finalizarProcesoMezclado,
   eliminarProcesoMezclado
-} from '../controllers/procesoMezclado.controller.js'
+} from '../controllers/proceso_mezclado_controller.js'
 
 const procesoMezcladoRoutes = express.Router()
 

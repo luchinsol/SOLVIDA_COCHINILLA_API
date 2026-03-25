@@ -6,6 +6,11 @@ import express from 'express'
 import usuarioRoutes from './modulos/usuarios/routes/usuario_routes.js'
 import rolesRoutes from './modulos/usuarios/routes/roles_routes.js'
 
+//Rutas de lotes
+import loteCarminRoutes from './modulos/lotes/routes/lote_carmin_route.js'
+import composicionCarminRoutes from './modulos/lotes/routes/composicion_lote_carmin_route.js'
+import procesoMezcladoRoutes from './modulos/produccion/routes/proceso_mezclado_routes.js'
+
 // Rutas de inventario
 import insumoRoutes from './modulos/inventario/routes/insumo_route.js'
 import almacenRoutes from './modulos/inventario/routes/almacen_route.js'
@@ -24,6 +29,9 @@ app.use(cors())
 app.use('/api/almacen',almacenRoutes)
 app.use('/api/usuarios', usuarioRoutes)
 app.use('/api/roles', rolesRoutes)
+app.use('/api/lotes-carmin', loteCarminRoutes)
+app.use('/api/composicion-carmin', composicionCarminRoutes)
+app.use('/api/proceso-mezclado', procesoMezcladoRoutes)
 app.use('/api/insumos', insumoRoutes)
 app.use('/api/movimientos-almacen', movimientoAlmacenRoutes)
 app.use('/api/proveedores', proveedorRoutes)
