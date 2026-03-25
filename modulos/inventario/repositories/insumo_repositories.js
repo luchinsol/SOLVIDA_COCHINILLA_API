@@ -1,5 +1,6 @@
 import db from "../../../config/database.js";
 
+
 export const getInsumoPdf = async () => {
   // Datos ficticios
     const datosFicticios = [
