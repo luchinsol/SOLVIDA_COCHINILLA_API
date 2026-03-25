@@ -1,4 +1,4 @@
-import db from '../../config/database.js';
+import db from '../../../config/database.js'
 
 export const getProveedores = async () => {
     const rows = await db.query('SELECT * FROM inventario.proveedores');

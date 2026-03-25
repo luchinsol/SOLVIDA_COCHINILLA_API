@@ -1,11 +1,11 @@
 import express from 'express'
-import { obtenerTodosInsumosController, crearInsumoController, actualizarInsumoController, eliminarInsumoController } from '../controllers/insumo_controllers.js';
+import { getInsumosController, createInsumoController, updateInsumoController, deleteInsumoController } from '../controllers/insumo_controllers.js';
 
 const insumoRoutes = express.Router()
 
-insumoRoutes.get('/', obtenerTodosInsumosController)
-insumoRoutes.post('/', crearInsumoController)
-insumoRoutes.put('/:id', actualizarInsumoController)
-insumoRoutes.delete('/:id', eliminarInsumoController)
+insumoRoutes.get('/', getInsumosController)
+insumoRoutes.post('/', createInsumoController)
+insumoRoutes.put('/:id', updateInsumoController)
+insumoRoutes.delete('/:id', deleteInsumoController)
 
 export default insumoRoutes

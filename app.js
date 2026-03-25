@@ -10,6 +10,7 @@ import rolesRoutes from './modulos/usuarios/routes/roles_routes.js'
 import loteCarminRoutes from './modulos/lotes/routes/lote_carmin_route.js'
 import composicionCarminRoutes from './modulos/lotes/routes/composicion_lote_carmin_route.js'
 import procesoMezcladoRoutes from './modulos/produccion/routes/proceso_mezclado_routes.js'
+import composicionLoteCochinillaRoutes from './modulos/lotes/routes/composicion_lote_cochinilla_route.js'
 
 // Rutas de inventario
 import insumoRoutes from './modulos/inventario/routes/insumo_route.js'
@@ -19,6 +20,8 @@ import proveedorRoutes from './modulos/inventario/routes/proveedor_route.js'
 
 // Rutas de laboratorio
 import laboratorioRoutes from './modulos/laboratorio/routes/laboratorio_routes.js'
+
+
 
 
 const app = express()
@@ -36,4 +39,6 @@ app.use('/api/insumos', insumoRoutes)
 app.use('/api/movimientos-almacen', movimientoAlmacenRoutes)
 app.use('/api/proveedores', proveedorRoutes)
 app.use('/api/laboratorio', laboratorioRoutes)
+app.use('/api/comp_lotecochini', composicionLoteCochinillaRoutes)
+
 export default app

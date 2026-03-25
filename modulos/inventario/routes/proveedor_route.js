@@ -1,5 +1,5 @@
 import express from 'express';
-import { obtenerProveedoresController,crearProveedorController,actualizarProveedorController,eliminarProveedorController } from '../controllers/proveedor_controllers';
+import { obtenerProveedoresController,crearProveedorController,actualizarProveedorController,eliminarProveedorController } from '../controllers/proveedor_controllers.js';
 
 const proveedorRouter = express.Router();
 

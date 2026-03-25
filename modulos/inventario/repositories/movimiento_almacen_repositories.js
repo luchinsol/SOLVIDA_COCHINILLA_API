@@ -1,4 +1,4 @@
-import db from "../../../config/database";
+import db from '../../../config/database.js'
 
 export const getMovimientosAlmacen = async () => {
   const query = "SELECT * FROM inventario.movimientos_almacen";

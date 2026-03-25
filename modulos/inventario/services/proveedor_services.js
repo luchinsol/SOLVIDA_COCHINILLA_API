@@ -1,4 +1,4 @@
-import {getProveedores,createProveedor,updateProveedor,deleteProveedor} from '../repositories/proveedor_repository.js';
+import {getProveedores,createProveedor,updateProveedor,deleteProveedor} from '../repositories/proveedor_repositories.js';
 
 export const obtenerProveedoresService = async () => {
     return await getProveedores();

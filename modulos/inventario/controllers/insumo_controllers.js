@@ -1,8 +1,8 @@
-import {} from '../services/insumo_services.js';
+import {getInsumosService,createInsumoService,updateInsumoService,deleteInsumoService} from '../services/insumo_services.js';
 
 export const getInsumosController = async (req, res) => {
   try {
-    const insumos = await getInsumos();
+    const insumos = await getInsumosService();
     res.json(insumos);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -12,7 +12,7 @@ export const getInsumosController = async (req, res) => {
 export const createInsumoController = async (req, res) => {
   const insumoDatos = req.body;
   try {
-    const nuevoInsumo = await createInsumo(insumoDatos);
+    const nuevoInsumo = await createInsumoService(insumoDatos);
     res.status(201).json(nuevoInsumo);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -23,9 +23,19 @@ export const updateInsumoController = async (req, res) => {
   const { id } = req.params;
   const insumoDatos = req.body;
   try {
-    const insumoActualizado = await updateInsumo(id, insumoDatos);
+    const insumoActualizado = await updateInsumoService(id, insumoDatos);
     res.json(insumoActualizado);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
+
+export const deleteInsumoController = async (req, res) => {
+  const { id } = req.params;
+  try {
+    await deleteInsumoService(id);
+    res.json({ message: 'Insumo eliminado' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+}
