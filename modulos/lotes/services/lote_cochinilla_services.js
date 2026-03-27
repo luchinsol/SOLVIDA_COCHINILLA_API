@@ -1,5 +1,6 @@
 import {
-  crearLoteCochinillaRepo,
+  crearLoteCochinillaPorCompraRepo,
+  crearLoteCochinillaPorMezclaRepo,
   listarLotesCochinillaRepo,
   obtenerLoteCochinillaPorIdRepo,
   actualizarAnalisisLoteCochinillaRepo,
@@ -7,16 +8,85 @@ import {
   eliminarLoteCochinillaRepo
 } from '../repositories/lote_cochinilla_repositories.js'
 
+
+
+
 /* ======================================================
-   CREATE
+   HELPERS: generación de código
 ====================================================== */
-export const crearLoteCochinillaService = async (data) => {
-  return await crearLoteCochinillaRepo({
+
+// ejemplo simple de código para compra:
+// COCH-COMP-<proveedor_id>-<yyyymmdd>-<calidad>
+const generarCodigoLoteCompra = (data) => {
+  const now = new Date(data.fecha_compra ?? new Date())
+
+  // fecha: YYYYMMDD
+  const fecha = now.toISOString().slice(0, 10).replace(/-/g, '')
+
+  // hora: HHMMSS
+  const hora = now.toTimeString().slice(0, 8).replace(/:/g, '')
+
+  const proveedor = data.proveedor_id
+  const calidad = (data.calidad ?? 'SIN-CALIDAD').toUpperCase()
+
+  return `COCH-COMP-${proveedor}-${fecha}-${hora}-${calidad}`
+}
+
+// ejemplo simple de código para mezcla:
+// COCH-PREP-<yyyymmddhhmmss>
+const generarCodigoLoteMezcla = () => {
+  const now = new Date()
+
+  const fecha = now.toISOString().slice(0, 10).replace(/-/g, '') // YYYYMMDD
+  const hora = now.toTimeString().slice(0, 8).replace(/:/g, '')  // HHMMSS
+
+  return `COCH-PREP-${fecha}-${hora}`
+}
+
+/* ======================================================
+   CREATE: compra
+====================================================== */
+export const crearLoteCochinillaPorCompraService = async (data) => {
+  if (!data.proveedor_id) {
+    throw new Error('proveedor_id es obligatorio para lote por compra')
+  }
+
+  if (!data.fecha_compra) {
+    throw new Error('fecha_compra es obligatoria para lote por compra')
+  }
+
+  if (data.masa_total_kg == null || Number(data.masa_total_kg) <= 0) {
+    throw new Error('masa_total_kg debe ser mayor a 0')
+  }
+
+  const codigoLote = generarCodigoLoteCompra(data)
+
+  return await crearLoteCochinillaPorCompraRepo({
     ...data,
-    estado: data.estado ?? 'disponible'
+    codigo_lote: codigoLote,
+    tipo_lote: 'comprado',
+    estado: 'disponible'
   })
 }
 
+/* ======================================================
+   CREATE: mezcla / preparado
+====================================================== */
+export const crearLoteCochinillaPorMezclaService = async (data) => {
+  if (data.masa_total_kg == null || Number(data.masa_total_kg) <= 0) {
+    throw new Error('masa_total_kg debe ser mayor a 0')
+  }
+
+  const codigoLote = generarCodigoLoteMezcla(data)
+
+  return await crearLoteCochinillaPorMezclaRepo({
+    ...data,
+    codigo_lote: codigoLote,
+    tipo_lote: 'preparado',
+    estado: 'disponible',
+    fecha_creacion: data.fecha_creacion ?? new Date()
+  })
+}
 /* ======================================================
    READ
 ====================================================== */
@@ -51,29 +121,87 @@ export const actualizarAnalisisLoteCochinillaService = async (id, data) => {
   })
 }
 
+
 /* ======================================================
-   UPDATE: consumo
+   UPDATE: consumo de lote de cochinilla
+   ¿Para qué sirve?
+   - actualizar la masa restante del lote luego de usarlo
+   - validar que no se aumente masa por error
+   - cambiar automáticamente el estado:
+     - disponible  -> si no se ha consumido
+     - usado       -> si queda algo de masa
+     - agotado     -> si la masa llega a 0
 ====================================================== */
 export const actualizarConsumoLoteCochinillaService = async (id, data) => {
-  const lote = await obtenerLoteCochinillaPorIdRepo(id)
+  /* ------------------------------------------------------
+     1. Buscar el lote actual en base de datos
+     ¿Para qué?
+     - para saber si el lote existe
+     - para conocer la masa actual antes de actualizar
+  ------------------------------------------------------ */
+  const loteActual = await obtenerLoteCochinillaPorIdRepo(id)
 
-  if (!lote) {
+  if (!loteActual) {
     throw new Error('Lote de cochinilla no encontrado')
   }
 
-  if (data.masa_total_kg == null || Number(data.masa_total_kg) < 0) {
+  /* ------------------------------------------------------
+     2. Validar que la nueva masa sí venga en el request
+     ¿Para qué?
+     - evitar updates incompletos
+  ------------------------------------------------------ */
+  if (data.masa_total_kg == null) {
+    throw new Error('masa_total_kg es obligatoria')
+  }
+
+  const nuevaMasa = Number(data.masa_total_kg)
+  const masaActual = Number(loteActual.masa_total_kg)
+
+  /* ------------------------------------------------------
+     3. Validar que la nueva masa no sea negativa
+     ¿Para qué?
+     - evitar datos imposibles en inventario
+  ------------------------------------------------------ */
+  if (nuevaMasa < 0) {
     throw new Error('La masa_total_kg no puede ser negativa')
   }
 
-  if (!data.estado) {
-    throw new Error('El estado es obligatorio')
+  /* ------------------------------------------------------
+     4. Validar que la masa no aumente en un update de consumo
+     ¿Para qué?
+     - en un consumo, la masa solo puede mantenerse o disminuir
+  ------------------------------------------------------ */
+  if (nuevaMasa > masaActual) {
+    throw new Error('La masa nueva no puede ser mayor que la masa actual del lote')
   }
 
+  /* ------------------------------------------------------
+     5. Calcular automáticamente el nuevo estado del lote
+     ¿Para qué?
+     - no depender de que frontend mande el estado correcto
+     - mantener consistencia de negocio
+  ------------------------------------------------------ */
+  let nuevoEstado = 'disponible'
+
+  if (nuevaMasa === 0) {
+    nuevoEstado = 'agotado'
+  } else if (nuevaMasa < masaActual) {
+    nuevoEstado = 'usado'
+  }
+
+  /* ------------------------------------------------------
+     6. Guardar la nueva masa y el estado calculado
+     ¿Para qué?
+     - actualizar la base con una lógica coherente
+  ------------------------------------------------------ */
   return await actualizarConsumoLoteCochinillaRepo(id, {
-    masa_total_kg: data.masa_total_kg,
-    estado: data.estado
+    masa_total_kg: nuevaMasa,
+    estado: nuevoEstado
   })
 }
+
+
+
 
 /* ======================================================
    DELETE

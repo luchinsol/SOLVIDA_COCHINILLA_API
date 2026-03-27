@@ -1,7 +1,8 @@
 import { Router } from 'express'
 
 import {
-  crearLoteCochinilla,
+  crearLoteCochinillaPorCompra,
+  crearLoteCochinillaPorMezcla,
   listarLotesCochinilla,
   obtenerLoteCochinillaPorId,
   actualizarAnalisisLoteCochinilla,
@@ -14,7 +15,8 @@ const router = Router()
 /* ======================================================
    CREATE
 ====================================================== */
-router.post('/creando', crearLoteCochinilla)
+router.post('/compra', crearLoteCochinillaPorCompra)
+router.post('/mezcla', crearLoteCochinillaPorMezcla)
 
 /* ======================================================
    READ

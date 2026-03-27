@@ -1,5 +1,6 @@
 import {
-  crearLoteCochinillaService,
+  crearLoteCochinillaPorCompraService,
+  crearLoteCochinillaPorMezclaService,
   listarLotesCochinillaService,
   obtenerLoteCochinillaPorIdService,
   actualizarAnalisisLoteCochinillaService,
@@ -10,9 +11,21 @@ import {
 /* ======================================================
    CREATE
 ====================================================== */
-export const crearLoteCochinilla = async (req, res) => {
+
+// crear lote de cochinilla por compra
+export const crearLoteCochinillaPorCompra = async (req, res) => {
   try {
-    const data = await crearLoteCochinillaService(req.body)
+    const data = await crearLoteCochinillaPorCompraService(req.body)
+    res.status(201).json(data)
+  } catch (error) {
+    res.status(400).json({ error: error.message })
+  }
+}
+
+// crear lote de cochinilla por mezcla
+export const crearLoteCochinillaPorMezcla = async (req, res) => {
+  try {
+    const data = await crearLoteCochinillaPorMezclaService(req.body)
     res.status(201).json(data)
   } catch (error) {
     res.status(400).json({ error: error.message })

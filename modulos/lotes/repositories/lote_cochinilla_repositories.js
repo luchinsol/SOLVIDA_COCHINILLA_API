@@ -1,9 +1,11 @@
 import db from '../../../config/database.js'
 
 /* ======================================================
-   CREATE: crear lote de cochinilla
+   CREATE: lote de cochinilla por compra
+   proveedor_id y fecha_compra sí aplican
+   tipo_lote = 'comprado'
 ====================================================== */
-export const crearLoteCochinillaRepo = async (data) => {
+export const crearLoteCochinillaPorCompraRepo = async (data) => {
   const result = await db.one(
     `INSERT INTO lotes.lote_cochinilla
     (
@@ -24,13 +26,58 @@ export const crearLoteCochinillaRepo = async (data) => {
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
     RETURNING *`,
     [
-      data.proveedor_id ?? null,
+      data.proveedor_id,
       data.analisis_actual_id ?? null,
       data.creado_por ?? null,
-      data.codigo_lote ?? null,
-      data.tipo_lote,
-      data.fecha_compra ?? null,
+      data.codigo_lote,
+      'comprado',
+      data.fecha_compra,
       data.fecha_creacion ?? null,
+      data.calidad ?? null,
+      data.masa_total_kg,
+      data.concentracion_ac_actual ?? null,
+      data.humedad_actual ?? null,
+      data.estado ?? 'disponible',
+      data.observaciones ?? null
+    ]
+  )
+
+  return result
+}
+
+/* ======================================================
+   CREATE: lote de cochinilla por mezcla / preparado
+   no requiere proveedor_id ni fecha_compra
+   tipo_lote = 'preparado'
+====================================================== */
+export const crearLoteCochinillaPorMezclaRepo = async (data) => {
+  const result = await db.one(
+    `INSERT INTO lotes.lote_cochinilla
+    (
+      proveedor_id,
+      analisis_actual_id,
+      creado_por,
+      codigo_lote,
+      tipo_lote,
+      fecha_compra,
+      fecha_creacion,
+      calidad,
+      masa_total_kg,
+      concentracion_ac_actual,
+      humedad_actual,
+      estado,
+      observaciones
+    )
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+    RETURNING *`,
+    [
+      null,
+      data.analisis_actual_id ?? null,
+      data.creado_por ?? null,
+      data.codigo_lote,
+      'preparado',
+      null,
+      data.fecha_creacion,
       data.calidad ?? null,
       data.masa_total_kg,
       data.concentracion_ac_actual ?? null,
@@ -103,7 +150,7 @@ export const actualizarConsumoLoteCochinillaRepo = async (id, data) => {
      RETURNING *`,
     [
       data.masa_total_kg,
-      data.estado, // 'usado' o 'agotado'
+      data.estado, // ← ahora lo manda el service
       id
     ]
   )

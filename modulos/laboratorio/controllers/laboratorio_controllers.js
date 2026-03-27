@@ -15,8 +15,9 @@ export const crearAnalisisController = async (req, res) => {
         const nuevoAnalisis = await crearAnalisisService(analisisDatos);
         res.status(201).json(nuevoAnalisis);
     } catch (error) {
-        res.status(500).json({ error: 'Error al crear análisis' });
-    }
+  console.error(error)
+  res.status(500).json({ error: error.message })
+}
 };
 
 export const actualizarAnalisisController = async (req, res) => {
