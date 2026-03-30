@@ -46,4 +46,5 @@ app.use('/api/laboratorio', laboratorioRoutes)
 app.use('/api/comp_lotecochini', composicionLoteCochinillaRoutes)
 app.use('/api/lotes-cochinilla', loteCochinillaRoutes)
 
+
 export default app

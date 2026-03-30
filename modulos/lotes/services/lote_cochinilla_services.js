@@ -5,6 +5,7 @@ import {
   obtenerLoteCochinillaPorIdRepo,
   actualizarAnalisisLoteCochinillaRepo,
   actualizarConsumoLoteCochinillaRepo,
+  actualizarMasaLoteCochinillaPorDeltaRepo,
   eliminarLoteCochinillaRepo
 } from '../repositories/lote_cochinilla_repositories.js'
 
@@ -73,14 +74,15 @@ export const crearLoteCochinillaPorCompraService = async (data) => {
    CREATE: mezcla / preparado
 ====================================================== */
 export const crearLoteCochinillaPorMezclaService = async (data) => {
-  if (data.masa_total_kg == null || Number(data.masa_total_kg) <= 0) {
-    throw new Error('masa_total_kg debe ser mayor a 0')
+  if (data.masa_total_kg != null && Number(data.masa_total_kg) < 0) {
+    throw new Error('masa_total_kg no puede ser negativa')
   }
 
   const codigoLote = generarCodigoLoteMezcla(data)
 
   return await crearLoteCochinillaPorMezclaRepo({
     ...data,
+    masa_total_kg: data.masa_total_kg ?? 0,
     codigo_lote: codigoLote,
     tipo_lote: 'preparado',
     estado: 'disponible',
@@ -201,6 +203,39 @@ export const actualizarConsumoLoteCochinillaService = async (id, data) => {
 }
 
 
+/* ======================================================
+   UPDATE: actualizar masa de lote por delta
+   delta > 0  => suma masa
+   delta < 0  => resta masa
+====================================================== */
+export const actualizarMasaLoteCochinillaPorDeltaService = async (id, data) => {
+  const lote = await obtenerLoteCochinillaPorIdRepo(id)
+
+  if (!lote) {
+    throw new Error('Lote de cochinilla no encontrado')
+  }
+
+  if (data.delta == null) {
+    throw new Error('delta es obligatorio')
+  }
+
+  const delta = Number(data.delta)
+
+  if (Number.isNaN(delta)) {
+    throw new Error('delta debe ser numérico')
+  }
+
+  const masaActual = Number(lote.masa_total_kg)
+  const nuevaMasa = masaActual + delta
+
+  if (nuevaMasa < 0) {
+    throw new Error('La masa resultante no puede ser negativa')
+  }
+
+  const loteActualizado = await actualizarMasaLoteCochinillaPorDeltaRepo(id, delta)
+
+  return loteActualizado
+}
 
 
 /* ======================================================
