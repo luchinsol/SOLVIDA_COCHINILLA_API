@@ -77,9 +77,9 @@ export const crearLoteCochinillaPorMezclaRepo = async (data) => {
       data.codigo_lote,
       'preparado',
       null,
-      data.fecha_creacion,
+      data.fecha_creacion ?? new Date(),
       data.calidad ?? null,
-      data.masa_total_kg,
+      data.masa_total_kg ?? 0,
       data.concentracion_ac_actual ?? null,
       data.humedad_actual ?? null,
       data.estado ?? 'disponible',
@@ -89,7 +89,6 @@ export const crearLoteCochinillaPorMezclaRepo = async (data) => {
 
   return result
 }
-
 /* ======================================================
    READ: listar todos los lotes de cochinilla
 ====================================================== */
@@ -153,6 +152,24 @@ export const actualizarConsumoLoteCochinillaRepo = async (id, data) => {
       data.estado, // ← ahora lo manda el service
       id
     ]
+  )
+
+  return result
+}
+
+
+/* ======================================================
+   UPDATE: actualizar masa de lote de cochinilla preparado
+   por delta, es decir suma o resta a la masa actual.
+   si delta es +10, aumenta 10kg. si delta es -5, reduce 5kg.
+====================================================== */
+export const actualizarMasaLoteCochinillaPorDeltaRepo = async (id, delta, t = db) => {
+  const result = await t.oneOrNone(
+    `UPDATE lotes.lote_cochinilla
+     SET masa_total_kg = masa_total_kg + $1
+     WHERE lote_cochinilla_id = $2
+     RETURNING *`,
+    [delta, id]
   )
 
   return result

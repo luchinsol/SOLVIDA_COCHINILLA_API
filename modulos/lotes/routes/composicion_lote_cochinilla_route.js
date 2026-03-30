@@ -1,8 +1,33 @@
-import express from 'express';
-import { generarPDFComposicionController } from '../controllers/composicion_lote_cochinilla_controllers.js';
+import { Router } from 'express'
 
-const composicionLoteCochinillaRouter = express.Router();
+import {
+  generarPDFComposicionController,
+  generarExcelComposicion,
+  listarComposicionesLoteCochinilla,
+  obtenerComposicionLoteCochinillaPorId,
+  obtenerComposicionesPorLoteResultante,
+  obtenerComposicionesPorLoteComponente,
+  crearComposicionLoteCochinilla,
+  actualizarComposicionLoteCochinilla,
+  actualizarPorcentajesPorLoteResultante,
+  eliminarComposicionLoteCochinilla
+} from '../controllers/composicion_lote_cochinilla_controllers.js'
 
-composicionLoteCochinillaRouter.get('/pdf', generarPDFComposicionController);
+const router = Router()
 
-export default composicionLoteCochinillaRouter;
+router.get('/pdf', generarPDFComposicionController)
+router.get('/excel', generarExcelComposicion)
+
+router.get('/', listarComposicionesLoteCochinilla)
+router.get('/resultante/:loteResultanteId', obtenerComposicionesPorLoteResultante)
+router.get('/componente/:loteComponenteId', obtenerComposicionesPorLoteComponente)
+router.get('/:id', obtenerComposicionLoteCochinillaPorId)
+
+router.post('/', crearComposicionLoteCochinilla)
+
+router.put('/:id', actualizarComposicionLoteCochinilla)
+router.put('/resultante/:loteResultanteId/recalcular-porcentajes', actualizarPorcentajesPorLoteResultante)
+
+router.delete('/:id', eliminarComposicionLoteCochinilla)
+
+export default router

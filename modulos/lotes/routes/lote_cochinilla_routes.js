@@ -7,6 +7,7 @@ import {
   obtenerLoteCochinillaPorId,
   actualizarAnalisisLoteCochinilla,
   actualizarConsumoLoteCochinilla,
+  actualizarMasaLoteCochinillaPorDelta,
   eliminarLoteCochinilla
 } from '../controllers/lote_cochinilla_controllers.js'
 
@@ -32,6 +33,10 @@ router.put('/:id/analisis', actualizarAnalisisLoteCochinilla)
 
 // 🟢 consumo (producción)
 router.put('/:id/consumo', actualizarConsumoLoteCochinilla)
+
+// 🟡 masa (producción), ya lo hace automaticamente en lote composicion
+router.put('/:id/masa-delta', actualizarMasaLoteCochinillaPorDelta)
+
 
 /* ======================================================
    DELETE

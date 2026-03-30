@@ -5,6 +5,7 @@ import {
   obtenerLoteCochinillaPorIdService,
   actualizarAnalisisLoteCochinillaService,
   actualizarConsumoLoteCochinillaService,
+  actualizarMasaLoteCochinillaPorDeltaService,
   eliminarLoteCochinillaService
 } from '../services/lote_cochinilla_services.js'
 
@@ -74,6 +75,19 @@ export const actualizarConsumoLoteCochinilla = async (req, res) => {
   try {
     const { id } = req.params
     const data = await actualizarConsumoLoteCochinillaService(id, req.body)
+    res.json(data)
+  } catch (error) {
+    res.status(400).json({ error: error.message })
+  }
+}
+
+/* ======================================================
+   UPDATE: actualizar masa por delta
+====================================================== */
+export const actualizarMasaLoteCochinillaPorDelta = async (req, res) => {
+  try {
+    const { id } = req.params
+    const data = await actualizarMasaLoteCochinillaPorDeltaService(id, req.body)
     res.json(data)
   } catch (error) {
     res.status(400).json({ error: error.message })
