@@ -1,4 +1,16 @@
-import {getInsumosService,createInsumoService,updateInsumoService,deleteInsumoService} from '../services/insumo_services.js';
+import {getInsumoPdfServicePDF,getInsumosService,createInsumoService,updateInsumoService,deleteInsumoService} from '../services/insumo_services.js';
+
+export const getInsumoPdfController = async (req, res) => {
+  try {
+    const pdfBuffer = await getInsumoPdfServicePDF();
+     res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename=insumos.pdf`);
+        res.send(pdfBuffer);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+}
+
 
 export const getInsumosController = async (req, res) => {
   try {
