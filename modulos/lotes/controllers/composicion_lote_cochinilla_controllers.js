@@ -7,7 +7,6 @@ import {
   obtenerComposicionesPorLoteComponenteService,
   crearComposicionLoteCochinillaService,
   actualizarComposicionLoteCochinillaService,
-  actualizarPorcentajesPorLoteResultanteService,
   eliminarComposicionLoteCochinillaService
 } from '../services/composicion_lote_cochinilla_services.js'
 
@@ -106,9 +105,9 @@ export const obtenerComposicionesPorLoteComponente = async (req, res) => {
    CREATE
 ====================================================== */
 
-// crear composición
 export const crearComposicionLoteCochinilla = async (req, res) => {
   try {
+
     const data = await crearComposicionLoteCochinillaService(req.body)
     res.status(201).json(data)
   } catch (error) {

@@ -9,7 +9,6 @@ import {
   obtenerComposicionesPorLoteComponente,
   crearComposicionLoteCochinilla,
   actualizarComposicionLoteCochinilla,
-  actualizarPorcentajesPorLoteResultante,
   eliminarComposicionLoteCochinilla
 } from '../controllers/composicion_lote_cochinilla_controllers.js'
 
@@ -26,7 +25,6 @@ router.get('/:id', obtenerComposicionLoteCochinillaPorId)
 router.post('/', crearComposicionLoteCochinilla)
 
 router.put('/:id', actualizarComposicionLoteCochinilla)
-router.put('/resultante/:loteResultanteId/recalcular-porcentajes', actualizarPorcentajesPorLoteResultante)
 
 router.delete('/:id', eliminarComposicionLoteCochinilla)
 

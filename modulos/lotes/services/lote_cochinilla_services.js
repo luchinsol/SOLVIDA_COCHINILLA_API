@@ -49,16 +49,24 @@ const generarCodigoLoteMezcla = () => {
 ====================================================== */
 export const crearLoteCochinillaPorCompraService = async (data) => {
   if (!data.proveedor_id) {
-    throw new Error('proveedor_id es obligatorio para lote por compra')
+    throw new Error('proveedor_id es obligatorio')
   }
 
   if (!data.fecha_compra) {
-    throw new Error('fecha_compra es obligatoria para lote por compra')
+    throw new Error('fecha_compra es obligatoria')
   }
 
-  if (data.masa_total_kg == null || Number(data.masa_total_kg) <= 0) {
+  if (!data.masa_total_kg || Number(data.masa_total_kg) <= 0) {
     throw new Error('masa_total_kg debe ser mayor a 0')
   }
+
+  if (data.costo_total_dolares == null || Number(data.costo_total_dolares) <= 0) {
+    throw new Error('costo_total_dolares debe ser mayor a 0')
+  }
+
+  const masaTotalKg = Number(data.masa_total_kg)
+  const costoTotalDolares = Number(data.costo_total_dolares)
+  const costoKiloDolares = costoTotalDolares / masaTotalKg
 
   const codigoLote = generarCodigoLoteCompra(data)
 
@@ -66,10 +74,11 @@ export const crearLoteCochinillaPorCompraService = async (data) => {
     ...data,
     codigo_lote: codigoLote,
     tipo_lote: 'comprado',
-    estado: 'disponible'
+    estado: 'por analizar',
+    costo_total_dolares: costoTotalDolares,
+    costo_kilo_dolares: costoKiloDolares
   })
 }
-
 /* ======================================================
    CREATE: mezcla / preparado
 ====================================================== */
