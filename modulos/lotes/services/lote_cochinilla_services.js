@@ -19,18 +19,17 @@ import {
 // ejemplo simple de código para compra:
 // COCH-COMP-<proveedor_id>-<yyyymmdd>-<calidad>
 const generarCodigoLoteCompra = (data) => {
-  const now = new Date(data.fecha_compra ?? new Date())
+  const fechaBase = new Date(data.fecha_compra)
+  const ahora = new Date()
 
-  // fecha: YYYYMMDD
-  const fecha = now.toISOString().slice(0, 10).replace(/-/g, '')
-
-  // hora: HHMMSS
-  const hora = now.toTimeString().slice(0, 8).replace(/:/g, '')
+  const fecha = fechaBase.toISOString().slice(0, 10).replace(/-/g, '')
+  const hora = ahora.toTimeString().slice(0, 8).replace(/:/g, '')
+  const milisegundos = String(ahora.getMilliseconds()).padStart(3, '0')
 
   const proveedor = data.proveedor_id
   const calidad = (data.calidad ?? 'SIN-CALIDAD').toUpperCase()
 
-  return `COCH-COMP-${proveedor}-${fecha}-${hora}-${calidad}`
+  return `COCH-COMP-${proveedor}-${fecha}-${hora}${milisegundos}-${calidad}`
 }
 
 // ejemplo simple de código para mezcla:
@@ -94,7 +93,7 @@ export const crearLoteCochinillaPorMezclaService = async (data) => {
     masa_total_kg: data.masa_total_kg ?? 0,
     codigo_lote: codigoLote,
     tipo_lote: 'preparado',
-    estado: 'disponible',
+    estado: 'por analizar',
     fecha_creacion: data.fecha_creacion ?? new Date()
   })
 }
