@@ -3,9 +3,9 @@ import db from '../../../config/database.js'
 import {
   obtenerLoteCochinillaPorIdRepo,
   actualizarMasaLoteCochinillaPorDeltaRepo,
-  actualizarConsumoLoteCochinillaRepo
+  actualizarConsumoLoteCochinillaRepo,
+  actualizarCostosYMasaLoteCochinillaRepo
 } from '../repositories/lote_cochinilla_repositories.js'
-
 import {
   listarComposicionesLoteCochinillaRepo,
   obtenerComposicionLoteCochinillaPorIdRepo,
@@ -109,9 +109,10 @@ export const obtenerComposicionesPorLoteComponenteService = async (loteComponent
    - resta masa al lote componente
    - suma masa al lote resultante
    - recalcula porcentajes
+   - actualiza costos totales y costos por kilo de ambos lotes
 ====================================================== */
 export const crearComposicionLoteCochinillaService = async (data) => {
-console.log('1. inicio service', data)
+  console.log('1. inicio service', data)
 
   if (!data.lote_resultante_id) {
     throw new Error('lote_resultante_id es obligatorio')
@@ -134,9 +135,12 @@ console.log('1. inicio service', data)
 
   return await db.tx(async (t) => {
     console.log('3. entró a la transacción')
+
     const loteResultante = await obtenerLoteCochinillaPorIdRepo(data.lote_resultante_id, t)
-     console.log('4. lote resultante encontrado', loteResultante?.lote_cochinilla_id)
+    console.log('4. lote resultante encontrado', loteResultante?.lote_cochinilla_id)
+
     const loteComponente = await obtenerLoteCochinillaPorIdRepo(data.lote_componente_id, t)
+    console.log('5. lote componente encontrado', loteComponente?.lote_cochinilla_id)
 
     if (!loteResultante) {
       throw new Error('Lote resultante no encontrado')
@@ -150,6 +154,24 @@ console.log('1. inicio service', data)
       throw new Error('El lote componente no tiene masa suficiente')
     }
 
+    const costoKiloComponente = Number(loteComponente.costo_kilo_dolares ?? 0)
+    const costoTotalComponenteAnterior = Number(loteComponente.costo_total_dolares ?? 0)
+    const masaComponenteAnterior = Number(loteComponente.masa_total_kg ?? 0)
+
+    const costoAportado = peso * costoKiloComponente
+
+    const nuevaMasaComponente = masaComponenteAnterior - peso
+    const nuevoCostoTotalComponente = costoTotalComponenteAnterior - costoAportado
+    const nuevoCostoKiloComponente = costoKiloComponente
+
+    const masaResultanteAnterior = Number(loteResultante.masa_total_kg ?? 0)
+    const costoTotalResultanteAnterior = Number(loteResultante.costo_total_dolares ?? 0)
+
+    const nuevaMasaResultante = masaResultanteAnterior + peso
+    const nuevoCostoTotalResultante = costoTotalResultanteAnterior + costoAportado
+    const nuevoCostoKiloResultante =
+      nuevaMasaResultante === 0 ? 0 : nuevoCostoTotalResultante / nuevaMasaResultante
+
     const nuevaComposicion = await crearComposicionLoteCochinillaRepo(
       {
         ...data,
@@ -158,33 +180,43 @@ console.log('1. inicio service', data)
       t
     )
 
-
-  const loteComponenteActualizado = await actualizarMasaLoteCochinillaPorDeltaRepo(
-    data.lote_componente_id,
-    -peso,
-    t
+    // actualizar masa y costos del lote componente
+    const loteComponenteActualizado = await actualizarCostosYMasaLoteCochinillaRepo(
+      data.lote_componente_id,
+      {
+        masa_total_kg: nuevaMasaComponente,
+        costo_total_dolares: nuevoCostoTotalComponente,
+        costo_kilo_dolares: nuevoCostoKiloComponente
+      },
+      t
     )
 
-    await actualizarMasaLoteCochinillaPorDeltaRepo(
-    data.lote_resultante_id,
-    peso,
-    t
+    // actualizar masa y costos del lote resultante
+    await actualizarCostosYMasaLoteCochinillaRepo(
+      data.lote_resultante_id,
+      {
+        masa_total_kg: nuevaMasaResultante,
+        costo_total_dolares: nuevoCostoTotalResultante,
+        costo_kilo_dolares: nuevoCostoKiloResultante
+      },
+      t
     )
 
-  // actualizar estado del lote componente según su nueva masa
-  const nuevoEstadoComponente =
-    Number(loteComponenteActualizado.masa_total_kg) === 0 ? 'agotado' : 'usado'
+    // actualizar estado del lote componente
+    const nuevoEstadoComponente =
+      Number(loteComponenteActualizado.masa_total_kg) === 0 ? 'agotado' : 'usado'
 
-  await actualizarConsumoLoteCochinillaRepo(
-    data.lote_componente_id,
-    {
-      masa_total_kg: loteComponenteActualizado.masa_total_kg,
-      estado: nuevoEstadoComponente
-    },
-    t
+    await actualizarConsumoLoteCochinillaRepo(
+      data.lote_componente_id,
+      {
+        masa_total_kg: loteComponenteActualizado.masa_total_kg,
+        estado: nuevoEstadoComponente
+      },
+      t
     )
 
-  await actualizarPorcentajesPorLoteResultanteRepo(data.lote_resultante_id, t)
+    await actualizarPorcentajesPorLoteResultanteRepo(data.lote_resultante_id, t)
+
     return nuevaComposicion
   })
 }
@@ -195,6 +227,7 @@ console.log('1. inicio service', data)
    - ajusta peso
    - corrige masas por diferencia
    - recalcula porcentajes
+   - recalcula costos totales y costos por kilo de ambos lotes
 ====================================================== */
 export const actualizarComposicionLoteCochinillaService = async (id, data) => {
   const composicionActual = await obtenerComposicionLoteCochinillaPorIdRepo(id)
@@ -212,15 +245,45 @@ export const actualizarComposicionLoteCochinillaService = async (id, data) => {
   const diferencia = pesoNuevo - pesoAnterior
 
   return await db.tx(async (t) => {
-    const loteComponente = await obtenerLoteCochinillaPorIdRepo(composicionActual.lote_componente_id, t)
+    const loteComponente = await obtenerLoteCochinillaPorIdRepo(
+      composicionActual.lote_componente_id,
+      t
+    )
+
+    const loteResultante = await obtenerLoteCochinillaPorIdRepo(
+      composicionActual.lote_resultante_id,
+      t
+    )
 
     if (!loteComponente) {
       throw new Error('Lote componente no encontrado')
     }
 
+    if (!loteResultante) {
+      throw new Error('Lote resultante no encontrado')
+    }
+
     if (diferencia > 0 && Number(loteComponente.masa_total_kg) < diferencia) {
       throw new Error('El lote componente no tiene masa suficiente para aumentar el peso utilizado')
     }
+
+    const costoKiloComponente = Number(loteComponente.costo_kilo_dolares ?? 0)
+
+    const masaComponenteAnterior = Number(loteComponente.masa_total_kg ?? 0)
+    const masaResultanteAnterior = Number(loteResultante.masa_total_kg ?? 0)
+
+    const costoTotalResultanteAnterior = Number(loteResultante.costo_total_dolares ?? 0)
+
+    const valorMovimiento = diferencia * costoKiloComponente
+
+    const nuevaMasaComponente = masaComponenteAnterior - diferencia
+    const nuevoCostoTotalComponente = nuevaMasaComponente * costoKiloComponente
+    const nuevoCostoKiloComponente = costoKiloComponente
+
+    const nuevaMasaResultante = masaResultanteAnterior + diferencia
+    const nuevoCostoTotalResultante = costoTotalResultanteAnterior + valorMovimiento
+    const nuevoCostoKiloResultante =
+      nuevaMasaResultante === 0 ? 0 : nuevoCostoTotalResultante / nuevaMasaResultante
 
     const composicionActualizada = await actualizarComposicionLoteCochinillaRepo(
       id,
@@ -233,11 +296,43 @@ export const actualizarComposicionLoteCochinillaService = async (id, data) => {
     )
 
     if (diferencia !== 0) {
-      await actualizarMasaLoteCochinillaPorDeltaRepo(composicionActual.lote_componente_id, -diferencia, t)
-      await actualizarMasaLoteCochinillaPorDeltaRepo(composicionActual.lote_resultante_id, diferencia, t)
+      const loteComponenteActualizado = await actualizarCostosYMasaLoteCochinillaRepo(
+        composicionActual.lote_componente_id,
+        {
+          masa_total_kg: nuevaMasaComponente,
+          costo_total_dolares: nuevoCostoTotalComponente,
+          costo_kilo_dolares: nuevoCostoKiloComponente
+        },
+        t
+      )
+
+      await actualizarCostosYMasaLoteCochinillaRepo(
+        composicionActual.lote_resultante_id,
+        {
+          masa_total_kg: nuevaMasaResultante,
+          costo_total_dolares: nuevoCostoTotalResultante,
+          costo_kilo_dolares: nuevoCostoKiloResultante
+        },
+        t
+      )
+
+      const nuevoEstadoComponente =
+        Number(loteComponenteActualizado.masa_total_kg) === 0 ? 'agotado' : 'usado'
+
+      await actualizarConsumoLoteCochinillaRepo(
+        composicionActual.lote_componente_id,
+        {
+          masa_total_kg: loteComponenteActualizado.masa_total_kg,
+          estado: nuevoEstadoComponente
+        },
+        t
+      )
     }
 
-    await actualizarPorcentajesPorLoteResultanteRepo(composicionActual.lote_resultante_id, t)
+    await actualizarPorcentajesPorLoteResultanteRepo(
+      composicionActual.lote_resultante_id,
+      t
+    )
 
     return composicionActualizada
   })
@@ -255,6 +350,7 @@ export const actualizarPorcentajesPorLoteResultanteService = async (loteResultan
    - devuelve masa al lote componente
    - resta masa al lote resultante
    - recalcula porcentajes
+   - recalcula costos totales y costos por kilo de ambos lotes
 ====================================================== */
 export const eliminarComposicionLoteCochinillaService = async (id) => {
   const composicionActual = await obtenerComposicionLoteCochinillaPorIdRepo(id)
@@ -266,25 +362,72 @@ export const eliminarComposicionLoteCochinillaService = async (id) => {
   const peso = Number(composicionActual.peso_utilizado_kg)
 
   return await db.tx(async (t) => {
+    const loteComponente = await obtenerLoteCochinillaPorIdRepo(
+      composicionActual.lote_componente_id,
+      t
+    )
+
+    const loteResultante = await obtenerLoteCochinillaPorIdRepo(
+      composicionActual.lote_resultante_id,
+      t
+    )
+
+    if (!loteComponente) {
+      throw new Error('Lote componente no encontrado')
+    }
+
+    if (!loteResultante) {
+      throw new Error('Lote resultante no encontrado')
+    }
+
+    const costoKiloComponente = Number(loteComponente.costo_kilo_dolares ?? 0)
+
+    const masaComponenteAnterior = Number(loteComponente.masa_total_kg ?? 0)
+    const masaResultanteAnterior = Number(loteResultante.masa_total_kg ?? 0)
+
+    const costoTotalResultanteAnterior = Number(loteResultante.costo_total_dolares ?? 0)
+
+    const valorMovimiento = peso * costoKiloComponente
+
+    const nuevaMasaComponente = masaComponenteAnterior + peso
+    const nuevoCostoTotalComponente = nuevaMasaComponente * costoKiloComponente
+    const nuevoCostoKiloComponente = costoKiloComponente
+
+    const nuevaMasaResultante = masaResultanteAnterior - peso
+    const nuevoCostoTotalResultante = costoTotalResultanteAnterior - valorMovimiento
+    const nuevoCostoKiloResultante =
+      nuevaMasaResultante === 0 ? 0 : nuevoCostoTotalResultante / nuevaMasaResultante
+
     const eliminada = await eliminarComposicionLoteCochinillaRepo(id, t)
 
-    const loteComponenteActualizado = await actualizarMasaLoteCochinillaPorDeltaRepo(
+    const loteComponenteActualizado = await actualizarCostosYMasaLoteCochinillaRepo(
       composicionActual.lote_componente_id,
-      peso,
+      {
+        masa_total_kg: nuevaMasaComponente,
+        costo_total_dolares: nuevoCostoTotalComponente,
+        costo_kilo_dolares: nuevoCostoKiloComponente
+      },
       t
     )
 
-    await actualizarMasaLoteCochinillaPorDeltaRepo(
+    await actualizarCostosYMasaLoteCochinillaRepo(
       composicionActual.lote_resultante_id,
-      -peso,
+      {
+        masa_total_kg: nuevaMasaResultante,
+        costo_total_dolares: nuevoCostoTotalResultante,
+        costo_kilo_dolares: nuevoCostoKiloResultante
+      },
       t
     )
+
+    const nuevoEstadoComponente =
+      Number(loteComponenteActualizado.masa_total_kg) === 0 ? 'agotado' : 'usado'
 
     await actualizarConsumoLoteCochinillaRepo(
       composicionActual.lote_componente_id,
       {
         masa_total_kg: loteComponenteActualizado.masa_total_kg,
-        estado: 'usado'
+        estado: nuevoEstadoComponente
       },
       t
     )

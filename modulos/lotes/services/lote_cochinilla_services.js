@@ -1,3 +1,10 @@
+import db from '../../../config/database.js'
+
+import {
+  obtenerComposicionesPorLoteResultanteRepo,
+  eliminarComposicionLoteCochinillaRepo
+} from '../repositories/composicion_lote_cochinilla_repositories.js'
+
 import {
   crearLoteCochinillaPorCompraRepo,
   crearLoteCochinillaPorMezclaRepo,
@@ -248,6 +255,12 @@ export const actualizarMasaLoteCochinillaPorDeltaService = async (id, data) => {
 
 /* ======================================================
    DELETE
+   - si es comprado: elimina directo
+   - si es preparado:
+     1. devuelve masas a los componentes
+     2. actualiza estado de componentes a "usado"
+     3. elimina composiciones hijas
+     4. elimina el lote preparado
 ====================================================== */
 export const eliminarLoteCochinillaService = async (id) => {
   const lote = await obtenerLoteCochinillaPorIdRepo(id)
@@ -256,5 +269,47 @@ export const eliminarLoteCochinillaService = async (id) => {
     throw new Error('Lote de cochinilla no encontrado')
   }
 
-  return await eliminarLoteCochinillaRepo(id)
+  return await db.tx(async (t) => {
+    // caso simple: lote comprado
+    if (lote.tipo_lote === 'comprado') {
+      return await eliminarLoteCochinillaRepo(id, t)
+    }
+
+    // caso preparado: devolver masas y borrar composiciones
+    if (lote.tipo_lote === 'preparado') {
+      const composiciones = await obtenerComposicionesPorLoteResultanteRepo(id, t)
+
+      for (const composicion of composiciones) {
+        const peso = Number(composicion.peso_utilizado_kg)
+
+        // devolver masa al lote componente
+        const loteComponenteActualizado = await actualizarMasaLoteCochinillaPorDeltaRepo(
+          composicion.lote_componente_id,
+          peso,
+          t
+        )
+
+        // actualizar estado del lote componente a "usado"
+        await actualizarConsumoLoteCochinillaRepo(
+          composicion.lote_componente_id,
+          {
+            masa_total_kg: loteComponenteActualizado.masa_total_kg,
+            estado: 'usado'
+          },
+          t
+        )
+
+        // eliminar la composición hija
+        await eliminarComposicionLoteCochinillaRepo(
+          composicion.composicion_lote_cochinilla_id,
+          t
+        )
+      }
+
+      // finalmente eliminar el lote preparado
+      return await eliminarLoteCochinillaRepo(id, t)
+    }
+
+    throw new Error('tipo_lote no válido para eliminación')
+  })
 }
