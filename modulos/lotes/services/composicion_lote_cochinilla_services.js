@@ -2,7 +2,8 @@ import db from '../../../config/database.js'
 
 import {
   obtenerLoteCochinillaPorIdRepo,
-  actualizarMasaLoteCochinillaPorDeltaRepo
+  actualizarMasaLoteCochinillaPorDeltaRepo,
+  actualizarConsumoLoteCochinillaRepo
 } from '../repositories/lote_cochinilla_repositories.js'
 
 import {
@@ -110,6 +111,8 @@ export const obtenerComposicionesPorLoteComponenteService = async (loteComponent
    - recalcula porcentajes
 ====================================================== */
 export const crearComposicionLoteCochinillaService = async (data) => {
+console.log('1. inicio service', data)
+
   if (!data.lote_resultante_id) {
     throw new Error('lote_resultante_id es obligatorio')
   }
@@ -127,9 +130,12 @@ export const crearComposicionLoteCochinillaService = async (data) => {
   }
 
   const peso = Number(data.peso_utilizado_kg)
+  console.log('2. validaciones ok, peso =', peso)
 
   return await db.tx(async (t) => {
+    console.log('3. entró a la transacción')
     const loteResultante = await obtenerLoteCochinillaPorIdRepo(data.lote_resultante_id, t)
+     console.log('4. lote resultante encontrado', loteResultante?.lote_cochinilla_id)
     const loteComponente = await obtenerLoteCochinillaPorIdRepo(data.lote_componente_id, t)
 
     if (!loteResultante) {
@@ -152,11 +158,33 @@ export const crearComposicionLoteCochinillaService = async (data) => {
       t
     )
 
-    await actualizarMasaLoteCochinillaPorDeltaRepo(data.lote_componente_id, -peso, t)
-    await actualizarMasaLoteCochinillaPorDeltaRepo(data.lote_resultante_id, peso, t)
 
-    await actualizarPorcentajesPorLoteResultanteRepo(data.lote_resultante_id, t)
+  const loteComponenteActualizado = await actualizarMasaLoteCochinillaPorDeltaRepo(
+    data.lote_componente_id,
+    -peso,
+    t
+    )
 
+    await actualizarMasaLoteCochinillaPorDeltaRepo(
+    data.lote_resultante_id,
+    peso,
+    t
+    )
+
+  // actualizar estado del lote componente según su nueva masa
+  const nuevoEstadoComponente =
+    Number(loteComponenteActualizado.masa_total_kg) === 0 ? 'agotado' : 'usado'
+
+  await actualizarConsumoLoteCochinillaRepo(
+    data.lote_componente_id,
+    {
+      masa_total_kg: loteComponenteActualizado.masa_total_kg,
+      estado: nuevoEstadoComponente
+    },
+    t
+    )
+
+  await actualizarPorcentajesPorLoteResultanteRepo(data.lote_resultante_id, t)
     return nuevaComposicion
   })
 }
@@ -240,10 +268,31 @@ export const eliminarComposicionLoteCochinillaService = async (id) => {
   return await db.tx(async (t) => {
     const eliminada = await eliminarComposicionLoteCochinillaRepo(id, t)
 
-    await actualizarMasaLoteCochinillaPorDeltaRepo(composicionActual.lote_componente_id, peso, t)
-    await actualizarMasaLoteCochinillaPorDeltaRepo(composicionActual.lote_resultante_id, -peso, t)
+    const loteComponenteActualizado = await actualizarMasaLoteCochinillaPorDeltaRepo(
+      composicionActual.lote_componente_id,
+      peso,
+      t
+    )
 
-    await actualizarPorcentajesPorLoteResultanteRepo(composicionActual.lote_resultante_id, t)
+    await actualizarMasaLoteCochinillaPorDeltaRepo(
+      composicionActual.lote_resultante_id,
+      -peso,
+      t
+    )
+
+    await actualizarConsumoLoteCochinillaRepo(
+      composicionActual.lote_componente_id,
+      {
+        masa_total_kg: loteComponenteActualizado.masa_total_kg,
+        estado: 'usado'
+      },
+      t
+    )
+
+    await actualizarPorcentajesPorLoteResultanteRepo(
+      composicionActual.lote_resultante_id,
+      t
+    )
 
     return eliminada
   })

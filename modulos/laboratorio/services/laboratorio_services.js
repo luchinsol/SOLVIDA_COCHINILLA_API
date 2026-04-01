@@ -1,15 +1,34 @@
+import db from '../../../config/database.js'
 import {crearAnalisis,obtenerTodosAnalisis,actualizarAnalisis,eliminarAnalisis} from '../repositories/laboratorio_repositories.js'
+import { actualizarAnalisisLoteCochinillaRepo } from '../../lotes/repositories/lote_cochinilla_repositories.js'
+
 
 export const obtenerTodosAnalisisService = async () => {
     const analisis = await obtenerTodosAnalisis();
     return analisis;
 }
 
-export const crearAnalisisService = async (analisisDatos) => {
-    const nuevoAnalisis = await crearAnalisis(analisisDatos);
-    return nuevoAnalisis;
-}
+export const crearAnalisisService = async (datos) => {
+  return await db.tx(async (t) => {
+    const analisisCreado = await crearAnalisis(datos, t)
 
+    console.log('analisis creado:', analisisCreado)
+
+    if (datos.tipo_material === 'cochinilla') {
+      await actualizarAnalisisLoteCochinillaRepo(
+        datos.material_id,
+        {
+          analisis_actual_id: analisisCreado.analisis_id,
+          concentracion_ac_actual: datos.concentracion_ac,
+          humedad_actual: datos.humedad
+        },
+        t
+      )
+    }
+
+    return analisisCreado
+  })
+}
 export const actualizarAnalisisService = async (analisis_id, analisisDatos) => {
     const analisisActualizado = await actualizarAnalisis(analisis_id, analisisDatos);
     return analisisActualizado;

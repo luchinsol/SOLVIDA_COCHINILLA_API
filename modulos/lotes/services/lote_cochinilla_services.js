@@ -19,18 +19,17 @@ import {
 // ejemplo simple de código para compra:
 // COCH-COMP-<proveedor_id>-<yyyymmdd>-<calidad>
 const generarCodigoLoteCompra = (data) => {
-  const now = new Date(data.fecha_compra ?? new Date())
+  const fechaBase = new Date(data.fecha_compra)
+  const ahora = new Date()
 
-  // fecha: YYYYMMDD
-  const fecha = now.toISOString().slice(0, 10).replace(/-/g, '')
-
-  // hora: HHMMSS
-  const hora = now.toTimeString().slice(0, 8).replace(/:/g, '')
+  const fecha = fechaBase.toISOString().slice(0, 10).replace(/-/g, '')
+  const hora = ahora.toTimeString().slice(0, 8).replace(/:/g, '')
+  const milisegundos = String(ahora.getMilliseconds()).padStart(3, '0')
 
   const proveedor = data.proveedor_id
   const calidad = (data.calidad ?? 'SIN-CALIDAD').toUpperCase()
 
-  return `COCH-COMP-${proveedor}-${fecha}-${hora}-${calidad}`
+  return `COCH-COMP-${proveedor}-${fecha}-${hora}${milisegundos}-${calidad}`
 }
 
 // ejemplo simple de código para mezcla:
@@ -49,16 +48,24 @@ const generarCodigoLoteMezcla = () => {
 ====================================================== */
 export const crearLoteCochinillaPorCompraService = async (data) => {
   if (!data.proveedor_id) {
-    throw new Error('proveedor_id es obligatorio para lote por compra')
+    throw new Error('proveedor_id es obligatorio')
   }
 
   if (!data.fecha_compra) {
-    throw new Error('fecha_compra es obligatoria para lote por compra')
+    throw new Error('fecha_compra es obligatoria')
   }
 
-  if (data.masa_total_kg == null || Number(data.masa_total_kg) <= 0) {
+  if (!data.masa_total_kg || Number(data.masa_total_kg) <= 0) {
     throw new Error('masa_total_kg debe ser mayor a 0')
   }
+
+  if (data.costo_total_dolares == null || Number(data.costo_total_dolares) <= 0) {
+    throw new Error('costo_total_dolares debe ser mayor a 0')
+  }
+
+  const masaTotalKg = Number(data.masa_total_kg)
+  const costoTotalDolares = Number(data.costo_total_dolares)
+  const costoKiloDolares = costoTotalDolares / masaTotalKg
 
   const codigoLote = generarCodigoLoteCompra(data)
 
@@ -66,10 +73,11 @@ export const crearLoteCochinillaPorCompraService = async (data) => {
     ...data,
     codigo_lote: codigoLote,
     tipo_lote: 'comprado',
-    estado: 'disponible'
+    estado: 'por analizar',
+    costo_total_dolares: costoTotalDolares,
+    costo_kilo_dolares: costoKiloDolares
   })
 }
-
 /* ======================================================
    CREATE: mezcla / preparado
 ====================================================== */
@@ -85,7 +93,7 @@ export const crearLoteCochinillaPorMezclaService = async (data) => {
     masa_total_kg: data.masa_total_kg ?? 0,
     codigo_lote: codigoLote,
     tipo_lote: 'preparado',
-    estado: 'disponible',
+    estado: 'por analizar',
     fecha_creacion: data.fecha_creacion ?? new Date()
   })
 }
