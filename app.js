@@ -25,16 +25,21 @@ import proveedorRoutes from './modulos/inventario/routes/proveedor_route.js'
 // Rutas de laboratorio
 import laboratorioRoutes from './modulos/laboratorio/routes/laboratorio_routes.js'
 
-
-
+// Middleware de autenticación
+import { verifyToken } from './middlewares/authmiddleware.js'
 
 const app = express()
 app.use(express.json())
 app.use(morgan('dev'))
 app.use(cors())
 
-app.use('/api/almacen',almacenRoutes)
+// Ruta pública para login (no requiere token)
 app.use('/api/usuarios', usuarioRoutes)
+
+// Rutas protegidas por autenticación
+app.use(verifyToken) // Middleware para verificar el token en todas las rutas siguientes
+
+app.use('/api/almacen',almacenRoutes)
 app.use('/api/roles', rolesRoutes)
 app.use('/api/lotes-carmin', loteCarminRoutes)
 app.use('/api/composicion-carmin', composicionCarminRoutes)
@@ -45,6 +50,5 @@ app.use('/api/proveedores', proveedorRoutes)
 app.use('/api/laboratorio', laboratorioRoutes)
 app.use('/api/comp_lotecochini', composicionLoteCochinillaRoutes)
 app.use('/api/lotes-cochinilla', loteCochinillaRoutes)
-
 
 export default app

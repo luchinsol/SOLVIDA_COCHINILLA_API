@@ -1,4 +1,4 @@
-import {getInsumos,createInsumo,updateInsumo,deleteInsumo,getInsumoPdf} from "../repositories/insumo_repositories.js";
+import {getInsumos,createInsumo,updateInsumo,deleteInsumo,getInsumoPdf, getCostoUnitario} from "../repositories/insumo_repositories.js";
 import PDFDocument from 'pdfkit';
 import ExcelJS from 'exceljs';
 
@@ -48,3 +48,7 @@ export const updateInsumoService = async (insumo_id, insumoDatos) => {
 export const deleteInsumoService = async (insumo_id) => {
   return await deleteInsumo(insumo_id);
 };
+
+export const getInsumoPdfServiceExcel = async () => {
+  return await getCostoUnitario();
+}
