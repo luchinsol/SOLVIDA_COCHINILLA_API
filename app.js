@@ -14,6 +14,7 @@ import loteCochinillaRoutes from './modulos/lotes/routes/lote_cochinilla_routes.
 
 //Rutas de producción
 import procesoMezcladoRoutes from './modulos/produccion/routes/proceso_mezclado_routes.js'
+import recetaExtraccionRoutes from './modulos/produccion/routes/receta_extraccion_routes.js'
 
 
 // Rutas de inventario
@@ -45,6 +46,7 @@ app.use('/api/proveedores', proveedorRoutes)
 app.use('/api/laboratorio', laboratorioRoutes)
 app.use('/api/comp_lotecochini', composicionLoteCochinillaRoutes)
 app.use('/api/lotes-cochinilla', loteCochinillaRoutes)
+app.use('/api/recetas-extraccion', recetaExtraccionRoutes)
 
 
 export default app

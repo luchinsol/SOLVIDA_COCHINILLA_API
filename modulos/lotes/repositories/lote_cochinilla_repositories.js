@@ -184,10 +184,33 @@ export const actualizarMasaLoteCochinillaPorDeltaRepo = async (id, delta, t = db
 }
 
 /* ======================================================
-   DELETE: eliminar lote de cochinilla
+   UPDATE: actualizar masa y costos de lote de cochinilla
 ====================================================== */
-export const eliminarLoteCochinillaRepo = async (id) => {
-  const result = await db.oneOrNone(
+export const actualizarCostosYMasaLoteCochinillaRepo = async (id, data, t = db) => {
+  const result = await t.oneOrNone(
+    `UPDATE lotes.lote_cochinilla
+     SET
+       masa_total_kg = $1,
+       costo_total_dolares = $2,
+       costo_kilo_dolares = $3
+     WHERE lote_cochinilla_id = $4
+     RETURNING *`,
+    [
+      data.masa_total_kg,
+      data.costo_total_dolares,
+      data.costo_kilo_dolares,
+      id
+    ]
+  )
+
+  return result
+}
+
+/* ======================================================
+   DELETE: eliminar lote de cochinilla 
+====================================================== */
+export const eliminarLoteCochinillaRepo = async (id, t = db) => {
+  const result = await t.oneOrNone(
     `DELETE FROM lotes.lote_cochinilla
      WHERE lote_cochinilla_id = $1
      RETURNING *`,
