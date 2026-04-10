@@ -13,6 +13,7 @@ import {
   actualizarAnalisisLoteCochinillaRepo,
   actualizarConsumoLoteCochinillaRepo,
   actualizarMasaLoteCochinillaPorDeltaRepo,
+  actualizarCostosYMasaLoteCochinillaRepo,
   eliminarLoteCochinillaRepo
 } from '../repositories/lote_cochinilla_repositories.js'
 
@@ -258,9 +259,11 @@ export const actualizarMasaLoteCochinillaPorDeltaService = async (id, data) => {
    - si es comprado: elimina directo
    - si es preparado:
      1. devuelve masas a los componentes
-     2. actualiza estado de componentes a "usado"
-     3. elimina composiciones hijas
-     4. elimina el lote preparado
+     2. recalcula costo_total_dolares de componentes
+     3. mantiene costo_kilo_dolares fijo en componentes
+     4. actualiza estado de componentes a "usado"
+     5. elimina composiciones hijas
+     6. elimina el lote preparado
 ====================================================== */
 export const eliminarLoteCochinillaService = async (id) => {
   const lote = await obtenerLoteCochinillaPorIdRepo(id)
@@ -275,17 +278,37 @@ export const eliminarLoteCochinillaService = async (id) => {
       return await eliminarLoteCochinillaRepo(id, t)
     }
 
-    // caso preparado: devolver masas y borrar composiciones
+    // caso preparado: devolver masas, recalcular costos y borrar composiciones
     if (lote.tipo_lote === 'preparado') {
       const composiciones = await obtenerComposicionesPorLoteResultanteRepo(id, t)
 
       for (const composicion of composiciones) {
         const peso = Number(composicion.peso_utilizado_kg)
 
-        // devolver masa al lote componente
-        const loteComponenteActualizado = await actualizarMasaLoteCochinillaPorDeltaRepo(
+        const loteComponente = await obtenerLoteCochinillaPorIdRepo(
           composicion.lote_componente_id,
-          peso,
+          t
+        )
+
+        if (!loteComponente) {
+          throw new Error(`Lote componente ${composicion.lote_componente_id} no encontrado`)
+        }
+
+        const costoKiloComponente = Number(loteComponente.costo_kilo_dolares ?? 0)
+        const masaComponenteAnterior = Number(loteComponente.masa_total_kg ?? 0)
+
+        const nuevaMasaComponente = masaComponenteAnterior + peso
+        const nuevoCostoTotalComponente = nuevaMasaComponente * costoKiloComponente
+        const nuevoCostoKiloComponente = costoKiloComponente
+
+        // devolver masa y recalcular costos del lote componente
+        const loteComponenteActualizado = await actualizarCostosYMasaLoteCochinillaRepo(
+          composicion.lote_componente_id,
+          {
+            masa_total_kg: nuevaMasaComponente,
+            costo_total_dolares: nuevoCostoTotalComponente,
+            costo_kilo_dolares: nuevoCostoKiloComponente
+          },
           t
         )
 

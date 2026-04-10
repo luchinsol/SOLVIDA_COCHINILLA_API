@@ -207,7 +207,7 @@ export const actualizarCostosYMasaLoteCochinillaRepo = async (id, data, t = db) 
 }
 
 /* ======================================================
-   DELETE: eliminar lote de cochinilla
+   DELETE: eliminar lote de cochinilla 
 ====================================================== */
 export const eliminarLoteCochinillaRepo = async (id, t = db) => {
   const result = await t.oneOrNone(
