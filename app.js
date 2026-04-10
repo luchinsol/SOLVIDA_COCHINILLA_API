@@ -37,7 +37,7 @@ app.use(cors())
 app.use('/api/usuarios', usuarioRoutes)
 
 // Rutas protegidas por autenticación
-app.use(verifyToken) // Middleware para verificar el token en todas las rutas siguientes
+//app.use(verifyToken) // Middleware para verificar el token en todas las rutas siguientes
 
 app.use('/api/almacen',almacenRoutes)
 app.use('/api/roles', rolesRoutes)
