@@ -18,10 +18,11 @@ import recetaExtraccionRoutes from './modulos/produccion/routes/receta_extraccio
 
 
 // Rutas de inventario
-import insumoRoutes from './modulos/inventario/routes/insumo_route.js'
+import insumoRoutes from './modulos/inventario/routes/lote_insumo_route.js'
 import almacenRoutes from './modulos/inventario/routes/almacen_route.js'
 import movimientoAlmacenRoutes from './modulos/inventario/routes/movimiento_almacen_route.js'
 import proveedorRoutes from './modulos/inventario/routes/proveedor_route.js'
+import tipoInsumoRoutes from './modulos/inventario/routes/tipo_insumo_routes.js'
 
 // Rutas de laboratorio
 import laboratorioRoutes from './modulos/laboratorio/routes/laboratorio_routes.js'
@@ -52,5 +53,6 @@ app.use('/api/laboratorio', laboratorioRoutes)
 app.use('/api/comp_lotecochini', composicionLoteCochinillaRoutes)
 app.use('/api/lotes-cochinilla', loteCochinillaRoutes)
 app.use('/api/recetas-extraccion', recetaExtraccionRoutes)
+app.use('/api/tipo-insumo', tipoInsumoRoutes)
 
 export default app

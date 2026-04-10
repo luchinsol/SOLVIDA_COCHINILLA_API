@@ -1,5 +1,5 @@
 import express from 'express'
-import { getInsumoPdfController,getInsumosController, createInsumoController, updateInsumoController, deleteInsumoController } from '../controllers/insumo_controllers.js';
+import { getInsumoPdfController,getInsumosController, createInsumoController, updateInsumoController, deleteInsumoController } from '../controllers/lote_insumo_controllers.js';
 
 const insumoRoutes = express.Router()
 

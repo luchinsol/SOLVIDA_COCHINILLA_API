@@ -22,24 +22,30 @@ export const getInsumoPdf = async () => {
 
 
 export const getInsumos = async () => {
-  const query = "SELECT * FROM inventario.insumo";
+  const query = "SELECT * FROM inventario.lote_insumo";
   const rows = await db.query(query);
   return rows;
 };
 
+
+
+//CREATE INSUMO
 export const createInsumo = async (insumoDatos) => {
   const query =
-    "INSERT INTO inventario.insumo (proveedor_id, almacen_id, nombre, tipo_insumo, unidad_medida, concentracion, costo_unitario, clasificacion_controlada, stock_actual, activo) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true) RETURNING insumo_id";
+    "INSERT INTO inventario.lote_insumo (proveedor_id, almacen_id, nombre, concentracion, costo_unitario, stock_actual, costo_total, stock_inicial, tipo_insumo_id, unidad_medida_cantidad, unidad_medida_moneda, unidad_medida_concentracion) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *";
   const result = await db.one(query, [
     insumoDatos.proveedor_id,
     insumoDatos.almacen_id,
     insumoDatos.nombre,
-    insumoDatos.tipo_insumo,
-    insumoDatos.unidad_medida,
     insumoDatos.concentracion,
     insumoDatos.costo_unitario,
-    insumoDatos.clasificacion_controlada,
     insumoDatos.stock_actual,
+    insumoDatos.costo_total,
+    insumoDatos.stock_inicial,
+    insumoDatos.tipo_insumo_id,
+    insumoDatos.unidad_medida_cantidad,
+    insumoDatos.unidad_medida_moneda,
+    insumoDatos.unidad_medida_concentracion,
   ]);
   return result;
 };
