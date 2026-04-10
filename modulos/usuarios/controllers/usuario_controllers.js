@@ -16,6 +16,7 @@ import {
 export const login = async (req, res) => {
   const { nickname, password } = req.body;
   try {
+    console.log("en controller", nickname, password)
     const usuario = await loginService(nickname, password);
     if (!usuario) {
       return res.status(401).json({ error: "Credenciales inválidas" });
@@ -34,7 +35,25 @@ export const login = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+export const postUsuarios = async (req, res) => {
+  console.log("en controller", req.body)
+  const { nombre, rol_id, correo, password, nickname, activo } = req.body;
+  try {
+    const usuario = {
+      nombre: nombre ?? null,
+      rol_id: rol_id ?? null,
+      correo: correo ?? null,
+      password: password ?? null,
+      nickname: nickname ?? null,
+      activo: activo ?? true,
+    };
+    const postUsuario = await createUsuarioService(usuario);
 
+    res.status(201).json(postUsuario);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
 // CONTROLLER USUARIOS
 
 export const getUsuarios = async (_, res) => {
@@ -60,25 +79,7 @@ export const putUsuarios = async (req, res) => {
   }
 };
 
-export const postUsuarios = async (req, res) => {
-  console.log("en controller", req.body)
-  const { nombre, rol_id, correo, password, nickname, activo } = req.body;
-  try {
-    const usuario = {
-      nombre: nombre ?? null,
-      rol_id: rol_id ?? null,
-      correo: correo ?? null,
-      password: password ?? null,
-      nickname: nickname ?? null,
-      activo: activo ?? true,
-    };
-    const postUsuario = await createUsuarioService(usuario);
 
-    res.status(201).json(postUsuario);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
 
 export const deleteUsuarios = async (req, res) => {
   const { id } = req.params;
