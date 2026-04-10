@@ -1,4 +1,4 @@
-import {getInsumoPdfServicePDF,getInsumosService,createInsumoService,updateInsumoService,deleteInsumoService} from '../services/insumo_services.js';
+import {getInsumoPdfServicePDF,getInsumosService,createInsumoService,updateInsumoService,deleteInsumoService} from '../services/lote_insumo_services.js';
 
 export const getInsumoPdfController = async (req, res) => {
   try {
