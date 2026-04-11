@@ -27,27 +27,56 @@ export const getInsumos = async (filters = {}) => {
 
   if (filters.almacen_id) {
     values.push(filters.almacen_id);
-    conditions.push(`almacen_id = $${values.length}`);
+    conditions.push(`li.almacen_id = $${values.length}`);
   }
 
   if (filters.proveedor_id) {
     values.push(filters.proveedor_id);
-    conditions.push(`proveedor_id = $${values.length}`);
+    conditions.push(`li.proveedor_id = $${values.length}`);
   }
 
   if (filters.tipo_insumo_id) {
     values.push(filters.tipo_insumo_id);
-    conditions.push(`tipo_insumo_id = $${values.length}`);
+    conditions.push(`li.tipo_insumo_id = $${values.length}`);
   }
 
   const whereClause = conditions.length ? ` WHERE ${conditions.join(' AND ')}` : '';
-  const query = `SELECT * FROM inventario.lote_insumo${whereClause} ORDER BY lote_insumo_id ASC`;
+  const query = `
+    SELECT
+      li.*,
+      p.nombre_razon_social AS proveedor_nombre,
+      a.nombre AS almacen_nombre,
+      ti.nombre AS tipo_insumo_nombre
+    FROM inventario.lote_insumo li
+    LEFT JOIN inventario.proveedor p
+      ON li.proveedor_id = p.proveedor_id
+    LEFT JOIN inventario.almacen a
+      ON li.almacen_id = a.almacen_id
+    LEFT JOIN inventario.tipo_insumos ti
+      ON li.tipo_insumo_id = ti.tipo_insumo_id
+    ${whereClause}
+    ORDER BY li.lote_insumo_id ASC
+  `;
   const rows = await db.query(query, values);
   return rows;
 };
 
 export const getInsumoById = async (id) => {
-  const query = "SELECT * FROM inventario.lote_insumo WHERE lote_insumo_id = $1";
+  const query = `
+    SELECT
+      li.*,
+      p.nombre_razon_social AS proveedor_nombre,
+      a.nombre AS almacen_nombre,
+      ti.nombre AS tipo_insumo_nombre
+    FROM inventario.lote_insumo li
+    LEFT JOIN inventario.proveedor p
+      ON li.proveedor_id = p.proveedor_id
+    LEFT JOIN inventario.almacen a
+      ON li.almacen_id = a.almacen_id
+    LEFT JOIN inventario.tipo_insumos ti
+      ON li.tipo_insumo_id = ti.tipo_insumo_id
+    WHERE li.lote_insumo_id = $1
+  `;
   return await db.oneOrNone(query, [id]);
 };
 
