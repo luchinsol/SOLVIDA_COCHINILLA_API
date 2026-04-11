@@ -23,6 +23,7 @@ import almacenRoutes from './modulos/inventario/routes/almacen_route.js'
 import movimientoAlmacenRoutes from './modulos/inventario/routes/movimiento_almacen_route.js'
 import proveedorRoutes from './modulos/inventario/routes/proveedor_route.js'
 import tipoInsumoRoutes from './modulos/inventario/routes/tipo_insumo_routes.js'
+import unidadesMedidaRoutes from './modulos/inventario/routes/unidades_medida_routes.js'
 
 // Rutas de laboratorio
 import laboratorioRoutes from './modulos/laboratorio/routes/laboratorio_routes.js'
@@ -46,7 +47,7 @@ app.use('/api/roles', rolesRoutes)
 app.use('/api/lotes-carmin', loteCarminRoutes)
 app.use('/api/composicion-carmin', composicionCarminRoutes)
 app.use('/api/proceso-mezclado', procesoMezcladoRoutes)
-app.use('/api/insumos', insumoRoutes)
+app.use('/api/lote-insumos', insumoRoutes)
 app.use('/api/movimientos-almacen', movimientoAlmacenRoutes)
 app.use('/api/proveedores', proveedorRoutes)
 app.use('/api/laboratorio', laboratorioRoutes)
@@ -54,5 +55,6 @@ app.use('/api/comp_lotecochini', composicionLoteCochinillaRoutes)
 app.use('/api/lotes-cochinilla', loteCochinillaRoutes)
 app.use('/api/recetas-extraccion', recetaExtraccionRoutes)
 app.use('/api/tipo-insumo', tipoInsumoRoutes)
+app.use('/api/unidades-medida', unidadesMedidaRoutes)
 
 export default app
