@@ -1,4 +1,12 @@
-import {getInsumoPdfServicePDF,getInsumosService,createInsumoService,updateInsumoService,deleteInsumoService} from '../services/lote_insumo_services.js';
+import {
+  getInsumoPdfServicePDF,
+  getInsumosService,
+  createInsumoService,
+  updateInsumoService,
+  deleteInsumoService,
+  actualizarEstadoLoteInsumoService,
+  actualizarStockActualInsumoService
+} from '../services/lote_insumo_services.js';
 
 export const getInsumoPdfController = async (req, res) => {
   try {
@@ -39,6 +47,30 @@ export const updateInsumoController = async (req, res) => {
     res.json(insumoActualizado);
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+};
+
+export const actualizarEstadoLoteInsumoController = async (req, res) => {
+  const { id } = req.params;
+  const { estado_lote } = req.body;
+  try {
+    const loteActualizado = await actualizarEstadoLoteInsumoService(id, estado_lote);
+    res.json(loteActualizado);
+  } catch (error) {
+    const status = error.message === 'Lote de insumo no encontrado' ? 404 : 400;
+    res.status(status).json({ error: error.message });
+  }
+};
+
+export const actualizarStockActualInsumoController = async (req, res) => {
+  const { id } = req.params;
+  const { stock_actual } = req.body;
+  try {
+    const loteActualizado = await actualizarStockActualInsumoService(id, stock_actual);
+    res.json(loteActualizado);
+  } catch (error) {
+    const status = error.message === 'Lote de insumo no encontrado' ? 404 : 400;
+    res.status(status).json({ error: error.message });
   }
 };
 
