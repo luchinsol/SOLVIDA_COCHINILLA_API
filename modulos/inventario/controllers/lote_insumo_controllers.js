@@ -1,6 +1,7 @@
 import {
   getInsumoPdfServicePDF,
   getInsumosService,
+  getInsumoByIdService,
   createInsumoService,
   updateInsumoService,
   deleteInsumoService,
@@ -15,6 +16,10 @@ const normalizeLoteInsumoError = (error) => {
   }
 
   if (
+    error.message === 'id debe ser un entero positivo' ||
+    error.message === 'almacen_id debe ser un entero positivo' ||
+    error.message === 'proveedor_id debe ser un entero positivo' ||
+    error.message === 'tipo_insumo_id debe ser un entero positivo' ||
     error.message === 'almacen_id es obligatorio' ||
     error.message === 'nombre es obligatorio' ||
     error.message === 'tipo_insumo_id es obligatorio' ||
@@ -51,12 +56,27 @@ export const getInsumoPdfController = async (req, res) => {
 
 export const getInsumosController = async (req, res) => {
   try {
-    const insumos = await getInsumosService();
+    const { almacen_id, proveedor_id, tipo_insumo_id } = req.query;
+    const insumos = await getInsumosService({
+      almacen_id,
+      proveedor_id,
+      tipo_insumo_id
+    });
     res.json(insumos);
   } catch (error) {
     handleControllerError(res, normalizeLoteInsumoError(error));
   }
 };      
+
+export const getInsumoByIdController = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const insumo = await getInsumoByIdService(id);
+    res.json(insumo);
+  } catch (error) {
+    handleControllerError(res, normalizeLoteInsumoError(error));
+  }
+};
 
 export const createInsumoController = async (req, res) => {
   const insumoDatos = req.body;

@@ -21,9 +21,28 @@ export const getInsumoPdf = async () => {
 };
 
 
-export const getInsumos = async () => {
-  const query = "SELECT * FROM inventario.lote_insumo";
-  const rows = await db.query(query);
+export const getInsumos = async (filters = {}) => {
+  const conditions = [];
+  const values = [];
+
+  if (filters.almacen_id) {
+    values.push(filters.almacen_id);
+    conditions.push(`almacen_id = $${values.length}`);
+  }
+
+  if (filters.proveedor_id) {
+    values.push(filters.proveedor_id);
+    conditions.push(`proveedor_id = $${values.length}`);
+  }
+
+  if (filters.tipo_insumo_id) {
+    values.push(filters.tipo_insumo_id);
+    conditions.push(`tipo_insumo_id = $${values.length}`);
+  }
+
+  const whereClause = conditions.length ? ` WHERE ${conditions.join(' AND ')}` : '';
+  const query = `SELECT * FROM inventario.lote_insumo${whereClause} ORDER BY lote_insumo_id ASC`;
+  const rows = await db.query(query, values);
   return rows;
 };
 

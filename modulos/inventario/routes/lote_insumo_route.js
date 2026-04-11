@@ -2,6 +2,7 @@ import express from 'express'
 import {
   getInsumoPdfController,
   getInsumosController,
+  getInsumoByIdController,
   createInsumoController,
   updateInsumoController,
   deleteInsumoController,
@@ -12,6 +13,7 @@ import {
 const insumoRoutes = express.Router()
 
 insumoRoutes.get('/', getInsumosController)
+insumoRoutes.get('/:id', getInsumoByIdController)
 insumoRoutes.post('/', createInsumoController)
 insumoRoutes.put('/:id', updateInsumoController)
 insumoRoutes.patch('/:id/estado-lote', actualizarEstadoLoteInsumoController)
