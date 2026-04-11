@@ -7,6 +7,35 @@ import {
   actualizarEstadoLoteInsumoService,
   actualizarStockActualInsumoService
 } from '../services/lote_insumo_services.js';
+import { handleControllerError } from '../../../utils/handle_controller_error.js';
+
+const normalizeLoteInsumoError = (error) => {
+  if (error.message === 'Lote de insumo no encontrado') {
+    error.name = 'NotFoundError';
+  }
+
+  if (
+    error.message === 'almacen_id es obligatorio' ||
+    error.message === 'nombre es obligatorio' ||
+    error.message === 'tipo_insumo_id es obligatorio' ||
+    error.message === 'costo_total es obligatorio' ||
+    error.message === 'stock_inicial es obligatorio' ||
+    error.message === 'unidad_medida_cantidad es obligatoria' ||
+    error.message === 'unidad_medida_moneda es obligatoria' ||
+    error.message === 'unidad_medida_concentracion es obligatoria' ||
+    error.message === 'stock_inicial debe ser mayor a 0' ||
+    error.message === 'costo_total debe ser un numero valido' ||
+    error.message === 'estado_lote es obligatorio' ||
+    error.message === 'stock_actual es obligatorio' ||
+    error.message === 'stock_actual debe ser un numero valido' ||
+    error.message === 'stock_actual no puede ser mayor que stock_inicial' ||
+    error.message === 'costo_unitario del lote no es valido'
+  ) {
+    error.name = 'ValidationError';
+  }
+
+  return error;
+};
 
 export const getInsumoPdfController = async (req, res) => {
   try {
@@ -15,7 +44,7 @@ export const getInsumoPdfController = async (req, res) => {
         res.setHeader('Content-Disposition', `attachment; filename=insumos.pdf`);
         res.send(pdfBuffer);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        handleControllerError(res, normalizeLoteInsumoError(error));
     }
 }
 
@@ -25,7 +54,7 @@ export const getInsumosController = async (req, res) => {
     const insumos = await getInsumosService();
     res.json(insumos);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    handleControllerError(res, normalizeLoteInsumoError(error));
   }
 };      
 
@@ -35,7 +64,7 @@ export const createInsumoController = async (req, res) => {
     const nuevoInsumo = await createInsumoService(insumoDatos);
     res.status(201).json(nuevoInsumo);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    handleControllerError(res, normalizeLoteInsumoError(error));
   }
 };
 
@@ -46,7 +75,7 @@ export const updateInsumoController = async (req, res) => {
     const insumoActualizado = await updateInsumoService(id, insumoDatos);
     res.json(insumoActualizado);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    handleControllerError(res, normalizeLoteInsumoError(error));
   }
 };
 
@@ -57,8 +86,7 @@ export const actualizarEstadoLoteInsumoController = async (req, res) => {
     const loteActualizado = await actualizarEstadoLoteInsumoService(id, estado_lote);
     res.json(loteActualizado);
   } catch (error) {
-    const status = error.message === 'Lote de insumo no encontrado' ? 404 : 400;
-    res.status(status).json({ error: error.message });
+    handleControllerError(res, normalizeLoteInsumoError(error));
   }
 };
 
@@ -69,8 +97,7 @@ export const actualizarStockActualInsumoController = async (req, res) => {
     const loteActualizado = await actualizarStockActualInsumoService(id, stock_actual);
     res.json(loteActualizado);
   } catch (error) {
-    const status = error.message === 'Lote de insumo no encontrado' ? 404 : 400;
-    res.status(status).json({ error: error.message });
+    handleControllerError(res, normalizeLoteInsumoError(error));
   }
 };
 
@@ -80,6 +107,6 @@ export const deleteInsumoController = async (req, res) => {
     await deleteInsumoService(id);
     res.json({ message: 'Insumo eliminado' });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    handleControllerError(res, normalizeLoteInsumoError(error));
   }
 }

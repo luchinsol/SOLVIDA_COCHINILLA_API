@@ -4,15 +4,31 @@ import {
   crearTipoInsumoService,
   obtenerTiposInsumoService
 } from '../services/tipo_insumo_services.js'
+import { handleControllerError } from '../../../utils/handle_controller_error.js'
+
+const normalizeTipoInsumoError = (error) => {
+  if (error.message === 'Tipo de insumo no encontrado') {
+    error.name = 'NotFoundError'
+  }
+
+  if (
+    error.message === 'El nombre es obligatorio' ||
+    error.message === 'El campo controlado es obligatorio' ||
+    error.message === 'Debe enviar el valor de vigente' ||
+    error.message === 'Debe enviar el valor de controlado'
+  ) {
+    error.name = 'ValidationError'
+  }
+
+  return error
+}
 
 export const obtenerTiposInsumoController = async (req, res) => {
   try {
     const tiposInsumo = await obtenerTiposInsumoService()
     res.json(tiposInsumo)
   } catch (error) {
-    res.status(500).json({
-      error: error.message
-    })
+    handleControllerError(res, normalizeTipoInsumoError(error))
   }
 }
 
@@ -23,10 +39,7 @@ export const actualizarVigenciaTipoInsumoController = async (req, res) => {
     const tipoInsumoActualizado = await actualizarVigenciaTipoInsumoService(id, vigente)
     res.json(tipoInsumoActualizado)
   } catch (error) {
-    const status = error.message === 'Tipo de insumo no encontrado' ? 404 : 400
-    res.status(status).json({
-      error: error.message
-    })
+    handleControllerError(res, normalizeTipoInsumoError(error))
   }
 }
 
@@ -37,10 +50,7 @@ export const actualizarControladoTipoInsumoController = async (req, res) => {
     const tipoInsumoActualizado = await actualizarControladoTipoInsumoService(id, controlado)
     res.json(tipoInsumoActualizado)
   } catch (error) {
-    const status = error.message === 'Tipo de insumo no encontrado' ? 404 : 400
-    res.status(status).json({
-      error: error.message
-    })
+    handleControllerError(res, normalizeTipoInsumoError(error))
   }
 }
 
@@ -50,8 +60,6 @@ export const crearTipoInsumoController = async (req, res) => {
     const nuevoTipoInsumo = await crearTipoInsumoService(req.body)
     res.status(201).json(nuevoTipoInsumo)
   } catch (error) {
-    res.status(400).json({
-      error: error.message
-    })
+    handleControllerError(res, normalizeTipoInsumoError(error))
   }
 }

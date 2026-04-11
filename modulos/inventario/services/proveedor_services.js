@@ -20,11 +20,15 @@ export const obtenerProveedoresService = async (tipoProveedor) => {
 
 export const crearProveedorService = async (proveedorDatos) => {
     if (!proveedorDatos.nombre_razon_social) {
-        throw new Error('nombre_razon_social es obligatorio');
+        const error = new Error('nombre_razon_social es obligatorio');
+        error.statusCode = 400;
+        throw error;
     }
 
     if (!proveedorDatos.tipo_proveedor) {
-        throw new Error('tipo_proveedor es obligatorio');
+        const error = new Error('tipo_proveedor es obligatorio');
+        error.statusCode = 400;
+        throw error;
     }
 
     const payload = {
