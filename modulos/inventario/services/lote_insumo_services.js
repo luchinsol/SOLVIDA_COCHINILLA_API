@@ -43,8 +43,56 @@ export const getInsumoPdfServicePDF = async () => {
 };
 
 
-export const getInsumosService = async () => {
-  return await getInsumos();
+export const getInsumosService = async (filters = {}) => {
+  const parsedFilters = {};
+
+  if (filters.almacen_id !== undefined) {
+    const almacenId = Number(filters.almacen_id);
+
+    if (!Number.isInteger(almacenId) || almacenId <= 0) {
+      throw new Error('almacen_id debe ser un entero positivo');
+    }
+
+    parsedFilters.almacen_id = almacenId;
+  }
+
+  if (filters.proveedor_id !== undefined) {
+    const proveedorId = Number(filters.proveedor_id);
+
+    if (!Number.isInteger(proveedorId) || proveedorId <= 0) {
+      throw new Error('proveedor_id debe ser un entero positivo');
+    }
+
+    parsedFilters.proveedor_id = proveedorId;
+  }
+
+  if (filters.tipo_insumo_id !== undefined) {
+    const tipoInsumoId = Number(filters.tipo_insumo_id);
+
+    if (!Number.isInteger(tipoInsumoId) || tipoInsumoId <= 0) {
+      throw new Error('tipo_insumo_id debe ser un entero positivo');
+    }
+
+    parsedFilters.tipo_insumo_id = tipoInsumoId;
+  }
+
+  return await getInsumos(parsedFilters);
+};
+
+export const getInsumoByIdService = async (id) => {
+  const loteInsumoId = Number(id);
+
+  if (!Number.isInteger(loteInsumoId) || loteInsumoId <= 0) {
+    throw new Error('id debe ser un entero positivo');
+  }
+
+  const loteInsumo = await getInsumoById(loteInsumoId);
+
+  if (!loteInsumo) {
+    throw new Error('Lote de insumo no encontrado');
+  }
+
+  return loteInsumo;
 };
 
 export const createInsumoService = async (insumoDatos) => {
