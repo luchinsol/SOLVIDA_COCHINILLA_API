@@ -11,6 +11,7 @@ import {
   listarLotesCochinillaRepo,
   obtenerLoteCochinillaPorIdRepo,
   actualizarAnalisisLoteCochinillaRepo,
+  actualizarEstadoLoteCochinillaRepo,
   actualizarConsumoLoteCochinillaRepo,
   actualizarMasaLoteCochinillaPorDeltaRepo,
   actualizarCostosYMasaLoteCochinillaRepo,
@@ -35,7 +36,7 @@ const generarCodigoLoteCompra = (data) => {
   const milisegundos = String(ahora.getMilliseconds()).padStart(3, '0')
 
   const proveedor = data.proveedor_id
-  const calidad = (data.calidad ?? 'SIN-CALIDAD').toUpperCase()
+  const calidad = (data.calidad_cochinilla ?? 'SIN-CALIDAD').toUpperCase()
 
   return `COCH-COMP-${proveedor}-${fecha}-${hora}${milisegundos}-${calidad}`
 }
@@ -51,6 +52,28 @@ const generarCodigoLoteMezcla = () => {
   return `COCH-PREP-${fecha}-${hora}`
 }
 
+const calcularCostoPuntoAcDolares = ({
+  costo_total_actual,
+  stock_actual,
+  concentracion_ac_actual
+}) => {
+  const costoTotalActual = Number(costo_total_actual)
+  const stockActual = Number(stock_actual)
+  const concentracionActual = Number(concentracion_ac_actual)
+
+  if (
+    Number.isNaN(costoTotalActual) ||
+    Number.isNaN(stockActual) ||
+    Number.isNaN(concentracionActual) ||
+    stockActual <= 0 ||
+    concentracionActual <= 0
+  ) {
+    return null
+  }
+
+  return costoTotalActual / (stockActual * concentracionActual)
+}
+
 /* ======================================================
    CREATE: compra
 ====================================================== */
@@ -59,61 +82,119 @@ export const crearLoteCochinillaPorCompraService = async (data) => {
     throw new Error('proveedor_id es obligatorio')
   }
 
+  if (!data.almacen_id) {
+    throw new Error('almacen_id es obligatorio')
+  }
+
   if (!data.fecha_compra) {
     throw new Error('fecha_compra es obligatoria')
   }
 
-  if (!data.masa_total_kg || Number(data.masa_total_kg) <= 0) {
-    throw new Error('masa_total_kg debe ser mayor a 0')
+  if (!data.stock_inicial || Number(data.stock_inicial) <= 0) {
+    throw new Error('stock_inicial debe ser mayor a 0')
   }
 
-  if (data.costo_total_dolares == null || Number(data.costo_total_dolares) <= 0) {
-    throw new Error('costo_total_dolares debe ser mayor a 0')
+  if (data.costo_total_inicial == null || Number(data.costo_total_inicial) <= 0) {
+    throw new Error('costo_total_inicial debe ser mayor a 0')
   }
 
-  const masaTotalKg = Number(data.masa_total_kg)
-  const costoTotalDolares = Number(data.costo_total_dolares)
-  const costoKiloDolares = costoTotalDolares / masaTotalKg
+  const stockInicial = Number(data.stock_inicial)
+  const costoTotalInicial = Number(data.costo_total_inicial)
+  const costoKiloDolares = costoTotalInicial / stockInicial
 
   const codigoLote = generarCodigoLoteCompra(data)
 
   return await crearLoteCochinillaPorCompraRepo({
     ...data,
+    creado_por: data.creado_por ?? null,
     codigo_lote: codigoLote,
     tipo_lote: 'comprado',
-    estado: 'por analizar',
-    costo_total_dolares: costoTotalDolares,
-    costo_kilo_dolares: costoKiloDolares
+    stock_inicial: stockInicial,
+    stock_actual: stockInicial,
+    estado_lote: 'por analizar',
+    costo_total_inicial: costoTotalInicial,
+    costo_total_actual: costoTotalInicial,
+    costo_kilo_dolares: costoKiloDolares,
+    unidad_medida_stock: 'kg',
+    unidad_medida_dinero: 'UDS'
   })
 }
 /* ======================================================
    CREATE: mezcla / preparado
 ====================================================== */
 export const crearLoteCochinillaPorMezclaService = async (data) => {
-  if (data.masa_total_kg != null && Number(data.masa_total_kg) < 0) {
-    throw new Error('masa_total_kg no puede ser negativa')
+  if (!data.almacen_id) {
+    throw new Error('almacen_id es obligatorio')
+  }
+
+  if (data.stock_inicial != null && Number(data.stock_inicial) < 0) {
+    throw new Error('stock_inicial no puede ser negativo')
   }
 
   const codigoLote = generarCodigoLoteMezcla(data)
 
   return await crearLoteCochinillaPorMezclaRepo({
     ...data,
-    masa_total_kg: data.masa_total_kg ?? 0,
+    creado_por: data.creado_por ?? null,
+    stock_inicial: data.stock_inicial ?? 0,
+    stock_actual: data.stock_actual ?? data.stock_inicial ?? 0,
+    costo_total_inicial: data.costo_total_inicial ?? 0,
+    costo_total_actual: data.costo_total_actual ?? data.costo_total_inicial ?? 0,
     codigo_lote: codigoLote,
     tipo_lote: 'preparado',
-    estado: 'por analizar',
+    estado_lote: 'por analizar',
     fecha_creacion: data.fecha_creacion ?? new Date()
   })
 }
 /* ======================================================
    READ
 ====================================================== */
-export const listarLotesCochinillaService = async () => {
-  return await listarLotesCochinillaRepo()
+export const listarLotesCochinillaService = async (filters = {}) => {
+  const parsedFilters = {}
+
+  if (filters.almacen_id !== undefined) {
+    const almacenId = Number(filters.almacen_id)
+
+    if (!Number.isInteger(almacenId) || almacenId <= 0) {
+      throw new Error('almacen_id debe ser un entero positivo')
+    }
+
+    parsedFilters.almacen_id = almacenId
+  }
+
+  if (filters.proveedor_id !== undefined) {
+    const proveedorId = Number(filters.proveedor_id)
+
+    if (!Number.isInteger(proveedorId) || proveedorId <= 0) {
+      throw new Error('proveedor_id debe ser un entero positivo')
+    }
+
+    parsedFilters.proveedor_id = proveedorId
+  }
+
+  if (filters.calidad_cochinilla !== undefined) {
+    parsedFilters.calidad_cochinilla = filters.calidad_cochinilla.trim()
+  }
+
+  if (filters.tipo_lote !== undefined) {
+    parsedFilters.tipo_lote = filters.tipo_lote.trim()
+  }
+
+  if (filters.estado_lote !== undefined) {
+    parsedFilters.estado_lote = filters.estado_lote.trim()
+  }
+
+  return await listarLotesCochinillaRepo(parsedFilters)
 }
 
 export const obtenerLoteCochinillaPorIdService = async (id) => {
-  const lote = await obtenerLoteCochinillaPorIdRepo(id)
+  const loteId = Number(id)
+
+  if (!Number.isInteger(loteId) || loteId <= 0) {
+    throw new Error('id debe ser un entero positivo')
+  }
+
+  const lote = await obtenerLoteCochinillaPorIdRepo(loteId)
 
   if (!lote) {
     throw new Error('Lote de cochinilla no encontrado')
@@ -132,11 +213,36 @@ export const actualizarAnalisisLoteCochinillaService = async (id, data) => {
     throw new Error('Lote de cochinilla no encontrado')
   }
 
+  const concentracionActual =
+    data.concentracion_ac_actual ?? lote.concentracion_ac_actual ?? null
+
+  const costoPuntoAcDolares = calcularCostoPuntoAcDolares({
+    costo_total_actual: lote.costo_total_actual,
+    stock_actual: lote.stock_actual,
+    concentracion_ac_actual: concentracionActual
+  })
+
   return await actualizarAnalisisLoteCochinillaRepo(id, {
     analisis_actual_id: data.analisis_actual_id,
-    concentracion_ac_actual: data.concentracion_ac_actual,
-    humedad_actual: data.humedad_actual
+    concentracion_ac_actual: concentracionActual,
+    humedad_actual: data.humedad_actual,
+    costo_puntoac_dolares: costoPuntoAcDolares,
+    estado_lote: 'disponible'
   })
+}
+
+export const actualizarEstadoLoteCochinillaService = async (id, data) => {
+  const lote = await obtenerLoteCochinillaPorIdRepo(id)
+
+  if (!lote) {
+    throw new Error('Lote de cochinilla no encontrado')
+  }
+
+  if (!data.estado_lote) {
+    throw new Error('estado_lote es obligatorio')
+  }
+
+  return await actualizarEstadoLoteCochinillaRepo(id, data.estado_lote)
 }
 
 

@@ -9,6 +9,7 @@ export const crearLoteCochinillaPorCompraRepo = async (data) => {
   const result = await db.one(
     `INSERT INTO lotes.lote_cochinilla
     (
+      almacen_id,
       proveedor_id,
       analisis_actual_id,
       creado_por,
@@ -16,18 +17,25 @@ export const crearLoteCochinillaPorCompraRepo = async (data) => {
       tipo_lote,
       fecha_compra,
       fecha_creacion,
-      calidad,
-      masa_total_kg,
-      costo_total_dolares,
+      calidad_cochinilla,
+      stock_actual,
       costo_kilo_dolares,
       concentracion_ac_actual,
       humedad_actual,
-      estado,
+      estado_lote,
       observaciones
+      ,
+      costo_total_inicial,
+      costo_total_actual,
+      costo_puntoac_dolares,
+      stock_inicial,
+      unidad_medida_stock,
+      unidad_medida_dinero
     )
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
     RETURNING *`,
     [
+      data.almacen_id,
       data.proveedor_id,
       data.analisis_actual_id ?? null,
       data.creado_por ?? null,
@@ -35,14 +43,19 @@ export const crearLoteCochinillaPorCompraRepo = async (data) => {
       'comprado',
       data.fecha_compra,
       data.fecha_creacion ?? null,
-      data.calidad ?? null,
-      data.masa_total_kg,
-      data.costo_total_dolares,
+      data.calidad_cochinilla ?? null,
+      data.stock_actual,
       data.costo_kilo_dolares,
       data.concentracion_ac_actual ?? null,
       data.humedad_actual ?? null,
-      data.estado ?? 'por analizar',
-      data.observaciones ?? null
+      data.estado_lote ?? 'por analizar',
+      data.observaciones ?? null,
+      data.costo_total_inicial,
+      data.costo_total_actual,
+      data.costo_puntoac_dolares ?? null,
+      data.stock_inicial,
+      data.unidad_medida_stock ?? null,
+      data.unidad_medida_dinero ?? null
     ]
   )
 
@@ -58,6 +71,7 @@ export const crearLoteCochinillaPorMezclaRepo = async (data) => {
   const result = await db.one(
     `INSERT INTO lotes.lote_cochinilla
     (
+      almacen_id,
       proveedor_id,
       analisis_actual_id,
       creado_por,
@@ -65,18 +79,25 @@ export const crearLoteCochinillaPorMezclaRepo = async (data) => {
       tipo_lote,
       fecha_compra,
       fecha_creacion,
-      calidad,
-      masa_total_kg,
-      costo_total_dolares,
+      calidad_cochinilla,
+      stock_actual,
       costo_kilo_dolares,
       concentracion_ac_actual,
       humedad_actual,
-      estado,
+      estado_lote,
       observaciones
+      ,
+      costo_total_inicial,
+      costo_total_actual,
+      costo_puntoac_dolares,
+      stock_inicial,
+      unidad_medida_stock,
+      unidad_medida_dinero
     )
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
     RETURNING *`,
     [
+      data.almacen_id,
       null,
       data.analisis_actual_id ?? null,
       data.creado_por ?? null,
@@ -84,14 +105,19 @@ export const crearLoteCochinillaPorMezclaRepo = async (data) => {
       'preparado',
       null,
       data.fecha_creacion ?? new Date(),
-      data.calidad ?? null,
-      0,
-      0,
+      data.calidad_cochinilla ?? null,
+      data.stock_actual ?? 0,
       0,
       data.concentracion_ac_actual ?? null,
       data.humedad_actual ?? null,
-      data.estado ?? 'por analizar',
-      data.observaciones ?? null
+      data.estado_lote ?? 'por analizar',
+      data.observaciones ?? null,
+      data.costo_total_inicial ?? 0,
+      data.costo_total_actual ?? 0,
+      data.costo_puntoac_dolares ?? null,
+      data.stock_inicial ?? 0,
+      data.unidad_medida_stock ?? null,
+      data.unidad_medida_dinero ?? null
     ]
   )
 
@@ -100,11 +126,43 @@ export const crearLoteCochinillaPorMezclaRepo = async (data) => {
 /* ======================================================
    READ: listar todos los lotes de cochinilla
 ====================================================== */
-export const listarLotesCochinillaRepo = async () => {
+export const listarLotesCochinillaRepo = async (filters = {}) => {
+  const conditions = []
+  const values = []
+
+  if (filters.almacen_id !== undefined) {
+    values.push(filters.almacen_id)
+    conditions.push(`almacen_id = $${values.length}`)
+  }
+
+  if (filters.proveedor_id !== undefined) {
+    values.push(filters.proveedor_id)
+    conditions.push(`proveedor_id = $${values.length}`)
+  }
+
+  if (filters.calidad_cochinilla !== undefined) {
+    values.push(filters.calidad_cochinilla)
+    conditions.push(`LOWER(calidad_cochinilla) = LOWER($${values.length})`)
+  }
+
+  if (filters.tipo_lote !== undefined) {
+    values.push(filters.tipo_lote)
+    conditions.push(`LOWER(tipo_lote) = LOWER($${values.length})`)
+  }
+
+  if (filters.estado_lote !== undefined) {
+    values.push(filters.estado_lote)
+    conditions.push(`LOWER(estado_lote) = LOWER($${values.length})`)
+  }
+
+  const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''
+
   const result = await db.any(
     `SELECT *
      FROM lotes.lote_cochinilla
-     ORDER BY lote_cochinilla_id DESC`
+     ${whereClause}
+     ORDER BY lote_cochinilla_id DESC`,
+    values
   )
 
   return result
@@ -133,15 +191,31 @@ export const actualizarAnalisisLoteCochinillaRepo = async (id, data, t = db) => 
      SET
        analisis_actual_id = $1,
        concentracion_ac_actual = $2,
-       humedad_actual = $3
-     WHERE lote_cochinilla_id = $4
+       humedad_actual = $3,
+       costo_puntoac_dolares = $4,
+       estado_lote = $5
+     WHERE lote_cochinilla_id = $6
      RETURNING *`,
     [
       data.analisis_actual_id ?? null,
       data.concentracion_ac_actual ?? null,
       data.humedad_actual ?? null,
+      data.costo_puntoac_dolares ?? null,
+      data.estado_lote,
       id
     ]
+  )
+
+  return result
+}
+
+export const actualizarEstadoLoteCochinillaRepo = async (id, estado_lote, t = db) => {
+  const result = await t.oneOrNone(
+    `UPDATE lotes.lote_cochinilla
+     SET estado_lote = $1
+     WHERE lote_cochinilla_id = $2
+     RETURNING *`,
+    [estado_lote, id]
   )
 
   return result
