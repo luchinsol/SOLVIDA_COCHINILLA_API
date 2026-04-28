@@ -132,36 +132,43 @@ export const listarLotesCochinillaRepo = async (filters = {}) => {
 
   if (filters.almacen_id !== undefined) {
     values.push(filters.almacen_id)
-    conditions.push(`almacen_id = $${values.length}`)
+    conditions.push(`lc.almacen_id = $${values.length}`)
   }
 
   if (filters.proveedor_id !== undefined) {
     values.push(filters.proveedor_id)
-    conditions.push(`proveedor_id = $${values.length}`)
+    conditions.push(`lc.proveedor_id = $${values.length}`)
   }
 
   if (filters.calidad_cochinilla !== undefined) {
     values.push(filters.calidad_cochinilla)
-    conditions.push(`LOWER(calidad_cochinilla) = LOWER($${values.length})`)
+    conditions.push(`LOWER(lc.calidad_cochinilla) = LOWER($${values.length})`)
   }
 
   if (filters.tipo_lote !== undefined) {
     values.push(filters.tipo_lote)
-    conditions.push(`LOWER(tipo_lote) = LOWER($${values.length})`)
+    conditions.push(`LOWER(lc.tipo_lote) = LOWER($${values.length})`)
   }
 
   if (filters.estado_lote !== undefined) {
     values.push(filters.estado_lote)
-    conditions.push(`LOWER(estado_lote) = LOWER($${values.length})`)
+    conditions.push(`LOWER(lc.estado_lote) = LOWER($${values.length})`)
   }
 
   const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''
 
   const result = await db.any(
-    `SELECT *
-     FROM lotes.lote_cochinilla
+    `SELECT
+       lc.*,
+       p.nombre_razon_social AS proveedor_nombre,
+       a.nombre AS almacen_nombre
+     FROM lotes.lote_cochinilla lc
+     LEFT JOIN inventario.proveedor p
+       ON lc.proveedor_id = p.proveedor_id
+     LEFT JOIN inventario.almacen a
+       ON lc.almacen_id = a.almacen_id
      ${whereClause}
-     ORDER BY lote_cochinilla_id DESC`,
+     ORDER BY lc.lote_cochinilla_id DESC`,
     values
   )
 
@@ -173,9 +180,16 @@ export const listarLotesCochinillaRepo = async (filters = {}) => {
 ====================================================== */
 export const obtenerLoteCochinillaPorIdRepo = async (id) => {
   const result = await db.oneOrNone(
-    `SELECT *
-     FROM lotes.lote_cochinilla
-     WHERE lote_cochinilla_id = $1`,
+    `SELECT
+       lc.*,
+       p.nombre_razon_social AS proveedor_nombre,
+       a.nombre AS almacen_nombre
+     FROM lotes.lote_cochinilla lc
+     LEFT JOIN inventario.proveedor p
+       ON lc.proveedor_id = p.proveedor_id
+     LEFT JOIN inventario.almacen a
+       ON lc.almacen_id = a.almacen_id
+     WHERE lc.lote_cochinilla_id = $1`,
     [id]
   )
 

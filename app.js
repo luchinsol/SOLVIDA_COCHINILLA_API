@@ -59,4 +59,7 @@ app.use('/api/recetas-extraccion', recetaExtraccionRoutes)
 app.use('/api/tipo-insumo', tipoInsumoRoutes)
 app.use('/api/unidades-medida', unidadesMedidaRoutes)
 
+console.log('Servidor API de SOLVIDA COCHINILLA iniciado en el puerto 3000')    
 export default app
+
+
