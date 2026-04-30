@@ -1,5 +1,23 @@
 import db from '../../../config/database.js'
 
+const loteCarminSelect = `
+  SELECT
+    lc.*,
+    a.nombre AS almacen_nombre,
+    pl.nombre_proceso AS proceso_laqueo_nombre,
+    pm.nombre_proceso AS proceso_molienda_nombre,
+    pz.nombre_proceso AS proceso_mezclado_nombre
+  FROM lotes.lote_carmin lc
+  LEFT JOIN inventario.almacen a
+    ON lc.almacen_id = a.almacen_id
+  LEFT JOIN produccion.proceso_laqueo pl
+    ON lc.proceso_laqueo_id = pl.proceso_laqueo_id
+  LEFT JOIN produccion.proceso_molienda pm
+    ON lc.proceso_molienda_id = pm.proceso_molienda_id
+  LEFT JOIN produccion.proceso_mezclado pz
+    ON lc.proceso_mezclado_id = pz.proceso_mezclado_id
+`
+
 // CREATE: lote de carmín creado desde proceso de laqueo
 export const crearLoteCarminDesdeLaqueoRepo = async (data) => {
   const result = await db.one(
@@ -120,9 +138,8 @@ export const crearLoteCarminDesdeMezcladoRepo = async (data) => {
 // READ: listar todos los lotes de carmín
 export const listarLotesCarminRepo = async () => {
   const result = await db.any(
-    `SELECT *
-     FROM lotes.lote_carmin
-     ORDER BY lote_carmin_id DESC`
+    `${loteCarminSelect}
+     ORDER BY lc.lote_carmin_id DESC`
   )
   return result
 }
@@ -130,9 +147,8 @@ export const listarLotesCarminRepo = async () => {
 // READ: obtener lote de carmín por id
 export const obtenerLoteCarminPorIdRepo = async (id) => {
   const result = await db.oneOrNone(
-    `SELECT *
-     FROM lotes.lote_carmin
-     WHERE lote_carmin_id = $1`,
+    `${loteCarminSelect}
+     WHERE lc.lote_carmin_id = $1`,
     [id]
   )
   return result
@@ -141,8 +157,7 @@ export const obtenerLoteCarminPorIdRepo = async (id) => {
 // READ: búsqueda dinámica de lotes de carmín con múltiples filtros
 export const buscarLotesCarminConFiltrosRepo = async (filtros) => {
   let query = `
-    SELECT *
-    FROM lotes.lote_carmin
+    ${loteCarminSelect}
     WHERE 1 = 1
   `
 
@@ -150,78 +165,120 @@ export const buscarLotesCarminConFiltrosRepo = async (filtros) => {
   let index = 1
 
   if (filtros.tipo_lote?.trim()) {
-    query += ` AND tipo_lote = $${index}`
+    query += ` AND lc.tipo_lote = $${index}`
     values.push(filtros.tipo_lote.trim())
     index++
   }
 
   if (filtros.calidad_lote?.trim()) {
-    query += ` AND calidad_lote = $${index}`
+    query += ` AND lc.calidad_lote = $${index}`
     values.push(filtros.calidad_lote.trim())
     index++
   }
 
+  if (filtros.estado_lote?.trim()) {
+    query += ` AND lc.estado_lote = $${index}`
+    values.push(filtros.estado_lote.trim())
+    index++
+  }
+
+  if (filtros.almacen_id != null) {
+    query += ` AND lc.almacen_id = $${index}`
+    values.push(filtros.almacen_id)
+    index++
+  }
+
+  if (filtros.proceso_laqueo_id != null) {
+    query += ` AND lc.proceso_laqueo_id = $${index}`
+    values.push(filtros.proceso_laqueo_id)
+    index++
+  }
+
+  if (filtros.proceso_molienda_id != null) {
+    query += ` AND lc.proceso_molienda_id = $${index}`
+    values.push(filtros.proceso_molienda_id)
+    index++
+  }
+
+  if (filtros.proceso_mezclado_id != null) {
+    query += ` AND lc.proceso_mezclado_id = $${index}`
+    values.push(filtros.proceso_mezclado_id)
+    index++
+  }
+
   if (filtros.concentracion_min != null) {
-    query += ` AND concentracion_ac_actual >= $${index}`
+    query += ` AND lc.concentracion_ac_actual >= $${index}`
     values.push(filtros.concentracion_min)
     index++
   }
 
   if (filtros.concentracion_max != null) {
-    query += ` AND concentracion_ac_actual <= $${index}`
+    query += ` AND lc.concentracion_ac_actual <= $${index}`
     values.push(filtros.concentracion_max)
     index++
   }
 
-  if (filtros.masa_min != null) {
-    query += ` AND masa_total_kg >= $${index}`
-    values.push(filtros.masa_min)
+  if (filtros.stock_actual_min != null) {
+    query += ` AND lc.stock_actual >= $${index}`
+    values.push(filtros.stock_actual_min)
     index++
   }
 
-  if (filtros.masa_max != null) {
-    query += ` AND masa_total_kg <= $${index}`
-    values.push(filtros.masa_max)
+  if (filtros.stock_actual_max != null) {
+    query += ` AND lc.stock_actual <= $${index}`
+    values.push(filtros.stock_actual_max)
+    index++
+  }
+
+  if (filtros.stock_inicial_min != null) {
+    query += ` AND lc.stock_inicial >= $${index}`
+    values.push(filtros.stock_inicial_min)
+    index++
+  }
+
+  if (filtros.stock_inicial_max != null) {
+    query += ` AND lc.stock_inicial <= $${index}`
+    values.push(filtros.stock_inicial_max)
     index++
   }
 
   if (filtros.color_l_min != null) {
-    query += ` AND color_l_actual >= $${index}`
+    query += ` AND lc.color_l_actual >= $${index}`
     values.push(filtros.color_l_min)
     index++
   }
 
   if (filtros.color_l_max != null) {
-    query += ` AND color_l_actual <= $${index}`
+    query += ` AND lc.color_l_actual <= $${index}`
     values.push(filtros.color_l_max)
     index++
   }
 
   if (filtros.color_a_min != null) {
-    query += ` AND color_a_actual >= $${index}`
+    query += ` AND lc.color_a_actual >= $${index}`
     values.push(filtros.color_a_min)
     index++
   }
 
   if (filtros.color_a_max != null) {
-    query += ` AND color_a_actual <= $${index}`
+    query += ` AND lc.color_a_actual <= $${index}`
     values.push(filtros.color_a_max)
     index++
   }
 
   if (filtros.color_b_min != null) {
-    query += ` AND color_b_actual >= $${index}`
+    query += ` AND lc.color_b_actual >= $${index}`
     values.push(filtros.color_b_min)
     index++
   }
 
   if (filtros.color_b_max != null) {
-    query += ` AND color_b_actual <= $${index}`
+    query += ` AND lc.color_b_actual <= $${index}`
     values.push(filtros.color_b_max)
     index++
   }
 
-  query += ` ORDER BY lote_carmin_id DESC`
+  query += ` ORDER BY lc.lote_carmin_id DESC`
 
   const result = await db.any(query, values)
   return result
@@ -230,10 +287,9 @@ export const buscarLotesCarminConFiltrosRepo = async (filtros) => {
 // READ: listar lotes de carmín sin análisis de laboratorio
 export const listarLotesCarminSinAnalisisRepo = async () => {
   const result = await db.any(
-    `SELECT *
-     FROM lotes.lote_carmin
-     WHERE analisis_actual_id IS NULL
-     ORDER BY lote_carmin_id DESC`
+    `${loteCarminSelect}
+     WHERE lc.analisis_actual_id IS NULL
+     ORDER BY lc.lote_carmin_id DESC`
   )
   return result
 }
@@ -241,10 +297,9 @@ export const listarLotesCarminSinAnalisisRepo = async () => {
 // READ: obtener lotes por proceso de laqueo
 export const obtenerLotesCarminPorProcesoLaqueoRepo = async (procesoLaqueoId) => {
   const result = await db.any(
-    `SELECT *
-     FROM lotes.lote_carmin
-     WHERE proceso_laqueo_id = $1
-     ORDER BY lote_carmin_id DESC`,
+    `${loteCarminSelect}
+     WHERE lc.proceso_laqueo_id = $1
+     ORDER BY lc.lote_carmin_id DESC`,
     [procesoLaqueoId]
   )
   return result
@@ -253,10 +308,9 @@ export const obtenerLotesCarminPorProcesoLaqueoRepo = async (procesoLaqueoId) =>
 // READ: obtener lotes por proceso de molienda
 export const obtenerLotesCarminPorProcesoMoliendaRepo = async (procesoMoliendaId) => {
   const result = await db.any(
-    `SELECT *
-     FROM lotes.lote_carmin
-     WHERE proceso_molienda_id = $1
-     ORDER BY lote_carmin_id DESC`,
+    `${loteCarminSelect}
+     WHERE lc.proceso_molienda_id = $1
+     ORDER BY lc.lote_carmin_id DESC`,
     [procesoMoliendaId]
   )
   return result
@@ -265,10 +319,9 @@ export const obtenerLotesCarminPorProcesoMoliendaRepo = async (procesoMoliendaId
 // READ: obtener lotes por proceso de mezclado
 export const obtenerLotesCarminPorProcesoMezcladoRepo = async (procesoMezcladoId) => {
   const result = await db.any(
-    `SELECT *
-     FROM lotes.lote_carmin
-     WHERE proceso_mezclado_id = $1
-     ORDER BY lote_carmin_id DESC`,
+    `${loteCarminSelect}
+     WHERE lc.proceso_mezclado_id = $1
+     ORDER BY lc.lote_carmin_id DESC`,
     [procesoMezcladoId]
   )
   return result
