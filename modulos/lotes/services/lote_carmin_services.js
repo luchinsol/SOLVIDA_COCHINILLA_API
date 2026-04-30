@@ -144,7 +144,106 @@ export const obtenerLotePorIdService = async (id) => {
 }
 
 export const buscarLotesConFiltrosService = async (filtros) => {
-  return await buscarLotesCarminConFiltrosRepo(filtros)
+  const parsedFiltros = { ...filtros }
+
+  const numericFields = [
+    'concentracion_min',
+    'concentracion_max',
+    'stock_actual_min',
+    'stock_actual_max',
+    'stock_inicial_min',
+    'stock_inicial_max',
+    'color_l_actual_min',
+    'color_l_actual_max',
+    'color_a_actual_min',
+    'color_a_actual_max',
+    'color_b_actual_min',
+    'color_b_actual_max',
+    'color_l_min',
+    'color_l_max',
+    'color_a_min',
+    'color_a_max',
+    'color_b_min',
+    'color_b_max'
+  ]
+
+  for (const field of numericFields) {
+    if (parsedFiltros[field] != null && parsedFiltros[field] !== '') {
+      const value = Number(parsedFiltros[field])
+
+      if (Number.isNaN(value)) {
+        throw new Error(`${field} debe ser numérico`)
+      }
+
+      parsedFiltros[field] = value
+    }
+  }
+
+  const integerFields = [
+    'almacen_id',
+    'proceso_laqueo_id',
+    'proceso_molienda_id',
+    'proceso_mezclado_id'
+  ]
+
+  for (const field of integerFields) {
+    if (parsedFiltros[field] != null && parsedFiltros[field] !== '') {
+      const value = Number(parsedFiltros[field])
+
+      if (!Number.isInteger(value) || value <= 0) {
+        throw new Error(`${field} debe ser un entero positivo`)
+      }
+
+      parsedFiltros[field] = value
+    }
+  }
+
+  // Compatibilidad temporal con clientes viejos que aun envian masa_min/massa_max.
+  if (parsedFiltros.masa_min != null && parsedFiltros.masa_min !== '') {
+    const value = Number(parsedFiltros.masa_min)
+
+    if (Number.isNaN(value)) {
+      throw new Error('masa_min debe ser numérico')
+    }
+
+    parsedFiltros.stock_actual_min = value
+  }
+
+  if (parsedFiltros.masa_max != null && parsedFiltros.masa_max !== '') {
+    const value = Number(parsedFiltros.masa_max)
+
+    if (Number.isNaN(value)) {
+      throw new Error('masa_max debe ser numérico')
+    }
+
+    parsedFiltros.stock_actual_max = value
+  }
+
+  if (parsedFiltros.color_l_actual_min != null && parsedFiltros.color_l_actual_min !== '') {
+    parsedFiltros.color_l_min = parsedFiltros.color_l_actual_min
+  }
+
+  if (parsedFiltros.color_l_actual_max != null && parsedFiltros.color_l_actual_max !== '') {
+    parsedFiltros.color_l_max = parsedFiltros.color_l_actual_max
+  }
+
+  if (parsedFiltros.color_a_actual_min != null && parsedFiltros.color_a_actual_min !== '') {
+    parsedFiltros.color_a_min = parsedFiltros.color_a_actual_min
+  }
+
+  if (parsedFiltros.color_a_actual_max != null && parsedFiltros.color_a_actual_max !== '') {
+    parsedFiltros.color_a_max = parsedFiltros.color_a_actual_max
+  }
+
+  if (parsedFiltros.color_b_actual_min != null && parsedFiltros.color_b_actual_min !== '') {
+    parsedFiltros.color_b_min = parsedFiltros.color_b_actual_min
+  }
+
+  if (parsedFiltros.color_b_actual_max != null && parsedFiltros.color_b_actual_max !== '') {
+    parsedFiltros.color_b_max = parsedFiltros.color_b_actual_max
+  }
+
+  return await buscarLotesCarminConFiltrosRepo(parsedFiltros)
 }
 
 export const listarLotesSinAnalisisService = async () => {
