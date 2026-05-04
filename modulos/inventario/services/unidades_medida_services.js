@@ -13,7 +13,16 @@ export const obtenerUnidadesMedidaPorPropiedadService = async (propiedadMedida) 
     throw new Error("propiedad_medida es obligatoria");
   }
 
-  return await obtenerUnidadesMedidaPorPropiedadRepo(propiedadMedida);
+  const propiedadesMedida = propiedadMedida
+    .split(",")
+    .map((propiedad) => propiedad.trim())
+    .filter(Boolean);
+
+  if (!propiedadesMedida.length) {
+    throw new Error("propiedad_medida es obligatoria");
+  }
+
+  return await obtenerUnidadesMedidaPorPropiedadRepo(propiedadesMedida);
 };
 
 export const crearUnidadMedidaService = async (data) => {

@@ -6,14 +6,17 @@ export const obtenerUnidadesMedidaRepo = async () => {
   return await db.query(query);
 };
 
-export const obtenerUnidadesMedidaPorPropiedadRepo = async (propiedadMedida) => {
+export const obtenerUnidadesMedidaPorPropiedadRepo = async (propiedadesMedida) => {
   const query = `
     SELECT *
     FROM inventario.unidades_medida
-    WHERE LOWER(propiedad_medida) = LOWER($1)
+    WHERE LOWER(propiedad_medida) IN ($1:csv)
     ORDER BY unidades_medida_id ASC
   `;
-  return await db.query(query, [propiedadMedida]);
+  return await db.query(
+    query,
+    [propiedadesMedida.map((propiedad) => propiedad.toLowerCase())]
+  );
 };
 
 export const crearUnidadMedidaRepo = async (data) => {
