@@ -13,10 +13,16 @@ export const obtenerUnidadesMedidaPorPropiedadService = async (propiedadMedida) 
     throw new Error("propiedad_medida es obligatoria");
   }
 
-  const propiedadesMedida = propiedadMedida
-    .split(",")
-    .map((propiedad) => propiedad.trim())
-    .filter(Boolean);
+  let propiedadesMedida = [];
+
+  if (propiedadMedida.trim().toLowerCase() === "masa_volumen") {
+    propiedadesMedida = ["masa", "volumen"];
+  } else {
+    propiedadesMedida = propiedadMedida
+      .split(",")
+      .map((propiedad) => propiedad.trim())
+      .filter(Boolean);
+  }
 
   if (!propiedadesMedida.length) {
     throw new Error("propiedad_medida es obligatoria");
