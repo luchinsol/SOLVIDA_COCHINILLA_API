@@ -11,6 +11,7 @@ import {
   obtenerLotesCarminPorProcesoMezcladoRepo,
   actualizarResultadosAnalisisLoteCarminRepo,
   actualizarObservacionesLoteCarminRepo,
+  actualizarEstadoLoteCarminRepo,
   bloquearLoteCarminRepo
 } from '../repositories/lote_carmin_repositories.js'
 
@@ -122,6 +123,56 @@ export const actualizarResultadosAnalisisService = async (id, data) => {
 ====================================================== */
 export const actualizarObservacionesService = async (id, observaciones) => {
   return await actualizarObservacionesLoteCarminRepo(id, observaciones)
+}
+
+export const actualizarEstadoLoteCarminService = async (id, estadoLote) => {
+  const lote = await obtenerLoteCarminPorIdRepo(id)
+
+  if (!lote) {
+    throw new Error('Lote de carmin no encontrado')
+  }
+
+  if (!estadoLote || !estadoLote.trim()) {
+    throw new Error('estado_lote es obligatorio')
+  }
+
+  return await actualizarEstadoLoteCarminRepo(id, estadoLote.trim())
+}
+
+export const actualizarStockActualLoteCarminService = async (id, stockActual) => {
+  const lote = await obtenerLoteCarminPorIdRepo(id)
+
+  if (!lote) {
+    throw new Error('Lote de carmin no encontrado')
+  }
+
+  if (stockActual == null || stockActual === '') {
+    throw new Error('stock_actual es obligatorio')
+  }
+
+  const nuevoStockActual = Number(stockActual)
+
+  if (Number.isNaN(nuevoStockActual)) {
+    throw new Error('stock_actual debe ser numérico')
+  }
+
+  if (nuevoStockActual < 0) {
+    throw new Error('stock_actual no puede ser negativo')
+  }
+
+  const stockInicial = Number(lote.stock_inicial)
+
+  if (nuevoStockActual > stockInicial) {
+    throw new Error('stock_actual no puede ser mayor que stock_inicial')
+  }
+
+  return await db.oneOrNone(
+    `UPDATE lotes.lote_carmin
+     SET stock_actual = $1
+     WHERE lote_carmin_id = $2
+     RETURNING *`,
+    [nuevoStockActual, id]
+  )
 }
 
 /* ======================================================

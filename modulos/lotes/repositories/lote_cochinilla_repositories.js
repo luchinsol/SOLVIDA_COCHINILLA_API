@@ -235,6 +235,18 @@ export const actualizarEstadoLoteCochinillaRepo = async (id, estado_lote, t = db
   return result
 }
 
+export const actualizarStockActualLoteCochinillaRepo = async (id, stockActual, t = db) => {
+  const result = await t.oneOrNone(
+    `UPDATE lotes.lote_cochinilla
+     SET stock_actual = $1
+     WHERE lote_cochinilla_id = $2
+     RETURNING *`,
+    [stockActual, id]
+  )
+
+  return result
+}
+
 export const actualizarConsumoLoteCochinillaRepo = async (id, data, t = db) => {
   const result = await t.oneOrNone(
     `UPDATE lotes.lote_cochinilla

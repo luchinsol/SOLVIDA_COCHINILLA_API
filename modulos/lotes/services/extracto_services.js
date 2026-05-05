@@ -1,4 +1,9 @@
-import { listarExtractosRepo } from '../repositories/extracto_repositories.js'
+import {
+  actualizarEstadoLoteExtractoRepo,
+  actualizarStockActualExtractoRepo,
+  listarExtractosRepo,
+  obtenerExtractoPorIdRepo
+} from '../repositories/extracto_repositories.js'
 
 export const listarExtractosService = async (filters = {}) => {
   const parsedFilters = {}
@@ -32,4 +37,60 @@ export const listarExtractosService = async (filters = {}) => {
   }
 
   return await listarExtractosRepo(parsedFilters)
+}
+
+export const actualizarEstadoLoteExtractoService = async (id, estadoLote) => {
+  const extractoId = Number(id)
+
+  if (!Number.isInteger(extractoId) || extractoId <= 0) {
+    throw new Error('id debe ser un entero positivo')
+  }
+
+  const extracto = await obtenerExtractoPorIdRepo(extractoId)
+
+  if (!extracto) {
+    throw new Error('Extracto no encontrado')
+  }
+
+  if (!estadoLote || !estadoLote.trim()) {
+    throw new Error('estado_lote es obligatorio')
+  }
+
+  return await actualizarEstadoLoteExtractoRepo(extractoId, estadoLote.trim())
+}
+
+export const actualizarStockActualExtractoService = async (id, stockActual) => {
+  const extractoId = Number(id)
+
+  if (!Number.isInteger(extractoId) || extractoId <= 0) {
+    throw new Error('id debe ser un entero positivo')
+  }
+
+  const extracto = await obtenerExtractoPorIdRepo(extractoId)
+
+  if (!extracto) {
+    throw new Error('Extracto no encontrado')
+  }
+
+  if (stockActual == null || stockActual === '') {
+    throw new Error('stock_actual es obligatorio')
+  }
+
+  const nuevoStockActual = Number(stockActual)
+
+  if (Number.isNaN(nuevoStockActual)) {
+    throw new Error('stock_actual debe ser numérico')
+  }
+
+  if (nuevoStockActual < 0) {
+    throw new Error('stock_actual no puede ser negativo')
+  }
+
+  const stockInicial = Number(extracto.stock_inicial)
+
+  if (nuevoStockActual > stockInicial) {
+    throw new Error('stock_actual no puede ser mayor que stock_inicial')
+  }
+
+  return await actualizarStockActualExtractoRepo(extractoId, nuevoStockActual)
 }

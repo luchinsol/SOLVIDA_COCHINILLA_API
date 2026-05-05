@@ -4,6 +4,8 @@ import {
   crearLoteDesdeMezcladoService,
   actualizarResultadosAnalisisService,
   actualizarObservacionesService,
+  actualizarEstadoLoteCarminService,
+  actualizarStockActualLoteCarminService,
   bloquearLoteService,
   listarLotesService,
   obtenerLotePorIdService,
@@ -69,6 +71,28 @@ export const actualizarObservaciones = async (req, res) => {
     const { id } = req.params
     const { observaciones } = req.body
     const data = await actualizarObservacionesService(id, observaciones)
+    res.json(data)
+  } catch (error) {
+    res.status(400).json({ error: error.message })
+  }
+}
+
+export const actualizarEstadoLoteCarmin = async (req, res) => {
+  try {
+    const { id } = req.params
+    const { estado_lote } = req.body
+    const data = await actualizarEstadoLoteCarminService(id, estado_lote)
+    res.json(data)
+  } catch (error) {
+    res.status(400).json({ error: error.message })
+  }
+}
+
+export const actualizarStockActualLoteCarmin = async (req, res) => {
+  try {
+    const { id } = req.params
+    const { stock_actual } = req.body
+    const data = await actualizarStockActualLoteCarminService(id, stock_actual)
     res.json(data)
   } catch (error) {
     res.status(400).json({ error: error.message })
