@@ -1,12 +1,26 @@
-import { listarExtractosService } from '../services/extracto_services.js'
+import {
+  actualizarEstadoLoteExtractoService,
+  actualizarStockActualExtractoService,
+  listarExtractosService
+} from '../services/extracto_services.js'
 import { handleControllerError } from '../../../utils/handle_controller_error.js'
 
 const normalizeExtractoError = (error) => {
   if (
+    error.message === 'id debe ser un entero positivo' ||
     error.message === 'almacen_id debe ser un entero positivo' ||
-    error.message === 'proceso_filtrado_id debe ser un entero positivo'
+    error.message === 'proceso_filtrado_id debe ser un entero positivo' ||
+    error.message === 'estado_lote es obligatorio' ||
+    error.message === 'stock_actual es obligatorio' ||
+    error.message === 'stock_actual debe ser numérico' ||
+    error.message === 'stock_actual no puede ser negativo' ||
+    error.message === 'stock_actual no puede ser mayor que stock_inicial'
   ) {
     error.name = 'ValidationError'
+  }
+
+  if (error.message === 'Extracto no encontrado') {
+    error.name = 'NotFoundError'
   }
 
   return error
@@ -27,6 +41,32 @@ export const listarExtractos = async (req, res) => {
       almacen_id,
       proceso_filtrado_id
     })
+
+    res.json(data)
+  } catch (error) {
+    handleControllerError(res, normalizeExtractoError(error))
+  }
+}
+
+export const actualizarEstadoLoteExtracto = async (req, res) => {
+  try {
+    const { id } = req.params
+    const { estado_lote } = req.body
+
+    const data = await actualizarEstadoLoteExtractoService(id, estado_lote)
+
+    res.json(data)
+  } catch (error) {
+    handleControllerError(res, normalizeExtractoError(error))
+  }
+}
+
+export const actualizarStockActualExtracto = async (req, res) => {
+  try {
+    const { id } = req.params
+    const { stock_actual } = req.body
+
+    const data = await actualizarStockActualExtractoService(id, stock_actual)
 
     res.json(data)
   } catch (error) {

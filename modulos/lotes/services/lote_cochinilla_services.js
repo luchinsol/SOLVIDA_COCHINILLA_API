@@ -12,6 +12,7 @@ import {
   obtenerLoteCochinillaPorIdRepo,
   actualizarAnalisisLoteCochinillaRepo,
   actualizarEstadoLoteCochinillaRepo,
+  actualizarStockActualLoteCochinillaRepo,
   actualizarConsumoLoteCochinillaRepo,
   actualizarMasaLoteCochinillaPorDeltaRepo,
   actualizarCostosYMasaLoteCochinillaRepo,
@@ -243,6 +244,36 @@ export const actualizarEstadoLoteCochinillaService = async (id, data) => {
   }
 
   return await actualizarEstadoLoteCochinillaRepo(id, data.estado_lote)
+}
+
+export const actualizarStockActualLoteCochinillaService = async (id, data) => {
+  const lote = await obtenerLoteCochinillaPorIdRepo(id)
+
+  if (!lote) {
+    throw new Error('Lote de cochinilla no encontrado')
+  }
+
+  if (data.stock_actual == null || data.stock_actual === '') {
+    throw new Error('stock_actual es obligatorio')
+  }
+
+  const nuevoStockActual = Number(data.stock_actual)
+
+  if (Number.isNaN(nuevoStockActual)) {
+    throw new Error('stock_actual debe ser numérico')
+  }
+
+  if (nuevoStockActual < 0) {
+    throw new Error('stock_actual no puede ser negativo')
+  }
+
+  const stockInicial = Number(lote.stock_inicial)
+
+  if (nuevoStockActual > stockInicial) {
+    throw new Error('stock_actual no puede ser mayor que stock_inicial')
+  }
+
+  return await actualizarStockActualLoteCochinillaRepo(id, nuevoStockActual)
 }
 
 

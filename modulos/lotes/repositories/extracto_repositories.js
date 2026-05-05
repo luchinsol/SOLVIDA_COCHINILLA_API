@@ -41,3 +41,32 @@ export const listarExtractosRepo = async (filters = {}) => {
     values
   )
 }
+
+export const obtenerExtractoPorIdRepo = async (id) => {
+  return await db.oneOrNone(
+    `SELECT *
+     FROM lotes.extracto
+     WHERE extracto_id = $1`,
+    [id]
+  )
+}
+
+export const actualizarEstadoLoteExtractoRepo = async (id, estadoLote) => {
+  return await db.oneOrNone(
+    `UPDATE lotes.extracto
+     SET estado_lote = $1
+     WHERE extracto_id = $2
+     RETURNING *`,
+    [estadoLote, id]
+  )
+}
+
+export const actualizarStockActualExtractoRepo = async (id, stockActual) => {
+  return await db.oneOrNone(
+    `UPDATE lotes.extracto
+     SET stock_actual = $1
+     WHERE extracto_id = $2
+     RETURNING *`,
+    [stockActual, id]
+  )
+}

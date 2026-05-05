@@ -5,6 +5,7 @@ import {
   obtenerLoteCochinillaPorIdService,
   actualizarAnalisisLoteCochinillaService,
   actualizarEstadoLoteCochinillaService,
+  actualizarStockActualLoteCochinillaService,
   actualizarConsumoLoteCochinillaService,
   actualizarMasaLoteCochinillaPorDeltaService,
   eliminarLoteCochinillaService
@@ -29,6 +30,10 @@ const normalizeLoteCochinillaError = (error) => {
     error.message === 'costo_total_inicial debe ser mayor a 0' ||
     error.message === 'stock_inicial no puede ser negativo' ||
     error.message === 'estado_lote es obligatorio' ||
+    error.message === 'stock_actual es obligatorio' ||
+    error.message === 'stock_actual debe ser numérico' ||
+    error.message === 'stock_actual no puede ser negativo' ||
+    error.message === 'stock_actual no puede ser mayor que stock_inicial' ||
     error.message === 'masa_total_kg es obligatoria' ||
     error.message === 'La masa_total_kg no puede ser negativa' ||
     error.message === 'La masa nueva no puede ser mayor que la masa actual del lote' ||
@@ -120,6 +125,16 @@ export const actualizarEstadoLoteCochinilla = async (req, res) => {
   try {
     const { id } = req.params
     const data = await actualizarEstadoLoteCochinillaService(id, req.body)
+    res.json(data)
+  } catch (error) {
+    handleControllerError(res, normalizeLoteCochinillaError(error))
+  }
+}
+
+export const actualizarStockActualLoteCochinilla = async (req, res) => {
+  try {
+    const { id } = req.params
+    const data = await actualizarStockActualLoteCochinillaService(id, req.body)
     res.json(data)
   } catch (error) {
     handleControllerError(res, normalizeLoteCochinillaError(error))

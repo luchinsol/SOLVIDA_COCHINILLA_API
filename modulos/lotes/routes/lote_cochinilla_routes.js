@@ -7,6 +7,7 @@ import {
   obtenerLoteCochinillaPorId,
   actualizarAnalisisLoteCochinilla,
   actualizarEstadoLoteCochinilla,
+  actualizarStockActualLoteCochinilla,
   actualizarConsumoLoteCochinilla,
   actualizarMasaLoteCochinillaPorDelta,
   eliminarLoteCochinilla
@@ -32,6 +33,7 @@ router.get('/:id', obtenerLoteCochinillaPorId)
 // 🔵 análisis (laboratorio)
 router.put('/:id/analisis', actualizarAnalisisLoteCochinilla)
 router.patch('/:id/estado-lote', actualizarEstadoLoteCochinilla)
+router.patch('/:id/stock-actual', actualizarStockActualLoteCochinilla)
 
 // 🟢 consumo (producción)
 router.put('/:id/consumo', actualizarConsumoLoteCochinilla)

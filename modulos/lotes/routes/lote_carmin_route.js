@@ -5,6 +5,8 @@ import {
   crearLoteDesdeMezclado,
   actualizarResultadosAnalisis,
   actualizarObservaciones,
+  actualizarEstadoLoteCarmin,
+  actualizarStockActualLoteCarmin,
   bloquearLote,
   listarLotes,
   obtenerLotePorId,
@@ -60,6 +62,12 @@ loteCarminRoutes.put('/:id/analisis', actualizarResultadosAnalisis)
 
 // actualizar observaciones
 loteCarminRoutes.put('/:id/observaciones', actualizarObservaciones)
+
+// actualizar estado del lote
+loteCarminRoutes.patch('/:id/estado-lote', actualizarEstadoLoteCarmin)
+
+// actualizar stock actual
+loteCarminRoutes.patch('/:id/stock-actual', actualizarStockActualLoteCarmin)
 
 // bloquear lote
 loteCarminRoutes.put('/:id/bloquear', bloquearLote)
