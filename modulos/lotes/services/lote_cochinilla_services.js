@@ -1,4 +1,8 @@
 import db from '../../../config/database.js'
+import {
+  actualizarCodigoItemInventarioRepo,
+  crearItemInventarioRepo
+} from '../../inventario/repositories/item_inventario_repositories.js'
 
 import {
   obtenerComposicionesPorLoteResultanteRepo,
@@ -105,19 +109,39 @@ export const crearLoteCochinillaPorCompraService = async (data) => {
 
   const codigoLote = generarCodigoLoteCompra(data)
 
-  return await crearLoteCochinillaPorCompraRepo({
-    ...data,
-    creado_por: data.creado_por ?? null,
-    codigo_lote: codigoLote,
-    tipo_lote: 'comprado',
-    stock_inicial: stockInicial,
-    stock_actual: stockInicial,
-    estado_lote: 'por analizar',
-    costo_total_inicial: costoTotalInicial,
-    costo_total_actual: costoTotalInicial,
-    costo_kilo_dolares: costoKiloDolares,
-    unidad_medida_stock: 'kg',
-    unidad_medida_dinero: 'UDS'
+  return await db.tx(async (t) => {
+    const itemInventarioCreado = await crearItemInventarioRepo(
+      {
+        nombre_item: 'Cochinilla',
+        codigo_item: 'COCH-PENDIENTE'
+      },
+      t
+    )
+
+    const itemInventario = await actualizarCodigoItemInventarioRepo(
+      itemInventarioCreado.item_inventario_id,
+      `COCH-${itemInventarioCreado.item_inventario_id}`,
+      t
+    )
+
+    return await crearLoteCochinillaPorCompraRepo(
+      {
+        ...data,
+        item_inventario_id: itemInventario.item_inventario_id,
+        creado_por: data.creado_por ?? null,
+        codigo_lote: codigoLote,
+        tipo_lote: 'comprado',
+        stock_inicial: stockInicial,
+        stock_actual: stockInicial,
+        estado_lote: 'por analizar',
+        costo_total_inicial: costoTotalInicial,
+        costo_total_actual: costoTotalInicial,
+        costo_kilo_dolares: costoKiloDolares,
+        unidad_medida_stock: 'kg',
+        unidad_medida_dinero: 'UDS'
+      },
+      t
+    )
   })
 }
 /* ======================================================
@@ -134,17 +158,37 @@ export const crearLoteCochinillaPorMezclaService = async (data) => {
 
   const codigoLote = generarCodigoLoteMezcla(data)
 
-  return await crearLoteCochinillaPorMezclaRepo({
-    ...data,
-    creado_por: data.creado_por ?? null,
-    stock_inicial: data.stock_inicial ?? 0,
-    stock_actual: data.stock_actual ?? data.stock_inicial ?? 0,
-    costo_total_inicial: data.costo_total_inicial ?? 0,
-    costo_total_actual: data.costo_total_actual ?? data.costo_total_inicial ?? 0,
-    codigo_lote: codigoLote,
-    tipo_lote: 'preparado',
-    estado_lote: 'por analizar',
-    fecha_creacion: data.fecha_creacion ?? new Date()
+  return await db.tx(async (t) => {
+    const itemInventarioCreado = await crearItemInventarioRepo(
+      {
+        nombre_item: 'Cochinilla',
+        codigo_item: 'COCH-PENDIENTE'
+      },
+      t
+    )
+
+    const itemInventario = await actualizarCodigoItemInventarioRepo(
+      itemInventarioCreado.item_inventario_id,
+      `COCH-${itemInventarioCreado.item_inventario_id}`,
+      t
+    )
+
+    return await crearLoteCochinillaPorMezclaRepo(
+      {
+        ...data,
+        item_inventario_id: itemInventario.item_inventario_id,
+        creado_por: data.creado_por ?? null,
+        stock_inicial: data.stock_inicial ?? 0,
+        stock_actual: data.stock_actual ?? data.stock_inicial ?? 0,
+        costo_total_inicial: data.costo_total_inicial ?? 0,
+        costo_total_actual: data.costo_total_actual ?? data.costo_total_inicial ?? 0,
+        codigo_lote: codigoLote,
+        tipo_lote: 'preparado',
+        estado_lote: 'por analizar',
+        fecha_creacion: data.fecha_creacion ?? new Date()
+      },
+      t
+    )
   })
 }
 /* ======================================================

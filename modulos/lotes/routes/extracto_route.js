@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import {
+  crearExtracto,
   actualizarEstadoLoteExtracto,
   actualizarStockActualExtracto,
   listarExtractos
@@ -7,6 +8,7 @@ import {
 
 const router = Router()
 
+router.post('/', crearExtracto)
 router.get('/', listarExtractos)
 router.patch('/:id/estado-lote', actualizarEstadoLoteExtracto)
 router.patch('/:id/stock-actual', actualizarStockActualExtracto)

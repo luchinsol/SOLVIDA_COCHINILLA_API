@@ -2,6 +2,7 @@ import {
   getInsumoPdfServicePDF,
   getInsumosService,
   getInsumoByIdService,
+  getResumenInsumosPorTipoService,
   createInsumoService,
   updateInsumoService,
   deleteInsumoService,
@@ -39,6 +40,10 @@ const normalizeLoteInsumoError = (error) => {
     error.name = 'ValidationError';
   }
 
+  if (error.message === 'No se encontraron lotes de insumo para ese tipo_insumo_id') {
+    error.name = 'NotFoundError';
+  }
+
   return error;
 };
 
@@ -73,6 +78,16 @@ export const getInsumoByIdController = async (req, res) => {
     const { id } = req.params;
     const insumo = await getInsumoByIdService(id);
     res.json(insumo);
+  } catch (error) {
+    handleControllerError(res, normalizeLoteInsumoError(error));
+  }
+};
+
+export const getResumenInsumosPorTipoController = async (req, res) => {
+  try {
+    const { tipo_insumo_id } = req.query;
+    const resumen = await getResumenInsumosPorTipoService(tipo_insumo_id);
+    res.json(resumen);
   } catch (error) {
     handleControllerError(res, normalizeLoteInsumoError(error));
   }

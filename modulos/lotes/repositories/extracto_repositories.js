@@ -1,5 +1,37 @@
 import db from '../../../config/database.js'
 
+export const crearExtractoRepo = async (data, t = db) => {
+  return await t.one(
+    `INSERT INTO lotes.extracto
+     (
+       item_inventario_id,
+       almacen_id,
+       proceso_filtrado_id,
+       nombre_extracto,
+       tipo_extracto,
+       stock_inicial,
+       stock_actual,
+       estado_lote,
+       observaciones,
+       unidad_medida_dinero
+     )
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+     RETURNING *`,
+    [
+      data.item_inventario_id,
+      data.almacen_id,
+      data.proceso_filtrado_id,
+      data.nombre_extracto,
+      data.tipo_extracto,
+      data.stock_inicial,
+      data.stock_actual,
+      data.estado_lote,
+      data.observaciones ?? null,
+      data.unidad_medida_dinero
+    ]
+  )
+}
+
 export const listarExtractosRepo = async (filters = {}) => {
   const conditions = []
   const values = []
