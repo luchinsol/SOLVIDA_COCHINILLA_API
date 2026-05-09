@@ -5,10 +5,11 @@ import db from '../../../config/database.js'
    proveedor_id y fecha_compra sí aplican
    tipo_lote = 'comprado'
 ====================================================== */
-export const crearLoteCochinillaPorCompraRepo = async (data) => {
-  const result = await db.one(
+export const crearLoteCochinillaPorCompraRepo = async (data, t = db) => {
+  const result = await t.one(
     `INSERT INTO lotes.lote_cochinilla
     (
+      item_inventario_id,
       almacen_id,
       proveedor_id,
       analisis_actual_id,
@@ -32,9 +33,10 @@ export const crearLoteCochinillaPorCompraRepo = async (data) => {
       unidad_medida_stock,
       unidad_medida_dinero
     )
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
     RETURNING *`,
     [
+      data.item_inventario_id,
       data.almacen_id,
       data.proveedor_id,
       data.analisis_actual_id ?? null,
@@ -67,10 +69,11 @@ export const crearLoteCochinillaPorCompraRepo = async (data) => {
    no requiere proveedor_id ni fecha_compra
    tipo_lote = 'preparado'
 ====================================================== */
-export const crearLoteCochinillaPorMezclaRepo = async (data) => {
-  const result = await db.one(
+export const crearLoteCochinillaPorMezclaRepo = async (data, t = db) => {
+  const result = await t.one(
     `INSERT INTO lotes.lote_cochinilla
     (
+      item_inventario_id,
       almacen_id,
       proveedor_id,
       analisis_actual_id,
@@ -94,9 +97,10 @@ export const crearLoteCochinillaPorMezclaRepo = async (data) => {
       unidad_medida_stock,
       unidad_medida_dinero
     )
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
     RETURNING *`,
     [
+      data.item_inventario_id,
       data.almacen_id,
       null,
       data.analisis_actual_id ?? null,

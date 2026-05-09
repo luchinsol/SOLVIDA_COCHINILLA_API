@@ -1,4 +1,5 @@
 import {
+  crearExtractoService,
   actualizarEstadoLoteExtractoService,
   actualizarStockActualExtractoService,
   listarExtractosService
@@ -8,8 +9,15 @@ import { handleControllerError } from '../../../utils/handle_controller_error.js
 const normalizeExtractoError = (error) => {
   if (
     error.message === 'id debe ser un entero positivo' ||
+    error.message === 'almacen_id es obligatorio' ||
     error.message === 'almacen_id debe ser un entero positivo' ||
+    error.message === 'proceso_filtrado_id es obligatorio' ||
     error.message === 'proceso_filtrado_id debe ser un entero positivo' ||
+    error.message === 'nombre_extracto es obligatorio' ||
+    error.message === 'tipo_extracto es obligatorio' ||
+    error.message === 'stock_inicial es obligatorio' ||
+    error.message === 'stock_inicial debe ser numérico' ||
+    error.message === 'stock_inicial no puede ser negativo' ||
     error.message === 'estado_lote es obligatorio' ||
     error.message === 'stock_actual es obligatorio' ||
     error.message === 'stock_actual debe ser numérico' ||
@@ -24,6 +32,15 @@ const normalizeExtractoError = (error) => {
   }
 
   return error
+}
+
+export const crearExtracto = async (req, res) => {
+  try {
+    const data = await crearExtractoService(req.body)
+    res.status(201).json(data)
+  } catch (error) {
+    handleControllerError(res, normalizeExtractoError(error))
+  }
 }
 
 export const listarExtractos = async (req, res) => {

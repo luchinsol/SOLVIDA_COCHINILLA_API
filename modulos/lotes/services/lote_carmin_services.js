@@ -14,6 +14,10 @@ import {
   actualizarEstadoLoteCarminRepo,
   bloquearLoteCarminRepo
 } from '../repositories/lote_carmin_repositories.js'
+import {
+  actualizarCodigoItemInventarioRepo,
+  crearItemInventarioRepo
+} from '../../inventario/repositories/item_inventario_repositories.js'
 
 import db from '../../../config/database.js'
 
@@ -64,14 +68,70 @@ const generarCodigoLote = async (data, correlativo) => {
   return `${prefijo}-${cc}-${fecha}-${lll}-${tipo}`
 }
 
+const normalizarDatosStock = (data) => {
+  const stockInicial = data.stock_inicial ?? null
+  const stockActual = data.stock_actual ?? stockInicial
+
+  return {
+    ...data,
+    stock_inicial: stockInicial,
+    stock_actual: stockActual,
+    unidad_medida_stock: data.unidad_medida_stock ?? 'kg'
+  }
+}
+
+const validarAlmacenId = (data) => {
+  if (data.almacen_id == null || data.almacen_id === '') {
+    throw new Error('almacen_id es obligatorio')
+  }
+}
+
+const validarStockInicial = (data) => {
+  if (data.stock_inicial == null || data.stock_inicial === '') {
+    throw new Error('stock_inicial es obligatorio')
+  }
+}
+
+const validarProcesoMoliendaId = (data) => {
+  if (data.proceso_molienda_id == null || data.proceso_molienda_id === '') {
+    throw new Error('proceso_molienda_id es obligatorio')
+  }
+}
+
+const validarProcesoMezcladoId = (data) => {
+  if (data.proceso_mezclado_id == null || data.proceso_mezclado_id === '') {
+    throw new Error('proceso_mezclado_id es obligatorio')
+  }
+}
+
 /* ======================================================
    🧪 CREATE: LAQUEO (NO MOLIDO)
 ====================================================== */
 export const crearLoteDesdeLaqueoService = async (data) => {
-  return await crearLoteCarminDesdeLaqueoRepo({
-    ...data,
-    codigo_lote: null,
-    estado_lote: 'por_moler'
+  validarAlmacenId(data)
+  validarStockInicial(data)
+
+  return await db.tx(async (t) => {
+    const itemInventarioCreado = await crearItemInventarioRepo(
+      {
+        nombre_item: 'Carmin',
+        codigo_item: 'LK-PENDIENTE'
+      },
+      t
+    )
+
+    const itemInventario = await actualizarCodigoItemInventarioRepo(
+      itemInventarioCreado.item_inventario_id,
+      `LK-${itemInventarioCreado.item_inventario_id}`,
+      t
+    )
+
+    return await crearLoteCarminDesdeLaqueoRepo({
+      ...normalizarDatosStock(data),
+      item_inventario_id: itemInventario.item_inventario_id,
+      nombre_lote: null,
+      estado_lote: 'por_moler'
+    }, t)
   })
 }
 
@@ -79,10 +139,33 @@ export const crearLoteDesdeLaqueoService = async (data) => {
    ⚙️ CREATE: MOLIENDA
 ====================================================== */
 export const crearLoteDesdeMoliendaService = async (data) => {
-  return await crearLoteCarminDesdeMoliendaRepo({
-    ...data,
-    codigo_lote: null,
-    estado_lote: 'por_analizar'
+  validarAlmacenId(data)
+  validarStockInicial(data)
+  validarProcesoMoliendaId(data)
+
+  return await db.tx(async (t) => {
+    const itemInventarioCreado = await crearItemInventarioRepo(
+      {
+        nombre_item: 'Carmin',
+        codigo_item: 'LK-PENDIENTE'
+      },
+      t
+    )
+
+    const itemInventario = await actualizarCodigoItemInventarioRepo(
+      itemInventarioCreado.item_inventario_id,
+      `LK-${itemInventarioCreado.item_inventario_id}`,
+      t
+    )
+
+    return await crearLoteCarminDesdeMoliendaRepo({
+      ...normalizarDatosStock(data),
+      item_inventario_id: itemInventario.item_inventario_id,
+      nombre_lote: null,
+      tipo_lote: data.tipo_lote ?? 'principal',
+      observaciones: data.observaciones ?? null,
+      estado_lote: 'por_analizar'
+    }, t)
   })
 }
 
@@ -90,10 +173,33 @@ export const crearLoteDesdeMoliendaService = async (data) => {
    🔄 CREATE: MEZCLADO (BLEND)
 ====================================================== */
 export const crearLoteDesdeMezcladoService = async (data) => {
-  return await crearLoteCarminDesdeMezcladoRepo({
-    ...data,
-    codigo_lote: null,
-    estado_lote: 'por_analizar'
+  validarAlmacenId(data)
+  validarStockInicial(data)
+  validarProcesoMezcladoId(data)
+
+  return await db.tx(async (t) => {
+    const itemInventarioCreado = await crearItemInventarioRepo(
+      {
+        nombre_item: 'Carmin',
+        codigo_item: 'LK-PENDIENTE'
+      },
+      t
+    )
+
+    const itemInventario = await actualizarCodigoItemInventarioRepo(
+      itemInventarioCreado.item_inventario_id,
+      `LK-${itemInventarioCreado.item_inventario_id}`,
+      t
+    )
+
+    return await crearLoteCarminDesdeMezcladoRepo({
+      ...normalizarDatosStock(data),
+      item_inventario_id: itemInventario.item_inventario_id,
+      nombre_lote: null,
+      tipo_lote: data.tipo_lote ?? 'principal',
+      observaciones: data.observaciones ?? null,
+      estado_lote: 'por_analizar'
+    }, t)
   })
 }
 
@@ -113,7 +219,7 @@ export const actualizarResultadosAnalisisService = async (id, data) => {
 
   return await actualizarResultadosAnalisisLoteCarminRepo(id, {
     ...data,
-    codigo_lote: codigo,
+    nombre_lote: codigo,
     estado_lote: 'disponible'
   })
 }

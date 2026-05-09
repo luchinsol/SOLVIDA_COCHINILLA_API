@@ -3,6 +3,7 @@ import {
   getInsumoPdfController,
   getInsumosController,
   getInsumoByIdController,
+  getResumenInsumosPorTipoController,
   createInsumoController,
   updateInsumoController,
   deleteInsumoController,
@@ -13,6 +14,7 @@ import {
 const insumoRoutes = express.Router()
 
 insumoRoutes.get('/', getInsumosController)
+insumoRoutes.get('/resumen/tipo', getResumenInsumosPorTipoController)
 insumoRoutes.get('/:id', getInsumoByIdController)
 insumoRoutes.post('/', createInsumoController)
 insumoRoutes.put('/:id', updateInsumoController)

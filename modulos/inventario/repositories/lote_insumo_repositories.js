@@ -80,15 +80,39 @@ export const getInsumoById = async (id) => {
   return await db.oneOrNone(query, [id]);
 };
 
+export const getResumenInsumosPorTipo = async (tipoInsumoId) => {
+  const query = `
+    SELECT
+      ti.tipo_insumo_id,
+      ti.nombre AS tipo,
+      COALESCE(SUM(li.costo_total), 0) AS costo_total,
+      COALESCE(SUM(li.stock_actual), 0) AS stock_actual,
+      MAX(li.unidad_medida_cantidad) AS unidad_medida_cantidad,
+      MAX(li.unidad_medida_moneda) AS unidad_medida_moneda,
+      CASE
+        WHEN COALESCE(SUM(li.stock_actual), 0) = 0 THEN 0
+        ELSE COALESCE(SUM(li.costo_total), 0) / SUM(li.stock_actual)
+      END AS costo_unitario
+    FROM inventario.lote_insumo li
+    INNER JOIN inventario.tipo_insumos ti
+      ON li.tipo_insumo_id = ti.tipo_insumo_id
+    WHERE ti.tipo_insumo_id = $1
+    GROUP BY ti.tipo_insumo_id, ti.nombre
+  `;
+
+  return await db.oneOrNone(query, [tipoInsumoId]);
+};
+
 
 
 //CREATE INSUMO
-export const createInsumo = async (insumoDatos) => {
+export const createInsumo = async (insumoDatos, t = db) => {
   const query =
-    "INSERT INTO inventario.lote_insumo (proveedor_id, almacen_id, nombre, concentracion, costo_unitario, stock_actual, costo_total, stock_inicial, tipo_insumo_id, estado_lote, unidad_medida_cantidad, unidad_medida_moneda, unidad_medida_concentracion) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *";
-  const result = await db.one(query, [
+    "INSERT INTO inventario.lote_insumo (proveedor_id, almacen_id, item_inventario_id, nombre, concentracion, costo_unitario, stock_actual, costo_total, stock_inicial, tipo_insumo_id, estado_lote, unidad_medida_cantidad, unidad_medida_moneda, unidad_medida_concentracion) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING *";
+  const result = await t.one(query, [
     insumoDatos.proveedor_id,
     insumoDatos.almacen_id,
+    insumoDatos.item_inventario_id,
     insumoDatos.nombre,
     insumoDatos.concentracion,
     insumoDatos.costo_unitario,

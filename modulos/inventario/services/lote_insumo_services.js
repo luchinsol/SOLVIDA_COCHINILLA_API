@@ -1,6 +1,7 @@
 import {
   getInsumos,
   getInsumoById,
+  getResumenInsumosPorTipo,
   createInsumo,
   updateInsumo,
   deleteInsumo,
@@ -9,8 +10,13 @@ import {
   actualizarEstadoLoteInsumo,
   actualizarStockActualInsumo
 } from "../repositories/lote_insumo_repositories.js";
+import {
+  actualizarCodigoItemInventarioRepo,
+  crearItemInventarioRepo
+} from "../repositories/item_inventario_repositories.js";
 import PDFDocument from 'pdfkit';
 import ExcelJS from 'exceljs';
+import db from '../../../config/database.js';
 
 
 export const getInsumoPdfServicePDF = async () => {
@@ -95,6 +101,26 @@ export const getInsumoByIdService = async (id) => {
   return loteInsumo;
 };
 
+export const getResumenInsumosPorTipoService = async (tipoInsumoId) => {
+  if (tipoInsumoId === undefined || tipoInsumoId === null || tipoInsumoId === '') {
+    throw new Error('tipo_insumo_id es obligatorio');
+  }
+
+  const parsedTipoInsumoId = Number(tipoInsumoId);
+
+  if (!Number.isInteger(parsedTipoInsumoId) || parsedTipoInsumoId <= 0) {
+    throw new Error('tipo_insumo_id debe ser un entero positivo');
+  }
+
+  const resumen = await getResumenInsumosPorTipo(parsedTipoInsumoId);
+
+  if (!resumen) {
+    throw new Error('No se encontraron lotes de insumo para ese tipo_insumo_id');
+  }
+
+  return resumen;
+};
+
 export const createInsumoService = async (insumoDatos) => {
   if (!insumoDatos.almacen_id) {
     throw new Error('almacen_id es obligatorio');
@@ -166,7 +192,29 @@ export const createInsumoService = async (insumoDatos) => {
     unidad_medida_concentracion: insumoDatos.unidad_medida_concentracion
   };
 
-  return await createInsumo(payload);
+  return await db.tx(async (t) => {
+    const itemInventarioCreado = await crearItemInventarioRepo(
+      {
+        nombre_item: 'Insumos Quimicos',
+        codigo_item: 'IQ-PENDIENTE'
+      },
+      t
+    );
+
+    const itemInventario = await actualizarCodigoItemInventarioRepo(
+      itemInventarioCreado.item_inventario_id,
+      `IQ-${itemInventarioCreado.item_inventario_id}`,
+      t
+    );
+
+    return await createInsumo(
+      {
+        ...payload,
+        item_inventario_id: itemInventario.item_inventario_id
+      },
+      t
+    );
+  });
 };
 
 export const updateInsumoService = async (insumo_id, insumoDatos) => {

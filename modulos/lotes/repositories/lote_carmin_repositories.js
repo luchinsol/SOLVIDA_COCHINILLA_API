@@ -19,36 +19,44 @@ const loteCarminSelect = `
 `
 
 // CREATE: lote de carmín creado desde proceso de laqueo
-export const crearLoteCarminDesdeLaqueoRepo = async (data) => {
-  const result = await db.one(
+export const crearLoteCarminDesdeLaqueoRepo = async (data, t = db) => {
+  const result = await t.one(
     `INSERT INTO lotes.lote_carmin
     (
+      item_inventario_id,
+      almacen_id,
       proceso_laqueo_id,
-      codigo_lote,
+      nombre_lote,
       tipo_lote,
-      masa_total_kg,
+      stock_inicial,
+      stock_actual,
       concentracion_ac_actual,
       humedad_actual,
       color_l_actual,
       color_a_actual,
       color_b_actual,
       observaciones,
+      unidad_medida_stock,
       calidad_lote,
       estado_lote
     )
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
     RETURNING *`,
     [
+      data.item_inventario_id,
+      data.almacen_id,
       data.proceso_laqueo_id,
-      data.codigo_lote,
+      data.nombre_lote,
       data.tipo_lote,
-      data.masa_total_kg ?? null,
+      data.stock_inicial ?? null,
+      data.stock_actual ?? null,
       data.concentracion_ac_actual ?? null,
       data.humedad_actual ?? null,
       data.color_l_actual ?? null,
       data.color_a_actual ?? null,
       data.color_b_actual ?? null,
       data.observaciones ?? null,
+      data.unidad_medida_stock ?? 'kg',
       data.calidad_lote ?? null,
       data.estado_lote ?? 'por_moler'
     ]
@@ -58,36 +66,44 @@ export const crearLoteCarminDesdeLaqueoRepo = async (data) => {
 }
 
 // CREATE: lote de carmín creado desde proceso de molienda
-export const crearLoteCarminDesdeMoliendaRepo = async (data) => {
-  const result = await db.one(
+export const crearLoteCarminDesdeMoliendaRepo = async (data, t = db) => {
+  const result = await t.one(
     `INSERT INTO lotes.lote_carmin
     (
+      item_inventario_id,
+      almacen_id,
       proceso_molienda_id,
-      codigo_lote,
+      nombre_lote,
       tipo_lote,
-      masa_total_kg,
+      stock_inicial,
+      stock_actual,
       concentracion_ac_actual,
       humedad_actual,
       color_l_actual,
       color_a_actual,
       color_b_actual,
       observaciones,
+      unidad_medida_stock,
       calidad_lote,
       estado_lote
     )
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
     RETURNING *`,
     [
+      data.item_inventario_id,
+      data.almacen_id,
       data.proceso_molienda_id,
-      data.codigo_lote ?? null,
+      data.nombre_lote ?? null,
       data.tipo_lote,
-      data.masa_total_kg ?? null,
+      data.stock_inicial ?? null,
+      data.stock_actual ?? null,
       data.concentracion_ac_actual ?? null,
       data.humedad_actual ?? null,
       data.color_l_actual ?? null,
       data.color_a_actual ?? null,
       data.color_b_actual ?? null,
       data.observaciones ?? null,
+      data.unidad_medida_stock ?? 'kg',
       data.calidad_lote ?? null,
       data.estado_lote ?? 'por_analizar'
     ]
@@ -97,36 +113,44 @@ export const crearLoteCarminDesdeMoliendaRepo = async (data) => {
 }
 
 // CREATE: lote de carmín creado desde proceso de mezclado
-export const crearLoteCarminDesdeMezcladoRepo = async (data) => {
-  const result = await db.one(
+export const crearLoteCarminDesdeMezcladoRepo = async (data, t = db) => {
+  const result = await t.one(
     `INSERT INTO lotes.lote_carmin
     (
+      item_inventario_id,
+      almacen_id,
       proceso_mezclado_id,
-      codigo_lote,
+      nombre_lote,
       tipo_lote,
-      masa_total_kg,
+      stock_inicial,
+      stock_actual,
       concentracion_ac_actual,
       humedad_actual,
       color_l_actual,
       color_a_actual,
       color_b_actual,
       observaciones,
+      unidad_medida_stock,
       calidad_lote,
       estado_lote
     )
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
     RETURNING *`,
     [
+      data.item_inventario_id,
+      data.almacen_id,
       data.proceso_mezclado_id,
-      data.codigo_lote ?? null,
+      data.nombre_lote ?? null,
       data.tipo_lote,
-      data.masa_total_kg ?? null,
+      data.stock_inicial ?? null,
+      data.stock_actual ?? null,
       data.concentracion_ac_actual ?? null,
       data.humedad_actual ?? null,
       data.color_l_actual ?? null,
       data.color_a_actual ?? null,
       data.color_b_actual ?? null,
       data.observaciones ?? null,
+      data.unidad_medida_stock ?? 'kg',
       data.calidad_lote ?? null,
       data.estado_lote ?? 'por_analizar'
     ]
@@ -333,7 +357,7 @@ export const actualizarResultadosAnalisisLoteCarminRepo = async (id, data) => {
     `UPDATE lotes.lote_carmin
      SET
        analisis_actual_id = $1,
-       codigo_lote = $2,
+       nombre_lote = $2,
        concentracion_ac_actual = $3,
        humedad_actual = $4,
        color_l_actual = $5,
@@ -345,7 +369,7 @@ export const actualizarResultadosAnalisisLoteCarminRepo = async (id, data) => {
      RETURNING *`,
     [
       data.analisis_actual_id ?? null,
-      data.codigo_lote ?? null,
+      data.nombre_lote ?? null,
       data.concentracion_ac_actual ?? null,
       data.humedad_actual ?? null,
       data.color_l_actual ?? null,
