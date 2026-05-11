@@ -2,8 +2,12 @@ import {
   getMovimientosAlmacen,
   updateMovimientoAlmacen,
   createMovimientoAlmacen,
-  deleteMovimientoAlmacen
+  deleteMovimientoAlmacen,
+  obtenerTipoMovimientoAlmacenPorId,
+  obtenerLotesPorItemInventarioId,
+  actualizarSaldoLotePorMovimiento
 } from '../repositories/movimiento_almacen_repositories.js'
+import db from '../../../config/database.js'
 
 const parsePositiveInteger = (value, fieldName, required = true) => {
   if (value == null || value === '') {
@@ -34,8 +38,18 @@ const parseCantidad = (value) => {
     throw new Error('cantidad debe ser numérica')
   }
 
-  if (parsed < 0) {
-    throw new Error('cantidad no puede ser negativa')
+  if (parsed <= 0) {
+    throw new Error('cantidad debe ser mayor a 0')
+  }
+
+  return parsed
+}
+
+const parseDelta = (value) => {
+  const parsed = Number(value)
+
+  if (Number.isNaN(parsed)) {
+    throw new Error('delta del tipo de movimiento no es válido')
   }
 
   return parsed
@@ -148,8 +162,79 @@ export const getMovimientosAlmacenService = async (filters = {}) => {
   return await getMovimientosAlmacen(parsedFilters)
 }
 
+export const procesarMovimientoAlmacenService = async (movimientoDatos, t = db) => {
+  const movimientoNormalizado = normalizarMovimientoDatos(movimientoDatos)
+
+  return await t.tx(async (tx) => {
+    const tipoMovimiento = await obtenerTipoMovimientoAlmacenPorId(
+      movimientoNormalizado.tipo_movimientos_almacen_id,
+      tx
+    )
+
+    if (!tipoMovimiento) {
+      throw new Error('tipo_movimientos_almacen_id no encontrado')
+    }
+
+    const lotes = await obtenerLotesPorItemInventarioId(
+      movimientoNormalizado.item_inventario_id,
+      tx
+    )
+
+    if (lotes.length === 0) {
+      throw new Error('No se encontró un lote asociado al item_inventario_id')
+    }
+
+    if (lotes.length > 1) {
+      throw new Error('El item_inventario_id está asociado a más de un lote')
+    }
+
+    const lote = lotes[0]
+    const delta = parseDelta(tipoMovimiento.delta)
+    const stockActual = Number(lote.stock_actual ?? 0)
+    const nuevoStockActual = stockActual + (movimientoNormalizado.cantidad * delta)
+
+    if (nuevoStockActual < 0) {
+      throw new Error('El movimiento deja el stock_actual en negativo')
+    }
+
+    const almacenActual = lote.almacen_id == null ? null : Number(lote.almacen_id)
+
+    if (
+      movimientoNormalizado.almacen_origen_id != null &&
+      almacenActual != null &&
+      movimientoNormalizado.almacen_origen_id !== almacenActual
+    ) {
+      throw new Error('almacen_origen_id no coincide con el almacen actual del lote')
+    }
+
+    const nuevoAlmacenId = movimientoNormalizado.almacen_destino_id ?? almacenActual
+
+    const loteActualizado = await actualizarSaldoLotePorMovimiento(
+      lote,
+      nuevoStockActual,
+      nuevoAlmacenId,
+      tx
+    )
+
+    const movimientoCreado = await createMovimientoAlmacen(
+      {
+        ...movimientoNormalizado,
+        saldo: nuevoStockActual
+      },
+      tx
+    )
+
+    return {
+      ...movimientoCreado,
+      lote_tabla: lote.lote_tabla,
+      stock_actual_resultante: loteActualizado.stock_actual,
+      almacen_id_resultante: loteActualizado.almacen_id
+    }
+  })
+}
+
 export const createMovimientoAlmacenService = async (movimientoDatos) => {
-  return await createMovimientoAlmacen(normalizarMovimientoDatos(movimientoDatos))
+  return await procesarMovimientoAlmacenService(movimientoDatos)
 }
 
 export const updateMovimientoAlmacenService = async (movimiento_id, movimientoDatos) => {
@@ -157,7 +242,10 @@ export const updateMovimientoAlmacenService = async (movimiento_id, movimientoDa
 
   return await updateMovimientoAlmacen(
     movimientoId,
-    normalizarMovimientoDatos(movimientoDatos)
+    {
+      ...normalizarMovimientoDatos(movimientoDatos),
+      saldo: movimientoDatos.saldo ?? null
+    }
   )
 }
 

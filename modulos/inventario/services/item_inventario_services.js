@@ -1,5 +1,6 @@
 import {
   crearItemInventarioRepo,
+  listarItemsInventarioRepo,
   listarTiposPorNombreItemRepo
 } from '../repositories/item_inventario_repositories.js'
 
@@ -12,6 +13,32 @@ const NOMBRES_ITEM_VALIDOS = [
 
 export const listarNombresItemService = async () => {
   return NOMBRES_ITEM_VALIDOS.map((nombre_item) => ({ nombre_item }))
+}
+
+export const listarItemsInventarioService = async (filters = {}) => {
+  const parsedFilters = {}
+
+  if (filters.nombre_item !== undefined && filters.nombre_item !== '') {
+    parsedFilters.nombre_item = String(filters.nombre_item).trim()
+  }
+
+  if (filters.proveedor_nombre !== undefined && filters.proveedor_nombre !== '') {
+    parsedFilters.proveedor_nombre = String(filters.proveedor_nombre).trim()
+  }
+
+  if (filters.tipo !== undefined && filters.tipo !== '') {
+    parsedFilters.tipo = String(filters.tipo).trim()
+  }
+
+  if (filters.almacen_nombre !== undefined && filters.almacen_nombre !== '') {
+    parsedFilters.almacen_nombre = String(filters.almacen_nombre).trim()
+  }
+
+  if (filters.codigo !== undefined && filters.codigo !== '') {
+    parsedFilters.codigo = String(filters.codigo).trim()
+  }
+
+  return await listarItemsInventarioRepo(parsedFilters)
 }
 
 export const listarTiposPorNombreItemService = async (nombreItem) => {

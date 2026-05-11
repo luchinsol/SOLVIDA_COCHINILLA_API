@@ -27,8 +27,8 @@ const normalizeProveedorError = (error) => {
 
 export const obtenerProveedoresController = async (req, res) => {
     try {
-        const { tipo_proveedor } = req.query;
-        const proveedores = await obtenerProveedoresService(tipo_proveedor);
+        const { nombre_item_provee } = req.query;
+        const proveedores = await obtenerProveedoresService(nombre_item_provee);
         res.json(proveedores);
     } catch (error) {
         handleControllerError(res, normalizeProveedorError(error));

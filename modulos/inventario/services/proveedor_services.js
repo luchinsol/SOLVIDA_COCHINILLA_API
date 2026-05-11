@@ -7,15 +7,15 @@ import {
     actualizarTipoProveedor
 } from '../repositories/proveedor_repositories.js';
 
-export const obtenerProveedoresService = async (tipoProveedor) => {
-    const tiposProveedor = tipoProveedor
-        ? tipoProveedor
+export const obtenerProveedoresService = async (nombreItemProvee) => {
+    const nombresItemProvee = nombreItemProvee
+        ? nombreItemProvee
             .split(',')
-            .map(tipo => tipo.trim())
+            .map(nombre => nombre.trim())
             .filter(Boolean)
         : [];
 
-    return await getProveedores(tiposProveedor);
+    return await getProveedores(nombresItemProvee);
 };
 
 export const crearProveedorService = async (proveedorDatos) => {

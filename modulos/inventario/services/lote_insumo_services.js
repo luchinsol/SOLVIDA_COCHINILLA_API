@@ -14,6 +14,7 @@ import {
   actualizarCodigoItemInventarioRepo,
   crearItemInventarioRepo
 } from "../repositories/item_inventario_repositories.js";
+import { procesarMovimientoAlmacenService } from "./movimiento_almacen_services.js";
 import PDFDocument from 'pdfkit';
 import ExcelJS from 'exceljs';
 import db from '../../../config/database.js';
@@ -182,7 +183,7 @@ export const createInsumoService = async (insumoDatos) => {
     nombre: insumoDatos.nombre,
     concentracion: insumoDatos.concentracion ?? null,
     costo_unitario: costoUnitario,
-    stock_actual: stockActual,
+    stock_actual: 0,
     costo_total: costoTotal,
     stock_inicial: stockInicial,
     tipo_insumo_id: insumoDatos.tipo_insumo_id,
@@ -207,13 +208,28 @@ export const createInsumoService = async (insumoDatos) => {
       t
     );
 
-    return await createInsumo(
+    const loteCreado = await createInsumo(
       {
         ...payload,
         item_inventario_id: itemInventario.item_inventario_id
       },
       t
     );
+
+    await procesarMovimientoAlmacenService(
+      {
+        item_inventario_id: itemInventario.item_inventario_id,
+        tipo_movimientos_almacen_id: 1,
+        motivo_movimiento: 'compra',
+        cantidad: stockInicial,
+        observaciones: 'Ingreso inicial por compra de lote_insumo',
+        almacen_origen_id: null,
+        almacen_destino_id: insumoDatos.almacen_id
+      },
+      t
+    );
+
+    return await getInsumoById(loteCreado.lote_insumo_id);
   });
 };
 

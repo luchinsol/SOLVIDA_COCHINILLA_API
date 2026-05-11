@@ -1,7 +1,7 @@
 import db from '../../../config/database.js'
 
-export const getProveedores = async (tiposProveedor = []) => {
-    if (!tiposProveedor.length) {
+export const getProveedores = async (nombresItemProvee = []) => {
+    if (!nombresItemProvee.length) {
         const rows = await db.query('SELECT * FROM inventario.proveedor ORDER BY proveedor_id ASC');
         return rows;
     }
@@ -9,9 +9,9 @@ export const getProveedores = async (tiposProveedor = []) => {
     const rows = await db.query(
         `SELECT *
         FROM inventario.proveedor
-        WHERE LOWER(tipo_proveedor) IN ($1:csv)
+        WHERE LOWER(nombre_item_provee) IN ($1:csv)
         ORDER BY proveedor_id ASC`,
-        [tiposProveedor.map(tipo => tipo.toLowerCase())]
+        [nombresItemProvee.map(nombre => nombre.toLowerCase())]
     );
     return rows;
 };
