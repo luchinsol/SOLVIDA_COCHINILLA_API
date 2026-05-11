@@ -1,4 +1,5 @@
 import db from '../../../config/database.js'
+import { procesarMovimientoAlmacenService } from '../../inventario/services/movimiento_almacen_services.js'
 import {
   actualizarCodigoItemInventarioRepo,
   crearItemInventarioRepo
@@ -124,7 +125,7 @@ export const crearLoteCochinillaPorCompraService = async (data) => {
       t
     )
 
-    return await crearLoteCochinillaPorCompraRepo(
+    const loteCreado = await crearLoteCochinillaPorCompraRepo(
       {
         ...data,
         item_inventario_id: itemInventario.item_inventario_id,
@@ -132,7 +133,7 @@ export const crearLoteCochinillaPorCompraService = async (data) => {
         codigo_lote: codigoLote,
         tipo_lote: 'comprado',
         stock_inicial: stockInicial,
-        stock_actual: stockInicial,
+        stock_actual: 0,
         estado_lote: 'por analizar',
         costo_total_inicial: costoTotalInicial,
         costo_total_actual: costoTotalInicial,
@@ -142,6 +143,22 @@ export const crearLoteCochinillaPorCompraService = async (data) => {
       },
       t
     )
+
+    await procesarMovimientoAlmacenService(
+      {
+        usuario_id: data.creado_por ?? null,
+        item_inventario_id: itemInventario.item_inventario_id,
+        tipo_movimientos_almacen_id: 1,
+        motivo_movimiento: 'compra',
+        cantidad: stockInicial,
+        observaciones: 'Ingreso inicial por compra de lote_cochinilla',
+        almacen_origen_id: null,
+        almacen_destino_id: data.almacen_id
+      },
+      t
+    )
+
+    return await obtenerLoteCochinillaPorIdRepo(loteCreado.lote_cochinilla_id)
   })
 }
 /* ======================================================
