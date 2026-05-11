@@ -179,6 +179,18 @@ export const obtenerLoteCarminPorIdRepo = async (id) => {
 }
 
 // READ: búsqueda dinámica de lotes de carmín con múltiples filtros
+export const obtenerResumenLotesCarminRepo = async () => {
+  return await db.one(
+    `SELECT
+       COALESCE(SUM(lc.stock_actual), 0) AS stock_actual,
+       NULL::numeric AS costo_total,
+       MAX(lc.unidad_medida_stock) AS unidad_medida_cantidad,
+       NULL::text AS unidad_medida_moneda,
+       NULL::numeric AS costo_unitario
+     FROM lotes.lote_carmin lc`
+  )
+}
+
 export const buscarLotesCarminConFiltrosRepo = async (filtros) => {
   let query = `
     ${loteCarminSelect}

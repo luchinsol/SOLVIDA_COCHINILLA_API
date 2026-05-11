@@ -200,6 +200,21 @@ export const obtenerLoteCochinillaPorIdRepo = async (id) => {
   return result
 }
 
+export const obtenerResumenLotesCochinillaRepo = async () => {
+  return await db.one(
+    `SELECT
+       COALESCE(SUM(lc.stock_actual), 0) AS stock_actual,
+       COALESCE(SUM(lc.costo_total_actual), 0) AS costo_total,
+       MAX(lc.unidad_medida_stock) AS unidad_medida_cantidad,
+       MAX(lc.unidad_medida_dinero) AS unidad_medida_moneda,
+       CASE
+         WHEN COALESCE(SUM(lc.stock_actual), 0) = 0 THEN 0
+         ELSE COALESCE(SUM(lc.costo_total_actual), 0) / SUM(lc.stock_actual)
+       END AS costo_unitario
+     FROM lotes.lote_cochinilla lc`
+  )
+}
+
 /* ======================================================
    UPDATE: actualizar lote de cochinilla
 ====================================================== */

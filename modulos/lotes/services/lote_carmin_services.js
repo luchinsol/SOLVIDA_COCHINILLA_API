@@ -4,6 +4,7 @@ import {
   crearLoteCarminDesdeMezcladoRepo,
   listarLotesCarminRepo,
   obtenerLoteCarminPorIdRepo,
+  obtenerResumenLotesCarminRepo,
   buscarLotesCarminConFiltrosRepo,
   listarLotesCarminSinAnalisisRepo,
   obtenerLotesCarminPorProcesoLaqueoRepo,
@@ -298,6 +299,10 @@ export const listarLotesService = async () => {
 
 export const obtenerLotePorIdService = async (id) => {
   return await obtenerLoteCarminPorIdRepo(id)
+}
+
+export const obtenerResumenLotesCarminService = async () => {
+  return await obtenerResumenLotesCarminRepo()
 }
 
 export const buscarLotesConFiltrosService = async (filtros) => {

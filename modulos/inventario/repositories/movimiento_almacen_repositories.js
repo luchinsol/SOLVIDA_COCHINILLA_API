@@ -202,6 +202,7 @@ export const getMovimientosAlmacen = async (filters = {}) => {
     `SELECT
        ma.*,
        tma.nombre AS tipo_movimiento_nombre,
+       tma.delta,
        ii.nombre_item,
        ii.codigo_item,
        COALESCE(

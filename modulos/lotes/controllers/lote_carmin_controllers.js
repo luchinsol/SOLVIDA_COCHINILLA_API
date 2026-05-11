@@ -9,6 +9,7 @@ import {
   bloquearLoteService,
   listarLotesService,
   obtenerLotePorIdService,
+  obtenerResumenLotesCarminService,
   buscarLotesConFiltrosService,
   listarLotesSinAnalisisService,
   obtenerPorProcesoLaqueoService,
@@ -136,6 +137,15 @@ export const obtenerLotePorId = async (req, res) => {
 }
 
 // búsqueda con filtros
+export const obtenerResumenLotesCarmin = async (req, res) => {
+  try {
+    const data = await obtenerResumenLotesCarminService()
+    res.json(data)
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+}
+
 export const buscarLotesConFiltros = async (req, res) => {
   try {
     const data = await buscarLotesConFiltrosService(req.query)

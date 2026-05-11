@@ -2,7 +2,8 @@ import {
   crearExtractoService,
   actualizarEstadoLoteExtractoService,
   actualizarStockActualExtractoService,
-  listarExtractosService
+  listarExtractosService,
+  obtenerResumenExtractosService
 } from '../services/extracto_services.js'
 import { handleControllerError } from '../../../utils/handle_controller_error.js'
 
@@ -59,6 +60,15 @@ export const listarExtractos = async (req, res) => {
       proceso_filtrado_id
     })
 
+    res.json(data)
+  } catch (error) {
+    handleControllerError(res, normalizeExtractoError(error))
+  }
+}
+
+export const obtenerResumenExtractos = async (req, res) => {
+  try {
+    const data = await obtenerResumenExtractosService()
     res.json(data)
   } catch (error) {
     handleControllerError(res, normalizeExtractoError(error))

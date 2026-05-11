@@ -4,6 +4,7 @@ import {
   crearLoteCochinillaPorCompra,
   crearLoteCochinillaPorMezcla,
   listarLotesCochinilla,
+  obtenerResumenLotesCochinilla,
   obtenerLoteCochinillaPorId,
   actualizarAnalisisLoteCochinilla,
   actualizarEstadoLoteCochinilla,
@@ -25,6 +26,7 @@ router.post('/mezcla', crearLoteCochinillaPorMezcla)
    READ
 ====================================================== */
 router.get('/', listarLotesCochinilla)
+router.get('/resumen', obtenerResumenLotesCochinilla)
 router.get('/:id', obtenerLoteCochinillaPorId)
 
 /* ======================================================

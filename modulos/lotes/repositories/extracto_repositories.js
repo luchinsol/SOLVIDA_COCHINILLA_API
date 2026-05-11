@@ -83,6 +83,21 @@ export const obtenerExtractoPorIdRepo = async (id) => {
   )
 }
 
+export const obtenerResumenExtractosRepo = async () => {
+  return await db.one(
+    `SELECT
+       COALESCE(SUM(e.stock_actual), 0) AS stock_actual,
+       COALESCE(SUM(e.costo_total_actual), 0) AS costo_total,
+       MAX(e.unidad_medida_stock) AS unidad_medida_cantidad,
+       MAX(e.unidad_medida_dinero) AS unidad_medida_moneda,
+       CASE
+         WHEN COALESCE(SUM(e.stock_actual), 0) = 0 THEN 0
+         ELSE COALESCE(SUM(e.costo_total_actual), 0) / SUM(e.stock_actual)
+       END AS costo_unitario
+     FROM lotes.extracto e`
+  )
+}
+
 export const actualizarEstadoLoteExtractoRepo = async (id, estadoLote) => {
   return await db.oneOrNone(
     `UPDATE lotes.extracto

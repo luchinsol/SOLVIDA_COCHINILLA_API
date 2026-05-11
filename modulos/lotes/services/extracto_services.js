@@ -3,7 +3,8 @@ import {
   actualizarEstadoLoteExtractoRepo,
   actualizarStockActualExtractoRepo,
   listarExtractosRepo,
-  obtenerExtractoPorIdRepo
+  obtenerExtractoPorIdRepo,
+  obtenerResumenExtractosRepo
 } from '../repositories/extracto_repositories.js'
 import {
   actualizarCodigoItemInventarioRepo,
@@ -116,6 +117,10 @@ export const listarExtractosService = async (filters = {}) => {
   }
 
   return await listarExtractosRepo(parsedFilters)
+}
+
+export const obtenerResumenExtractosService = async () => {
+  return await obtenerResumenExtractosRepo()
 }
 
 export const actualizarEstadoLoteExtractoService = async (id, estadoLote) => {
