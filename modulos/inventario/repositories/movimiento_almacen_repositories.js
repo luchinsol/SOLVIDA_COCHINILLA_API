@@ -46,6 +46,7 @@ export const getMovimientosAlmacen = async (filters = {}) => {
   return await db.any(
     `SELECT
        ma.*,
+       tma.nombre AS tipo_movimiento_nombre,
        ii.nombre_item,
        ii.codigo_item,
        COALESCE(
@@ -69,6 +70,8 @@ export const getMovimientosAlmacen = async (filters = {}) => {
        ao.nombre AS almacen_origen_nombre,
        ad.nombre AS almacen_destino_nombre
      FROM inventario.movimiento_almacen ma
+     LEFT JOIN inventario.tipos_movimientos_almacen tma
+       ON ma.tipo_movimientos_almacen_id = tma.tipo_mov_id
      LEFT JOIN inventario.item_inventario ii
        ON ma.item_inventario_id = ii.item_inventario_id
      LEFT JOIN inventario.lote_insumo li
