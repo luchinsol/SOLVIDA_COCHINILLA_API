@@ -1,4 +1,8 @@
-import { crearItemInventarioService } from '../services/item_inventario_services.js'
+import {
+  crearItemInventarioService,
+  listarNombresItemService,
+  listarTiposPorNombreItemService
+} from '../services/item_inventario_services.js'
 import { handleControllerError } from '../../../utils/handle_controller_error.js'
 
 const normalizeItemInventarioError = (error) => {
@@ -17,6 +21,25 @@ export const crearItemInventario = async (req, res) => {
   try {
     const data = await crearItemInventarioService(req.body)
     res.status(201).json(data)
+  } catch (error) {
+    handleControllerError(res, normalizeItemInventarioError(error))
+  }
+}
+
+export const listarNombresItem = async (req, res) => {
+  try {
+    const data = await listarNombresItemService()
+    res.json(data)
+  } catch (error) {
+    handleControllerError(res, normalizeItemInventarioError(error))
+  }
+}
+
+export const listarTiposPorNombreItem = async (req, res) => {
+  try {
+    const { nombre_item } = req.query
+    const data = await listarTiposPorNombreItemService(nombre_item)
+    res.json(data)
   } catch (error) {
     handleControllerError(res, normalizeItemInventarioError(error))
   }

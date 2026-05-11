@@ -41,8 +41,24 @@ const parseCantidad = (value) => {
   return parsed
 }
 
-const parseFecha = (value, fieldName) => {
-  const fecha = new Date(value)
+const parseFecha = (value, fieldName, boundary = 'exact') => {
+  const rawValue = String(value).trim()
+  const isDateOnly = /^\d{4}-\d{2}-\d{2}$/.test(rawValue)
+  let fecha
+
+  if (isDateOnly) {
+    const [year, month, day] = rawValue.split('-').map(Number)
+
+    if (boundary === 'start') {
+      fecha = new Date(year, month - 1, day, 0, 0, 0, 0)
+    } else if (boundary === 'end') {
+      fecha = new Date(year, month - 1, day, 23, 59, 59, 999)
+    } else {
+      fecha = new Date(year, month - 1, day)
+    }
+  } else {
+    fecha = new Date(rawValue)
+  }
 
   if (Number.isNaN(fecha.getTime())) {
     throw new Error(`${fieldName} debe ser una fecha válida`)
@@ -114,11 +130,11 @@ export const getMovimientosAlmacenService = async (filters = {}) => {
   }
 
   if (filters.fecha_desde !== undefined && filters.fecha_desde !== '') {
-    parsedFilters.fecha_desde = parseFecha(filters.fecha_desde, 'fecha_desde')
+    parsedFilters.fecha_desde = parseFecha(filters.fecha_desde, 'fecha_desde', 'start')
   }
 
   if (filters.fecha_hasta !== undefined && filters.fecha_hasta !== '') {
-    parsedFilters.fecha_hasta = parseFecha(filters.fecha_hasta, 'fecha_hasta')
+    parsedFilters.fecha_hasta = parseFecha(filters.fecha_hasta, 'fecha_hasta', 'end')
   }
 
   if (
