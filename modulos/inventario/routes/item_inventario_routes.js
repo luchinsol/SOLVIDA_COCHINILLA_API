@@ -1,8 +1,14 @@
 import { Router } from 'express'
-import { crearItemInventario } from '../controllers/item_inventario_controller.js'
+import {
+  crearItemInventario,
+  listarNombresItem,
+  listarTiposPorNombreItem
+} from '../controllers/item_inventario_controller.js'
 
 const router = Router()
 
+router.get('/nombres', listarNombresItem)
+router.get('/tipos', listarTiposPorNombreItem)
 router.post('/', crearItemInventario)
 
 export default router

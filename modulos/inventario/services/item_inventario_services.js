@@ -1,4 +1,7 @@
-import { crearItemInventarioRepo } from '../repositories/item_inventario_repositories.js'
+import {
+  crearItemInventarioRepo,
+  listarTiposPorNombreItemRepo
+} from '../repositories/item_inventario_repositories.js'
 
 const NOMBRES_ITEM_VALIDOS = [
   'Carmin',
@@ -6,6 +9,24 @@ const NOMBRES_ITEM_VALIDOS = [
   'Insumos Quimicos',
   'Cochinilla'
 ]
+
+export const listarNombresItemService = async () => {
+  return NOMBRES_ITEM_VALIDOS.map((nombre_item) => ({ nombre_item }))
+}
+
+export const listarTiposPorNombreItemService = async (nombreItem) => {
+  if (!nombreItem || !String(nombreItem).trim()) {
+    throw new Error('nombre_item es obligatorio')
+  }
+
+  const nombreItemNormalizado = String(nombreItem).trim()
+
+  if (!NOMBRES_ITEM_VALIDOS.includes(nombreItemNormalizado)) {
+    throw new Error('nombre_item no es válido')
+  }
+
+  return await listarTiposPorNombreItemRepo(nombreItemNormalizado)
+}
 
 export const crearItemInventarioService = async (data) => {
   if (!data.nombre_item || !data.nombre_item.trim()) {
