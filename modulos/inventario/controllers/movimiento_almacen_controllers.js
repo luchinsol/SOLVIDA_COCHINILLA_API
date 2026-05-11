@@ -23,13 +23,23 @@ const normalizeMovimientoAlmacenError = (error) => {
     error.message === 'motivo_movimiento es obligatorio' ||
     error.message === 'cantidad es obligatoria' ||
     error.message === 'cantidad debe ser numérica' ||
-    error.message === 'cantidad no puede ser negativa' ||
-    error.message === 'almacen_origen_id es obligatorio' ||
+    error.message === 'cantidad debe ser mayor a 0' ||
     error.message === 'almacen_origen_id debe ser un entero positivo' ||
     error.message === 'almacen_destino_id debe ser un entero positivo' ||
-    error.message === 'almacen_destino_id no puede ser igual a almacen_origen_id'
+    error.message === 'almacen_destino_id no puede ser igual a almacen_origen_id' ||
+    error.message === 'delta del tipo de movimiento no es válido' ||
+    error.message === 'El movimiento deja el stock_actual en negativo' ||
+    error.message === 'almacen_origen_id no coincide con el almacen actual del lote' ||
+    error.message === 'El item_inventario_id está asociado a más de un lote'
   ) {
     error.name = 'ValidationError'
+  }
+
+  if (
+    error.message === 'tipo_movimientos_almacen_id no encontrado' ||
+    error.message === 'No se encontró un lote asociado al item_inventario_id'
+  ) {
+    error.name = 'NotFoundError'
   }
 
   return error
