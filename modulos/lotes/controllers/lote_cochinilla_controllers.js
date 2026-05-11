@@ -3,6 +3,7 @@ import {
   crearLoteCochinillaPorMezclaService,
   listarLotesCochinillaService,
   obtenerLoteCochinillaPorIdService,
+  obtenerResumenLotesCochinillaService,
   actualizarAnalisisLoteCochinillaService,
   actualizarEstadoLoteCochinillaService,
   actualizarStockActualLoteCochinillaService,
@@ -92,6 +93,15 @@ export const listarLotesCochinilla = async (req, res) => {
       proveedor_id,
       estado_lote
     })
+    res.json(data)
+  } catch (error) {
+    handleControllerError(res, normalizeLoteCochinillaError(error))
+  }
+}
+
+export const obtenerResumenLotesCochinilla = async (req, res) => {
+  try {
+    const data = await obtenerResumenLotesCochinillaService()
     res.json(data)
   } catch (error) {
     handleControllerError(res, normalizeLoteCochinillaError(error))

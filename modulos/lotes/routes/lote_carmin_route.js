@@ -9,6 +9,7 @@ import {
   actualizarStockActualLoteCarmin,
   bloquearLote,
   listarLotes,
+  obtenerResumenLotesCarmin,
   obtenerLotePorId,
   buscarLotesConFiltros,
   listarLotesSinAnalisis,
@@ -27,6 +28,7 @@ const loteCarminRoutes = express.Router()
 loteCarminRoutes.get('/', listarLotes)
 
 // búsqueda por filtros OK
+loteCarminRoutes.get('/resumen', obtenerResumenLotesCarmin)
 loteCarminRoutes.get('/buscar', buscarLotesConFiltros)
 
 // listar lotes sin análisis OK 

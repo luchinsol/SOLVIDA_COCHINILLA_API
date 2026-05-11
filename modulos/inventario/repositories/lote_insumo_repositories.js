@@ -44,10 +44,13 @@ export const getInsumos = async (filters = {}) => {
   const query = `
     SELECT
       li.*,
+      ii.codigo_item,
       p.nombre_razon_social AS proveedor_nombre,
       a.nombre AS almacen_nombre,
       ti.nombre AS tipo_insumo_nombre
     FROM inventario.lote_insumo li
+    LEFT JOIN inventario.item_inventario ii
+      ON li.item_inventario_id = ii.item_inventario_id
     LEFT JOIN inventario.proveedor p
       ON li.proveedor_id = p.proveedor_id
     LEFT JOIN inventario.almacen a
@@ -65,10 +68,13 @@ export const getInsumoById = async (id) => {
   const query = `
     SELECT
       li.*,
+      ii.codigo_item,
       p.nombre_razon_social AS proveedor_nombre,
       a.nombre AS almacen_nombre,
       ti.nombre AS tipo_insumo_nombre
     FROM inventario.lote_insumo li
+    LEFT JOIN inventario.item_inventario ii
+      ON li.item_inventario_id = ii.item_inventario_id
     LEFT JOIN inventario.proveedor p
       ON li.proveedor_id = p.proveedor_id
     LEFT JOIN inventario.almacen a

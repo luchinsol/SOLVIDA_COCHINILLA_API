@@ -15,6 +15,7 @@ import {
   crearLoteCochinillaPorMezclaRepo,
   listarLotesCochinillaRepo,
   obtenerLoteCochinillaPorIdRepo,
+  obtenerResumenLotesCochinillaRepo,
   actualizarAnalisisLoteCochinillaRepo,
   actualizarEstadoLoteCochinillaRepo,
   actualizarStockActualLoteCochinillaRepo,
@@ -78,6 +79,10 @@ const calcularCostoPuntoAcDolares = ({
   }
 
   return costoTotalActual / (stockActual * concentracionActual)
+}
+
+export const obtenerResumenLotesCochinillaService = async () => {
+  return await obtenerResumenLotesCochinillaRepo()
 }
 
 /* ======================================================
