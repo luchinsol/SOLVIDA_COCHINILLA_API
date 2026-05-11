@@ -23,9 +23,11 @@ import recetaExtraccionRoutes from './modulos/produccion/routes/receta_extraccio
 import insumoRoutes from './modulos/inventario/routes/lote_insumo_route.js'
 import almacenRoutes from './modulos/inventario/routes/almacen_route.js'
 import movimientoAlmacenRoutes from './modulos/inventario/routes/movimiento_almacen_route.js'
+import motivoMovimientoRoutes from './modulos/inventario/routes/motivo_movimiento_routes.js'
 import itemInventarioRoutes from './modulos/inventario/routes/item_inventario_routes.js'
 import proveedorRoutes from './modulos/inventario/routes/proveedor_route.js'
 import tipoInsumoRoutes from './modulos/inventario/routes/tipo_insumo_routes.js'
+import tiposMovimientosAlmacenRoutes from './modulos/inventario/routes/tipo_movimientos_almacen_routes.js'
 import unidadesMedidaRoutes from './modulos/inventario/routes/unidades_medida_routes.js'
 
 // Rutas de laboratorio
@@ -52,6 +54,8 @@ app.use('/api/composicion-carmin', composicionCarminRoutes)
 app.use('/api/proceso-mezclado', procesoMezcladoRoutes)
 app.use('/api/lote-insumos', insumoRoutes)
 app.use('/api/movimientos-almacen', movimientoAlmacenRoutes)
+app.use('/api/motivos-movimiento', motivoMovimientoRoutes)
+app.use('/api/tipos-movimientos-almacen', tiposMovimientosAlmacenRoutes)
 app.use('/api/item-inventario', itemInventarioRoutes)
 app.use('/api/proveedores', proveedorRoutes)
 app.use('/api/laboratorio', laboratorioRoutes)
