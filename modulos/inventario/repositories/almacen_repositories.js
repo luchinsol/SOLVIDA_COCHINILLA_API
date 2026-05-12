@@ -1,7 +1,16 @@
 import db from '../../../config/database.js';
 
 export const obtenerTodosAlmacenesRepo = async () => {
-    const query = 'SELECT * FROM inventario.almacen';
+    const query = `
+      SELECT
+        almacen_id::int AS almacen_id,
+        nombre,
+        tipo_almacen,
+        ubicacion,
+        activo,
+        creado_en
+      FROM inventario.almacen
+    `;
     console.log('Ejecutando query:', query);
     return await db.query(query);
 }
