@@ -35,7 +35,7 @@ const parseCantidad = (value) => {
   const parsed = Number(value)
 
   if (Number.isNaN(parsed)) {
-    throw new Error('cantidad debe ser numérica')
+    throw new Error('cantidad debe ser numerica')
   }
 
   if (parsed <= 0) {
@@ -45,11 +45,29 @@ const parseCantidad = (value) => {
   return parsed
 }
 
+const parseStockActualCorregido = (value) => {
+  if (value == null || value === '') {
+    throw new Error('stock_actual_corregido es obligatorio')
+  }
+
+  const parsed = Number(value)
+
+  if (Number.isNaN(parsed)) {
+    throw new Error('stock_actual_corregido debe ser numerico')
+  }
+
+  if (parsed < 0) {
+    throw new Error('stock_actual_corregido no puede ser negativo')
+  }
+
+  return parsed
+}
+
 const parseDelta = (value) => {
   const parsed = Number(value)
 
   if (Number.isNaN(parsed)) {
-    throw new Error('delta del tipo de movimiento no es válido')
+    throw new Error('delta del tipo de movimiento no es valido')
   }
 
   return parsed
@@ -75,7 +93,7 @@ const parseFecha = (value, fieldName, boundary = 'exact') => {
   }
 
   if (Number.isNaN(fecha.getTime())) {
-    throw new Error(`${fieldName} debe ser una fecha válida`)
+    throw new Error(`${fieldName} debe ser una fecha valida`)
   }
 
   return fecha
@@ -98,10 +116,7 @@ const normalizarMovimientoDatos = (movimientoDatos) => {
     false
   )
 
-  if (
-    almacenDestinoId != null &&
-    almacenDestinoId === almacenOrigenId
-  ) {
+  if (almacenDestinoId != null && almacenDestinoId === almacenOrigenId) {
     throw new Error('almacen_destino_id no puede ser igual a almacen_origen_id')
   }
 
@@ -121,6 +136,24 @@ const normalizarMovimientoDatos = (movimientoDatos) => {
     observaciones: movimientoDatos.observaciones ?? null,
     almacen_origen_id: almacenOrigenId,
     almacen_destino_id: almacenDestinoId
+  }
+}
+
+const normalizarAjusteMovimientoDatos = (movimientoDatos) => {
+  if (!movimientoDatos.motivo_movimiento || !movimientoDatos.motivo_movimiento.trim()) {
+    throw new Error('motivo_movimiento es obligatorio')
+  }
+
+  return {
+    usuario_id: parsePositiveInteger(movimientoDatos.usuario_id, 'usuario_id', false),
+    item_inventario_id: parsePositiveInteger(
+      movimientoDatos.item_inventario_id,
+      'item_inventario_id'
+    ),
+    motivo_movimiento: movimientoDatos.motivo_movimiento.trim(),
+    fecha_hora: movimientoDatos.fecha_hora ?? new Date(),
+    stock_actual_corregido: parseStockActualCorregido(movimientoDatos.stock_actual_corregido),
+    observaciones: movimientoDatos.observaciones ?? null
   }
 }
 
@@ -181,11 +214,11 @@ export const procesarMovimientoAlmacenService = async (movimientoDatos, t = db) 
     )
 
     if (lotes.length === 0) {
-      throw new Error('No se encontró un lote asociado al item_inventario_id')
+      throw new Error('No se encontro un lote asociado al item_inventario_id')
     }
 
     if (lotes.length > 1) {
-      throw new Error('El item_inventario_id está asociado a más de un lote')
+      throw new Error('El item_inventario_id esta asociado a mas de un lote')
     }
 
     const lote = lotes[0]
@@ -207,7 +240,23 @@ export const procesarMovimientoAlmacenService = async (movimientoDatos, t = db) 
       throw new Error('almacen_origen_id no coincide con el almacen actual del lote')
     }
 
-    const nuevoAlmacenId = movimientoNormalizado.almacen_destino_id ?? almacenActual
+    let movimientoFinal = {
+      ...movimientoNormalizado
+    }
+
+    if (movimientoNormalizado.tipo_movimientos_almacen_id === 2) {
+      if (almacenActual == null) {
+        throw new Error('El lote no tiene almacen actual para registrar una salida')
+      }
+
+      movimientoFinal = {
+        ...movimientoFinal,
+        almacen_origen_id: almacenActual,
+        almacen_destino_id: null
+      }
+    }
+
+    const nuevoAlmacenId = movimientoFinal.almacen_destino_id ?? almacenActual
 
     const loteActualizado = await actualizarSaldoLotePorMovimiento(
       lote,
@@ -218,7 +267,7 @@ export const procesarMovimientoAlmacenService = async (movimientoDatos, t = db) 
 
     const movimientoCreado = await createMovimientoAlmacen(
       {
-        ...movimientoNormalizado,
+        ...movimientoFinal,
         saldo: nuevoStockActual
       },
       tx
@@ -237,16 +286,80 @@ export const createMovimientoAlmacenService = async (movimientoDatos) => {
   return await procesarMovimientoAlmacenService(movimientoDatos)
 }
 
+export const createAjusteMovimientoAlmacenService = async (movimientoDatos, t = db) => {
+  const movimientoNormalizado = normalizarAjusteMovimientoDatos(movimientoDatos)
+
+  return await t.tx(async (tx) => {
+    const tipoMovimiento = await obtenerTipoMovimientoAlmacenPorId(3, tx)
+
+    if (!tipoMovimiento) {
+      throw new Error('tipo_movimientos_almacen_id no encontrado')
+    }
+
+    const lotes = await obtenerLotesPorItemInventarioId(
+      movimientoNormalizado.item_inventario_id,
+      tx
+    )
+
+    if (lotes.length === 0) {
+      throw new Error('No se encontro un lote asociado al item_inventario_id')
+    }
+
+    if (lotes.length > 1) {
+      throw new Error('El item_inventario_id esta asociado a mas de un lote')
+    }
+
+    const lote = lotes[0]
+    const almacenActual = lote.almacen_id == null ? null : Number(lote.almacen_id)
+
+    if (almacenActual == null) {
+      throw new Error('El lote no tiene almacen actual para registrar un ajuste')
+    }
+
+    const stockActualAnterior = Number(lote.stock_actual ?? 0)
+    const stockActualCorregido = movimientoNormalizado.stock_actual_corregido
+    const cantidad = stockActualCorregido - stockActualAnterior
+
+    const loteActualizado = await actualizarSaldoLotePorMovimiento(
+      lote,
+      stockActualCorregido,
+      almacenActual,
+      tx
+    )
+
+    const movimientoCreado = await createMovimientoAlmacen(
+      {
+        usuario_id: movimientoNormalizado.usuario_id,
+        item_inventario_id: movimientoNormalizado.item_inventario_id,
+        motivo_movimiento: movimientoNormalizado.motivo_movimiento,
+        fecha_hora: movimientoNormalizado.fecha_hora,
+        cantidad,
+        saldo: stockActualCorregido,
+        observaciones: movimientoNormalizado.observaciones,
+        almacen_origen_id: almacenActual,
+        almacen_destino_id: almacenActual,
+        tipo_movimientos_almacen_id: Number(tipoMovimiento.tipo_mov_id ?? 3)
+      },
+      tx
+    )
+
+    return {
+      ...movimientoCreado,
+      lote_tabla: lote.lote_tabla,
+      stock_actual_anterior: stockActualAnterior,
+      stock_actual_resultante: loteActualizado.stock_actual,
+      almacen_id_resultante: loteActualizado.almacen_id
+    }
+  })
+}
+
 export const updateMovimientoAlmacenService = async (movimiento_id, movimientoDatos) => {
   const movimientoId = parsePositiveInteger(movimiento_id, 'id')
 
-  return await updateMovimientoAlmacen(
-    movimientoId,
-    {
-      ...normalizarMovimientoDatos(movimientoDatos),
-      saldo: movimientoDatos.saldo ?? null
-    }
-  )
+  return await updateMovimientoAlmacen(movimientoId, {
+    ...normalizarMovimientoDatos(movimientoDatos),
+    saldo: movimientoDatos.saldo ?? null
+  })
 }
 
 export const deleteMovimientoAlmacenService = async (movimiento_id) => {

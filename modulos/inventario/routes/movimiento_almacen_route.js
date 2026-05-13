@@ -1,10 +1,17 @@
 import express from 'express'
-import { getMovimientosAlmacenController,createMovimientoAlmacenController,updateMovimientoAlmacenController,deleteMovimientoAlmacenController} from '../controllers/movimiento_almacen_controllers.js';
+import {
+  getMovimientosAlmacenController,
+  createMovimientoAlmacenController,
+  createAjusteMovimientoAlmacenController,
+  updateMovimientoAlmacenController,
+  deleteMovimientoAlmacenController
+} from '../controllers/movimiento_almacen_controllers.js'
 
 const movimientoAlmacenRoutes = express.Router()
 
 movimientoAlmacenRoutes.get('/', getMovimientosAlmacenController)
 movimientoAlmacenRoutes.post('/', createMovimientoAlmacenController)
+movimientoAlmacenRoutes.post('/ajuste', createAjusteMovimientoAlmacenController)
 movimientoAlmacenRoutes.put('/:id', updateMovimientoAlmacenController)
 movimientoAlmacenRoutes.delete('/:id', deleteMovimientoAlmacenController)
 

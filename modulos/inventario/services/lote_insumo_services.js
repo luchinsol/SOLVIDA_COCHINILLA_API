@@ -8,13 +8,15 @@ import {
   getInsumoPdf,
   getCostoUnitario,
   actualizarEstadoLoteInsumo,
-  actualizarStockActualInsumo
 } from "../repositories/lote_insumo_repositories.js";
 import {
   actualizarCodigoItemInventarioRepo,
   crearItemInventarioRepo
 } from "../repositories/item_inventario_repositories.js";
-import { procesarMovimientoAlmacenService } from "./movimiento_almacen_services.js";
+import {
+  procesarMovimientoAlmacenService,
+  createAjusteMovimientoAlmacenService
+} from "./movimiento_almacen_services.js";
 import PDFDocument from 'pdfkit';
 import ExcelJS from 'exceljs';
 import db from '../../../config/database.js';
@@ -251,7 +253,7 @@ export const actualizarEstadoLoteInsumoService = async (id, estado_lote) => {
   return loteActualizado;
 };
 
-export const actualizarStockActualInsumoService = async (id, stock_actual) => {
+export const actualizarStockActualInsumoService = async (id, stock_actual, options = {}) => {
   if (stock_actual === undefined || stock_actual === null) {
     throw new Error('stock_actual es obligatorio');
   }
@@ -279,9 +281,15 @@ export const actualizarStockActualInsumoService = async (id, stock_actual) => {
     throw new Error('costo_unitario del lote no es valido');
   }
 
-  const nuevoCostoTotal = nuevoStockActual * costoUnitario;
+  await createAjusteMovimientoAlmacenService({
+    usuario_id: options.usuario_id ?? null,
+    item_inventario_id: loteActual.item_inventario_id,
+    motivo_movimiento: options.motivo_movimiento ?? 'regularizacion por conteo fisico',
+    stock_actual_corregido: nuevoStockActual,
+    observaciones: options.observaciones ?? 'Ajuste de stock desde lote_insumo'
+  });
 
-  return await actualizarStockActualInsumo(id, nuevoStockActual, nuevoCostoTotal);
+  return await getInsumoById(id);
 };
 
 export const deleteInsumoService = async (insumo_id) => {

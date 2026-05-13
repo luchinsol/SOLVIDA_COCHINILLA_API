@@ -129,7 +129,11 @@ export const actualizarStockActualInsumoController = async (req, res) => {
   const { id } = req.params;
   const { stock_actual } = req.body;
   try {
-    const loteActualizado = await actualizarStockActualInsumoService(id, stock_actual);
+    const loteActualizado = await actualizarStockActualInsumoService(id, stock_actual, {
+      usuario_id: req.body.usuario_id,
+      motivo_movimiento: req.body.motivo_movimiento,
+      observaciones: req.body.observaciones
+    });
     res.json(loteActualizado);
   } catch (error) {
     handleControllerError(res, normalizeLoteInsumoError(error));
