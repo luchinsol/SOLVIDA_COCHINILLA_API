@@ -30,6 +30,9 @@ export const crearLoteCarminDesdeLaqueoRepo = async (data, t = db) => {
       tipo_lote,
       stock_inicial,
       stock_actual,
+      costo_total_inicial,
+      costo_total_actual,
+      costo_unitario,
       concentracion_ac_actual,
       humedad_actual,
       color_l_actual,
@@ -40,7 +43,7 @@ export const crearLoteCarminDesdeLaqueoRepo = async (data, t = db) => {
       calidad_lote,
       estado_lote
     )
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
     RETURNING *`,
     [
       data.item_inventario_id,
@@ -50,6 +53,9 @@ export const crearLoteCarminDesdeLaqueoRepo = async (data, t = db) => {
       data.tipo_lote,
       data.stock_inicial ?? null,
       data.stock_actual ?? null,
+      data.costo_total_inicial ?? 0,
+      data.costo_total_actual ?? data.costo_total_inicial ?? 0,
+      data.costo_unitario ?? 0,
       data.concentracion_ac_actual ?? null,
       data.humedad_actual ?? null,
       data.color_l_actual ?? null,
@@ -77,6 +83,9 @@ export const crearLoteCarminDesdeMoliendaRepo = async (data, t = db) => {
       tipo_lote,
       stock_inicial,
       stock_actual,
+      costo_total_inicial,
+      costo_total_actual,
+      costo_unitario,
       concentracion_ac_actual,
       humedad_actual,
       color_l_actual,
@@ -87,7 +96,7 @@ export const crearLoteCarminDesdeMoliendaRepo = async (data, t = db) => {
       calidad_lote,
       estado_lote
     )
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
     RETURNING *`,
     [
       data.item_inventario_id,
@@ -97,6 +106,9 @@ export const crearLoteCarminDesdeMoliendaRepo = async (data, t = db) => {
       data.tipo_lote,
       data.stock_inicial ?? null,
       data.stock_actual ?? null,
+      data.costo_total_inicial ?? 0,
+      data.costo_total_actual ?? data.costo_total_inicial ?? 0,
+      data.costo_unitario ?? 0,
       data.concentracion_ac_actual ?? null,
       data.humedad_actual ?? null,
       data.color_l_actual ?? null,
@@ -124,6 +136,9 @@ export const crearLoteCarminDesdeMezcladoRepo = async (data, t = db) => {
       tipo_lote,
       stock_inicial,
       stock_actual,
+      costo_total_inicial,
+      costo_total_actual,
+      costo_unitario,
       concentracion_ac_actual,
       humedad_actual,
       color_l_actual,
@@ -134,7 +149,7 @@ export const crearLoteCarminDesdeMezcladoRepo = async (data, t = db) => {
       calidad_lote,
       estado_lote
     )
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
     RETURNING *`,
     [
       data.item_inventario_id,
@@ -144,6 +159,9 @@ export const crearLoteCarminDesdeMezcladoRepo = async (data, t = db) => {
       data.tipo_lote,
       data.stock_inicial ?? null,
       data.stock_actual ?? null,
+      data.costo_total_inicial ?? 0,
+      data.costo_total_actual ?? data.costo_total_inicial ?? 0,
+      data.costo_unitario ?? 0,
       data.concentracion_ac_actual ?? null,
       data.humedad_actual ?? null,
       data.color_l_actual ?? null,
