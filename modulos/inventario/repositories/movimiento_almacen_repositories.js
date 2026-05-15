@@ -16,14 +16,14 @@ export const obtenerLotesPorItemInventarioId = async (itemInventarioId, t = db) 
        li.lote_insumo_id AS lote_id,
        li.item_inventario_id,
        li.almacen_id,
+       li.stock_inicial,
        li.stock_actual,
        li.costo_unitario,
        li.costo_total,
-       NULL::numeric AS costo_kilo_dolares,
        NULL::numeric AS costo_total_actual,
        NULL::numeric AS costo_puntoac_dolares,
        NULL::numeric AS concentracion_ac_actual,
-       NULL::numeric AS costo_por_unidad
+       NULL::numeric AS costo_total_base
      FROM inventario.lote_insumo li
      WHERE li.item_inventario_id = $1
 
@@ -34,14 +34,14 @@ export const obtenerLotesPorItemInventarioId = async (itemInventarioId, t = db) 
        lc.lote_cochinilla_id AS lote_id,
        lc.item_inventario_id,
        lc.almacen_id,
+       lc.stock_inicial,
        lc.stock_actual,
-       NULL::numeric AS costo_unitario,
+       lc.costo_unitario,
        NULL::numeric AS costo_total,
-       lc.costo_kilo_dolares,
        lc.costo_total_actual,
        lc.costo_puntoac_dolares,
        lc.concentracion_ac_actual,
-       NULL::numeric AS costo_por_unidad
+       lc.costo_total_actual AS costo_total_base
      FROM lotes.lote_cochinilla lc
      WHERE lc.item_inventario_id = $1
 
@@ -52,14 +52,14 @@ export const obtenerLotesPorItemInventarioId = async (itemInventarioId, t = db) 
        lca.lote_carmin_id AS lote_id,
        lca.item_inventario_id,
        lca.almacen_id,
+       lca.stock_inicial,
        lca.stock_actual,
        NULL::numeric AS costo_unitario,
        NULL::numeric AS costo_total,
-       NULL::numeric AS costo_kilo_dolares,
        NULL::numeric AS costo_total_actual,
        NULL::numeric AS costo_puntoac_dolares,
        NULL::numeric AS concentracion_ac_actual,
-       NULL::numeric AS costo_por_unidad
+       NULL::numeric AS costo_total_base
      FROM lotes.lote_carmin lca
      WHERE lca.item_inventario_id = $1
 
@@ -70,14 +70,14 @@ export const obtenerLotesPorItemInventarioId = async (itemInventarioId, t = db) 
        e.extracto_id AS lote_id,
        e.item_inventario_id,
        e.almacen_id,
+       e.stock_inicial,
        e.stock_actual,
-       NULL::numeric AS costo_unitario,
+       e.costo_unitario,
        NULL::numeric AS costo_total,
-       NULL::numeric AS costo_kilo_dolares,
        e.costo_total_actual,
        NULL::numeric AS costo_puntoac_dolares,
        NULL::numeric AS concentracion_ac_actual,
-       e.costo_por_unidad
+       e.costo_total_actual AS costo_total_base
      FROM lotes.extracto e
      WHERE e.item_inventario_id = $1`,
     [itemInventarioId]
@@ -102,9 +102,9 @@ export const actualizarSaldoLotePorMovimiento = async (lote, nuevoStockActual, n
   }
 
   if (lote.lote_tabla === 'lote_cochinilla') {
-    const costoKiloDolares = Number(lote.costo_kilo_dolares ?? 0)
+    const costoUnitario = Number(lote.costo_unitario ?? 0)
     const nuevaConcentracion = Number(lote.concentracion_ac_actual ?? 0)
-    const nuevoCostoTotalActual = nuevoStockActual * costoKiloDolares
+    const nuevoCostoTotalActual = nuevoStockActual * costoUnitario
     let nuevoCostoPuntoAc = null
 
     if (nuevoStockActual > 0 && nuevaConcentracion > 0) {
@@ -137,8 +137,8 @@ export const actualizarSaldoLotePorMovimiento = async (lote, nuevoStockActual, n
   }
 
   if (lote.lote_tabla === 'extracto') {
-    const costoPorUnidad = Number(lote.costo_por_unidad ?? 0)
-    const nuevoCostoTotalActual = nuevoStockActual * costoPorUnidad
+    const costoUnitario = Number(lote.costo_unitario ?? 0)
+    const nuevoCostoTotalActual = nuevoStockActual * costoUnitario
 
     return await t.one(
       `UPDATE lotes.extracto
@@ -149,6 +149,65 @@ export const actualizarSaldoLotePorMovimiento = async (lote, nuevoStockActual, n
        WHERE extracto_id = $4
        RETURNING *`,
       [nuevoStockActual, nuevoCostoTotalActual, nuevoAlmacenId, lote.lote_id]
+    )
+  }
+
+  throw new Error('No se pudo identificar la tabla del lote asociada al item_inventario_id')
+}
+
+export const actualizarStockInicialLotePorAjuste = async (lote, nuevoStockInicial, t = db) => {
+  if (lote.lote_tabla === 'lote_insumo') {
+    const costoTotal = Number(lote.costo_total ?? 0)
+    const nuevoCostoUnitario = nuevoStockInicial === 0 ? 0 : costoTotal / nuevoStockInicial
+
+    return await t.one(
+      `UPDATE inventario.lote_insumo
+       SET
+         stock_inicial = $1,
+         costo_unitario = $2
+       WHERE lote_insumo_id = $3
+       RETURNING *`,
+      [nuevoStockInicial, nuevoCostoUnitario, lote.lote_id]
+    )
+  }
+
+  if (lote.lote_tabla === 'lote_cochinilla') {
+    const costoTotalBase = Number(lote.costo_total_base ?? lote.costo_total_actual ?? 0)
+    const nuevoCostoUnitario = nuevoStockInicial === 0 ? 0 : costoTotalBase / nuevoStockInicial
+
+    return await t.one(
+      `UPDATE lotes.lote_cochinilla
+       SET
+         stock_inicial = $1,
+         costo_unitario = $2
+       WHERE lote_cochinilla_id = $3
+       RETURNING *`,
+      [nuevoStockInicial, nuevoCostoUnitario, lote.lote_id]
+    )
+  }
+
+  if (lote.lote_tabla === 'lote_carmin') {
+    return await t.one(
+      `UPDATE lotes.lote_carmin
+       SET stock_inicial = $1
+       WHERE lote_carmin_id = $2
+       RETURNING *`,
+      [nuevoStockInicial, lote.lote_id]
+    )
+  }
+
+  if (lote.lote_tabla === 'extracto') {
+    const costoTotalBase = Number(lote.costo_total_base ?? lote.costo_total_actual ?? 0)
+    const nuevoCostoUnitario = nuevoStockInicial === 0 ? 0 : costoTotalBase / nuevoStockInicial
+
+    return await t.one(
+      `UPDATE lotes.extracto
+       SET
+         stock_inicial = $1,
+         costo_unitario = $2
+       WHERE extracto_id = $3
+       RETURNING *`,
+      [nuevoStockInicial, nuevoCostoUnitario, lote.lote_id]
     )
   }
 

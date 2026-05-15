@@ -93,7 +93,11 @@ export const actualizarStockActualLoteCarmin = async (req, res) => {
   try {
     const { id } = req.params
     const { stock_actual } = req.body
-    const data = await actualizarStockActualLoteCarminService(id, stock_actual)
+    const data = await actualizarStockActualLoteCarminService(id, stock_actual, {
+      usuario_id: req.body.usuario_id,
+      motivo_movimiento: req.body.motivo_movimiento,
+      observaciones: req.body.observaciones
+    })
     res.json(data)
   } catch (error) {
     res.status(400).json({ error: error.message })

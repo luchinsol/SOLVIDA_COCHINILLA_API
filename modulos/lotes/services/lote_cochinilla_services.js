@@ -1,5 +1,8 @@
 import db from '../../../config/database.js'
-import { procesarMovimientoAlmacenService } from '../../inventario/services/movimiento_almacen_services.js'
+import {
+  procesarMovimientoAlmacenService,
+  createAjusteMovimientoAlmacenService
+} from '../../inventario/services/movimiento_almacen_services.js'
 import {
   actualizarCodigoItemInventarioRepo,
   crearItemInventarioRepo
@@ -339,7 +342,15 @@ export const actualizarStockActualLoteCochinillaService = async (id, data) => {
     throw new Error('stock_actual no puede ser mayor que stock_inicial')
   }
 
-  return await actualizarStockActualLoteCochinillaRepo(id, nuevoStockActual)
+  await createAjusteMovimientoAlmacenService({
+    usuario_id: data.usuario_id ?? null,
+    item_inventario_id: lote.item_inventario_id,
+    motivo_movimiento: data.motivo_movimiento ?? 'regularizacion por conteo fisico',
+    stock_actual_corregido: nuevoStockActual,
+    observaciones: data.observaciones ?? 'Ajuste de stock desde lote_cochinilla'
+  })
+
+  return await obtenerLoteCochinillaPorIdRepo(id)
 }
 
 

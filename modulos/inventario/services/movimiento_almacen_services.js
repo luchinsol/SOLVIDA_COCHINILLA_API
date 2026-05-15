@@ -5,7 +5,8 @@ import {
   deleteMovimientoAlmacen,
   obtenerTipoMovimientoAlmacenPorId,
   obtenerLotesPorItemInventarioId,
-  actualizarSaldoLotePorMovimiento
+  actualizarSaldoLotePorMovimiento,
+  actualizarStockInicialLotePorAjuste
 } from '../repositories/movimiento_almacen_repositories.js'
 import db from '../../../config/database.js'
 
@@ -58,6 +59,24 @@ const parseStockActualCorregido = (value) => {
 
   if (parsed < 0) {
     throw new Error('stock_actual_corregido no puede ser negativo')
+  }
+
+  return parsed
+}
+
+const parseStockInicialCorregido = (value) => {
+  if (value == null || value === '') {
+    throw new Error('stock_inicial_corregido es obligatorio')
+  }
+
+  const parsed = Number(value)
+
+  if (Number.isNaN(parsed)) {
+    throw new Error('stock_inicial_corregido debe ser numerico')
+  }
+
+  if (parsed < 0) {
+    throw new Error('stock_inicial_corregido no puede ser negativo')
   }
 
   return parsed
@@ -152,10 +171,28 @@ const normalizarAjusteMovimientoDatos = (movimientoDatos) => {
     ),
     motivo_movimiento: movimientoDatos.motivo_movimiento.trim(),
     fecha_hora: movimientoDatos.fecha_hora ?? new Date(),
-    stock_actual_corregido: parseStockActualCorregido(movimientoDatos.stock_actual_corregido),
+    stock_actual_corregido:
+      movimientoDatos.stock_actual_corregido === undefined ||
+      movimientoDatos.stock_actual_corregido === null ||
+      movimientoDatos.stock_actual_corregido === ''
+        ? null
+        : parseStockActualCorregido(movimientoDatos.stock_actual_corregido),
+    stock_inicial_corregido:
+      movimientoDatos.stock_inicial_corregido === undefined ||
+      movimientoDatos.stock_inicial_corregido === null ||
+      movimientoDatos.stock_inicial_corregido === ''
+        ? null
+        : parseStockInicialCorregido(movimientoDatos.stock_inicial_corregido),
     observaciones: movimientoDatos.observaciones ?? null
   }
 }
+
+const normalizarTextoClave = (value) =>
+  String(value ?? '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
 
 export const getMovimientosAlmacenService = async (filters = {}) => {
   const parsedFilters = {}
@@ -224,7 +261,8 @@ export const procesarMovimientoAlmacenService = async (movimientoDatos, t = db) 
     const lote = lotes[0]
     const delta = parseDelta(tipoMovimiento.delta)
     const stockActual = Number(lote.stock_actual ?? 0)
-    const nuevoStockActual = stockActual + (movimientoNormalizado.cantidad * delta)
+    const cantidadConSigno = movimientoNormalizado.cantidad * delta
+    const nuevoStockActual = stockActual + cantidadConSigno
 
     if (nuevoStockActual < 0) {
       throw new Error('El movimiento deja el stock_actual en negativo')
@@ -268,6 +306,7 @@ export const procesarMovimientoAlmacenService = async (movimientoDatos, t = db) 
     const movimientoCreado = await createMovimientoAlmacen(
       {
         ...movimientoFinal,
+        cantidad: cantidadConSigno,
         saldo: nuevoStockActual
       },
       tx
@@ -317,15 +356,53 @@ export const createAjusteMovimientoAlmacenService = async (movimientoDatos, t = 
     }
 
     const stockActualAnterior = Number(lote.stock_actual ?? 0)
-    const stockActualCorregido = movimientoNormalizado.stock_actual_corregido
-    const cantidad = stockActualCorregido - stockActualAnterior
+    const stockInicialActual = Number(lote.stock_inicial ?? 0)
+    const motivoNormalizado = normalizarTextoClave(movimientoNormalizado.motivo_movimiento)
+    let cantidad = 0
+    let saldo = stockActualAnterior
+    let loteActualizado
 
-    const loteActualizado = await actualizarSaldoLotePorMovimiento(
-      lote,
-      stockActualCorregido,
-      almacenActual,
-      tx
-    )
+    if (motivoNormalizado === 'regularizacion por conteo fisico') {
+      if (movimientoNormalizado.stock_actual_corregido == null) {
+        throw new Error('stock_actual_corregido es obligatorio')
+      }
+
+      if (movimientoNormalizado.stock_actual_corregido > stockInicialActual) {
+        throw new Error('stock_actual_corregido no puede ser mayor que stock_inicial')
+      }
+
+      cantidad = movimientoNormalizado.stock_actual_corregido - stockActualAnterior
+      saldo = movimientoNormalizado.stock_actual_corregido
+
+      loteActualizado = await actualizarSaldoLotePorMovimiento(
+        lote,
+        movimientoNormalizado.stock_actual_corregido,
+        almacenActual,
+        tx
+      )
+    } else if (motivoNormalizado === 'error de registro de stock inicial') {
+      const nuevoStockInicial =
+        movimientoNormalizado.stock_inicial_corregido ??
+        movimientoNormalizado.stock_actual_corregido
+
+      if (nuevoStockInicial == null) {
+        throw new Error('stock_inicial_corregido es obligatorio')
+      }
+
+      if (nuevoStockInicial < stockActualAnterior) {
+        throw new Error('stock_inicial_corregido no puede ser menor que stock_actual')
+      }
+
+      cantidad = 0
+      saldo = stockActualAnterior
+      loteActualizado = await actualizarStockInicialLotePorAjuste(
+        lote,
+        nuevoStockInicial,
+        tx
+      )
+    } else {
+      throw new Error('motivo_movimiento no es valido para ajuste')
+    }
 
     const movimientoCreado = await createMovimientoAlmacen(
       {
@@ -334,7 +411,7 @@ export const createAjusteMovimientoAlmacenService = async (movimientoDatos, t = 
         motivo_movimiento: movimientoNormalizado.motivo_movimiento,
         fecha_hora: movimientoNormalizado.fecha_hora,
         cantidad,
-        saldo: stockActualCorregido,
+        saldo,
         observaciones: movimientoNormalizado.observaciones,
         almacen_origen_id: almacenActual,
         almacen_destino_id: almacenActual,
@@ -346,7 +423,9 @@ export const createAjusteMovimientoAlmacenService = async (movimientoDatos, t = 
     return {
       ...movimientoCreado,
       lote_tabla: lote.lote_tabla,
+      stock_inicial_anterior: stockInicialActual,
       stock_actual_anterior: stockActualAnterior,
+      stock_inicial_resultante: loteActualizado.stock_inicial,
       stock_actual_resultante: loteActualizado.stock_actual,
       almacen_id_resultante: loteActualizado.almacen_id
     }
