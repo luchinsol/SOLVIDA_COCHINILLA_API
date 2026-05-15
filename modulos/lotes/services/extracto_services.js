@@ -10,6 +10,7 @@ import {
   actualizarCodigoItemInventarioRepo,
   crearItemInventarioRepo
 } from '../../inventario/repositories/item_inventario_repositories.js'
+import { createAjusteMovimientoAlmacenService } from '../../inventario/services/movimiento_almacen_services.js'
 import db from '../../../config/database.js'
 
 export const crearExtractoService = async (data) => {
@@ -143,7 +144,7 @@ export const actualizarEstadoLoteExtractoService = async (id, estadoLote) => {
   return await actualizarEstadoLoteExtractoRepo(extractoId, estadoLote.trim())
 }
 
-export const actualizarStockActualExtractoService = async (id, stockActual) => {
+export const actualizarStockActualExtractoService = async (id, stockActual, options = {}) => {
   const extractoId = Number(id)
 
   if (!Number.isInteger(extractoId) || extractoId <= 0) {
@@ -176,5 +177,13 @@ export const actualizarStockActualExtractoService = async (id, stockActual) => {
     throw new Error('stock_actual no puede ser mayor que stock_inicial')
   }
 
-  return await actualizarStockActualExtractoRepo(extractoId, nuevoStockActual)
+  await createAjusteMovimientoAlmacenService({
+    usuario_id: options.usuario_id ?? null,
+    item_inventario_id: extracto.item_inventario_id,
+    motivo_movimiento: options.motivo_movimiento ?? 'regularizacion por conteo fisico',
+    stock_actual_corregido: nuevoStockActual,
+    observaciones: options.observaciones ?? 'Ajuste de stock desde extracto'
+  })
+
+  return await obtenerExtractoPorIdRepo(extractoId)
 }

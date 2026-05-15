@@ -10,7 +10,7 @@ import {
 const movimientoAlmacenRoutes = express.Router()
 
 movimientoAlmacenRoutes.get('/', getMovimientosAlmacenController)
-movimientoAlmacenRoutes.post('/', createMovimientoAlmacenController)
+movimientoAlmacenRoutes.post('/entradas-salidas', createMovimientoAlmacenController)
 movimientoAlmacenRoutes.post('/ajuste', createAjusteMovimientoAlmacenController)
 movimientoAlmacenRoutes.put('/:id', updateMovimientoAlmacenController)
 movimientoAlmacenRoutes.delete('/:id', deleteMovimientoAlmacenController)

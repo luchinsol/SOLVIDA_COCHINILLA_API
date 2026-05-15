@@ -19,6 +19,7 @@ import {
   actualizarCodigoItemInventarioRepo,
   crearItemInventarioRepo
 } from '../../inventario/repositories/item_inventario_repositories.js'
+import { createAjusteMovimientoAlmacenService } from '../../inventario/services/movimiento_almacen_services.js'
 
 import db from '../../../config/database.js'
 
@@ -246,7 +247,7 @@ export const actualizarEstadoLoteCarminService = async (id, estadoLote) => {
   return await actualizarEstadoLoteCarminRepo(id, estadoLote.trim())
 }
 
-export const actualizarStockActualLoteCarminService = async (id, stockActual) => {
+export const actualizarStockActualLoteCarminService = async (id, stockActual, options = {}) => {
   const lote = await obtenerLoteCarminPorIdRepo(id)
 
   if (!lote) {
@@ -273,13 +274,15 @@ export const actualizarStockActualLoteCarminService = async (id, stockActual) =>
     throw new Error('stock_actual no puede ser mayor que stock_inicial')
   }
 
-  return await db.oneOrNone(
-    `UPDATE lotes.lote_carmin
-     SET stock_actual = $1
-     WHERE lote_carmin_id = $2
-     RETURNING *`,
-    [nuevoStockActual, id]
-  )
+  await createAjusteMovimientoAlmacenService({
+    usuario_id: options.usuario_id ?? null,
+    item_inventario_id: lote.item_inventario_id,
+    motivo_movimiento: options.motivo_movimiento ?? 'regularizacion por conteo fisico',
+    stock_actual_corregido: nuevoStockActual,
+    observaciones: options.observaciones ?? 'Ajuste de stock desde lote_carmin'
+  })
+
+  return await obtenerLoteCarminPorIdRepo(id)
 }
 
 /* ======================================================

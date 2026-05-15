@@ -28,6 +28,12 @@ const normalizeMovimientoAlmacenError = (error) => {
     error.message === 'stock_actual_corregido es obligatorio' ||
     error.message === 'stock_actual_corregido debe ser numerico' ||
     error.message === 'stock_actual_corregido no puede ser negativo' ||
+    error.message === 'stock_inicial_corregido es obligatorio' ||
+    error.message === 'stock_inicial_corregido debe ser numerico' ||
+    error.message === 'stock_inicial_corregido no puede ser negativo' ||
+    error.message === 'stock_actual_corregido no puede ser mayor que stock_inicial' ||
+    error.message === 'stock_inicial_corregido no puede ser menor que stock_actual' ||
+    error.message === 'motivo_movimiento no es valido para ajuste' ||
     error.message === 'almacen_origen_id debe ser un entero positivo' ||
     error.message === 'almacen_destino_id debe ser un entero positivo' ||
     error.message === 'almacen_destino_id no puede ser igual a almacen_origen_id' ||
