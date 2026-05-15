@@ -137,8 +137,11 @@ export const createInsumoService = async (insumoDatos) => {
     throw new Error('tipo_insumo_id es obligatorio');
   }
 
-  if (insumoDatos.costo_total === undefined || insumoDatos.costo_total === null) {
-    throw new Error('costo_total es obligatorio');
+  if (
+    insumoDatos.costo_total_inicial === undefined ||
+    insumoDatos.costo_total_inicial === null
+  ) {
+    throw new Error('costo_total_inicial es obligatorio');
   }
 
   if (insumoDatos.stock_inicial === undefined || insumoDatos.stock_inicial === null) {
@@ -171,13 +174,13 @@ export const createInsumoService = async (insumoDatos) => {
       ? Number(insumoDatos.stock_actual)
       : stockInicial;
 
-  const costoTotal = Number(insumoDatos.costo_total);
+  const costoTotalInicial = Number(insumoDatos.costo_total_inicial);
 
-  if (!Number.isFinite(costoTotal) || costoTotal < 0) {
-    throw new Error('costo_total debe ser un numero valido');
+  if (!Number.isFinite(costoTotalInicial) || costoTotalInicial < 0) {
+    throw new Error('costo_total_inicial debe ser un numero valido');
   }
 
-  const costoUnitario = costoTotal / stockInicial;
+  const costoUnitario = costoTotalInicial / stockInicial;
 
   const payload = {
     proveedor_id: insumoDatos.proveedor_id ?? null,
@@ -186,7 +189,8 @@ export const createInsumoService = async (insumoDatos) => {
     concentracion: insumoDatos.concentracion ?? null,
     costo_unitario: costoUnitario,
     stock_actual: 0,
-    costo_total: costoTotal,
+    costo_total_inicial: costoTotalInicial,
+    costo_total_actual: costoTotalInicial,
     stock_inicial: stockInicial,
     tipo_insumo_id: insumoDatos.tipo_insumo_id,
     estado_lote: 'disponible',

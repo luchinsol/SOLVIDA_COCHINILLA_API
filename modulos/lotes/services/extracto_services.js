@@ -46,7 +46,12 @@ export const crearExtractoService = async (data) => {
     throw new Error('stock_inicial es obligatorio')
   }
 
+  if (data.costo_total_inicial == null || data.costo_total_inicial === '') {
+    throw new Error('costo_total_inicial es obligatorio')
+  }
+
   const stockInicial = Number(data.stock_inicial)
+  const costoTotalInicial = Number(data.costo_total_inicial)
 
   if (Number.isNaN(stockInicial)) {
     throw new Error('stock_inicial debe ser numérico')
@@ -55,6 +60,12 @@ export const crearExtractoService = async (data) => {
   if (stockInicial < 0) {
     throw new Error('stock_inicial no puede ser negativo')
   }
+
+  if (Number.isNaN(costoTotalInicial) || costoTotalInicial < 0) {
+    throw new Error('costo_total_inicial debe ser numerico')
+  }
+
+  const costoUnitario = stockInicial > 0 ? costoTotalInicial / stockInicial : 0
 
   return await db.tx(async (t) => {
     const itemInventarioCreado = await crearItemInventarioRepo(
@@ -79,8 +90,12 @@ export const crearExtractoService = async (data) => {
       tipo_extracto: data.tipo_extracto.trim(),
       stock_inicial: stockInicial,
       stock_actual: stockInicial,
+      costo_total_inicial: costoTotalInicial,
+      costo_total_actual: costoTotalInicial,
+      costo_unitario: costoUnitario,
       estado_lote: 'disponible',
       observaciones: data.observaciones ?? null,
+      unidad_medida_stock: data.unidad_medida_stock ?? 'kg',
       unidad_medida_dinero: 'USD'
     }, t)
   })

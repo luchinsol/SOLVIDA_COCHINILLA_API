@@ -91,13 +91,13 @@ export const getResumenInsumosPorTipo = async (tipoInsumoId) => {
     SELECT
       ti.tipo_insumo_id,
       ti.nombre AS tipo,
-      COALESCE(SUM(li.costo_total), 0) AS costo_total,
+      COALESCE(SUM(li.costo_total_actual), 0) AS costo_total,
       COALESCE(SUM(li.stock_actual), 0) AS stock_actual,
       MAX(li.unidad_medida_cantidad) AS unidad_medida_cantidad,
       MAX(li.unidad_medida_moneda) AS unidad_medida_moneda,
       CASE
         WHEN COALESCE(SUM(li.stock_actual), 0) = 0 THEN 0
-        ELSE COALESCE(SUM(li.costo_total), 0) / SUM(li.stock_actual)
+        ELSE COALESCE(SUM(li.costo_total_actual), 0) / SUM(li.stock_actual)
       END AS costo_unitario
     FROM inventario.lote_insumo li
     INNER JOIN inventario.tipo_insumos ti
@@ -114,7 +114,7 @@ export const getResumenInsumosPorTipo = async (tipoInsumoId) => {
 //CREATE INSUMO
 export const createInsumo = async (insumoDatos, t = db) => {
   const query =
-    "INSERT INTO inventario.lote_insumo (proveedor_id, almacen_id, item_inventario_id, nombre, concentracion, costo_unitario, stock_actual, costo_total, stock_inicial, tipo_insumo_id, estado_lote, unidad_medida_cantidad, unidad_medida_moneda, unidad_medida_concentracion) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING *";
+    "INSERT INTO inventario.lote_insumo (proveedor_id, almacen_id, item_inventario_id, nombre, concentracion, costo_unitario, stock_actual, costo_total_inicial, costo_total_actual, stock_inicial, tipo_insumo_id, estado_lote, unidad_medida_cantidad, unidad_medida_moneda, unidad_medida_concentracion) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING *";
   const result = await t.one(query, [
     insumoDatos.proveedor_id,
     insumoDatos.almacen_id,
@@ -123,7 +123,8 @@ export const createInsumo = async (insumoDatos, t = db) => {
     insumoDatos.concentracion,
     insumoDatos.costo_unitario,
     insumoDatos.stock_actual,
-    insumoDatos.costo_total,
+    insumoDatos.costo_total_inicial,
+    insumoDatos.costo_total_actual,
     insumoDatos.stock_inicial,
     insumoDatos.tipo_insumo_id,
     insumoDatos.estado_lote,
@@ -140,10 +141,10 @@ export const actualizarEstadoLoteInsumo = async (id, estado_lote) => {
   return await db.oneOrNone(query, [estado_lote, id]);
 };
 
-export const actualizarStockActualInsumo = async (id, stock_actual, costo_total) => {
+export const actualizarStockActualInsumo = async (id, stock_actual, costo_total_actual) => {
   const query =
-    "UPDATE inventario.lote_insumo SET stock_actual = $1, costo_total = $2 WHERE lote_insumo_id = $3 RETURNING *";
-  return await db.oneOrNone(query, [stock_actual, costo_total, id]);
+    "UPDATE inventario.lote_insumo SET stock_actual = $1, costo_total_actual = $2 WHERE lote_insumo_id = $3 RETURNING *";
+  return await db.oneOrNone(query, [stock_actual, costo_total_actual, id]);
 };
 
 export const updateInsumo = async (insumo_id, insumoDatos) => {

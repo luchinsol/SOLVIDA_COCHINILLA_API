@@ -24,13 +24,13 @@ const normalizeLoteInsumoError = (error) => {
     error.message === 'almacen_id es obligatorio' ||
     error.message === 'nombre es obligatorio' ||
     error.message === 'tipo_insumo_id es obligatorio' ||
-    error.message === 'costo_total es obligatorio' ||
+    error.message === 'costo_total_inicial es obligatorio' ||
     error.message === 'stock_inicial es obligatorio' ||
     error.message === 'unidad_medida_cantidad es obligatoria' ||
     error.message === 'unidad_medida_moneda es obligatoria' ||
     error.message === 'unidad_medida_concentracion es obligatoria' ||
     error.message === 'stock_inicial debe ser mayor a 0' ||
-    error.message === 'costo_total debe ser un numero valido' ||
+    error.message === 'costo_total_inicial debe ser un numero valido' ||
     error.message === 'estado_lote es obligatorio' ||
     error.message === 'stock_actual es obligatorio' ||
     error.message === 'stock_actual debe ser un numero valido' ||

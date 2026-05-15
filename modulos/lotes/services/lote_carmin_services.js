@@ -94,6 +94,25 @@ const validarStockInicial = (data) => {
   }
 }
 
+const validarCostoTotalInicial = (data) => {
+  if (data.costo_total_inicial == null || data.costo_total_inicial === '') {
+    throw new Error('costo_total_inicial es obligatorio')
+  }
+}
+
+const normalizarDatosCosto = (data) => {
+  const stockInicial = Number(data.stock_inicial ?? 0)
+  const costoTotalInicial = Number(data.costo_total_inicial ?? 0)
+
+  return {
+    ...data,
+    costo_total_inicial: costoTotalInicial,
+    costo_total_actual: data.costo_total_actual ?? costoTotalInicial,
+    costo_unitario: stockInicial > 0 ? costoTotalInicial / stockInicial : 0,
+    unidad_medida_dinero: data.unidad_medida_dinero ?? 'USD'
+  }
+}
+
 const validarProcesoMoliendaId = (data) => {
   if (data.proceso_molienda_id == null || data.proceso_molienda_id === '') {
     throw new Error('proceso_molienda_id es obligatorio')
@@ -112,6 +131,7 @@ const validarProcesoMezcladoId = (data) => {
 export const crearLoteDesdeLaqueoService = async (data) => {
   validarAlmacenId(data)
   validarStockInicial(data)
+  validarCostoTotalInicial(data)
 
   return await db.tx(async (t) => {
     const itemInventarioCreado = await crearItemInventarioRepo(
@@ -129,7 +149,7 @@ export const crearLoteDesdeLaqueoService = async (data) => {
     )
 
     return await crearLoteCarminDesdeLaqueoRepo({
-      ...normalizarDatosStock(data),
+      ...normalizarDatosCosto(normalizarDatosStock(data)),
       item_inventario_id: itemInventario.item_inventario_id,
       nombre_lote: null,
       estado_lote: 'por_moler'
@@ -143,6 +163,7 @@ export const crearLoteDesdeLaqueoService = async (data) => {
 export const crearLoteDesdeMoliendaService = async (data) => {
   validarAlmacenId(data)
   validarStockInicial(data)
+  validarCostoTotalInicial(data)
   validarProcesoMoliendaId(data)
 
   return await db.tx(async (t) => {
@@ -161,7 +182,7 @@ export const crearLoteDesdeMoliendaService = async (data) => {
     )
 
     return await crearLoteCarminDesdeMoliendaRepo({
-      ...normalizarDatosStock(data),
+      ...normalizarDatosCosto(normalizarDatosStock(data)),
       item_inventario_id: itemInventario.item_inventario_id,
       nombre_lote: null,
       tipo_lote: data.tipo_lote ?? 'principal',
@@ -177,6 +198,7 @@ export const crearLoteDesdeMoliendaService = async (data) => {
 export const crearLoteDesdeMezcladoService = async (data) => {
   validarAlmacenId(data)
   validarStockInicial(data)
+  validarCostoTotalInicial(data)
   validarProcesoMezcladoId(data)
 
   return await db.tx(async (t) => {
@@ -195,7 +217,7 @@ export const crearLoteDesdeMezcladoService = async (data) => {
     )
 
     return await crearLoteCarminDesdeMezcladoRepo({
-      ...normalizarDatosStock(data),
+      ...normalizarDatosCosto(normalizarDatosStock(data)),
       item_inventario_id: itemInventario.item_inventario_id,
       nombre_lote: null,
       tipo_lote: data.tipo_lote ?? 'principal',

@@ -11,11 +11,15 @@ export const crearExtractoRepo = async (data, t = db) => {
        tipo_extracto,
        stock_inicial,
        stock_actual,
+       unidad_medida_stock,
+       costo_total_inicial,
+       costo_total_actual,
+       costo_unitario,
        estado_lote,
        observaciones,
        unidad_medida_dinero
      )
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
      RETURNING *`,
     [
       data.item_inventario_id,
@@ -25,6 +29,10 @@ export const crearExtractoRepo = async (data, t = db) => {
       data.tipo_extracto,
       data.stock_inicial,
       data.stock_actual,
+      data.unidad_medida_stock ?? 'kg',
+      data.costo_total_inicial ?? 0,
+      data.costo_total_actual ?? data.costo_total_inicial ?? 0,
+      data.costo_unitario ?? 0,
       data.estado_lote,
       data.observaciones ?? null,
       data.unidad_medida_dinero

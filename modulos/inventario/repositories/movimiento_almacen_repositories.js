@@ -19,11 +19,11 @@ export const obtenerLotesPorItemInventarioId = async (itemInventarioId, t = db) 
        li.stock_inicial,
        li.stock_actual,
        li.costo_unitario,
-       li.costo_total,
-       NULL::numeric AS costo_total_actual,
+       li.costo_total_inicial AS costo_total,
+       li.costo_total_actual,
        NULL::numeric AS costo_puntoac_dolares,
        NULL::numeric AS concentracion_ac_actual,
-       NULL::numeric AS costo_total_base
+       li.costo_total_inicial AS costo_total_base
      FROM inventario.lote_insumo li
      WHERE li.item_inventario_id = $1
 
@@ -54,12 +54,12 @@ export const obtenerLotesPorItemInventarioId = async (itemInventarioId, t = db) 
        lca.almacen_id,
        lca.stock_inicial,
        lca.stock_actual,
-       NULL::numeric AS costo_unitario,
+       lca.costo_unitario,
        NULL::numeric AS costo_total,
-       NULL::numeric AS costo_total_actual,
+       lca.costo_total_actual,
        NULL::numeric AS costo_puntoac_dolares,
        NULL::numeric AS concentracion_ac_actual,
-       NULL::numeric AS costo_total_base
+       lca.costo_total_actual AS costo_total_base
      FROM lotes.lote_carmin lca
      WHERE lca.item_inventario_id = $1
 
@@ -87,17 +87,17 @@ export const obtenerLotesPorItemInventarioId = async (itemInventarioId, t = db) 
 export const actualizarSaldoLotePorMovimiento = async (lote, nuevoStockActual, nuevoAlmacenId, t = db) => {
   if (lote.lote_tabla === 'lote_insumo') {
     const costoUnitario = Number(lote.costo_unitario ?? 0)
-    const nuevoCostoTotal = nuevoStockActual * costoUnitario
+    const nuevoCostoTotalActual = nuevoStockActual * costoUnitario
 
     return await t.one(
       `UPDATE inventario.lote_insumo
        SET
          stock_actual = $1,
-         costo_total = $2,
+         costo_total_actual = $2,
          almacen_id = $3
        WHERE lote_insumo_id = $4
        RETURNING *`,
-      [nuevoStockActual, nuevoCostoTotal, nuevoAlmacenId, lote.lote_id]
+      [nuevoStockActual, nuevoCostoTotalActual, nuevoAlmacenId, lote.lote_id]
     )
   }
 
@@ -125,14 +125,18 @@ export const actualizarSaldoLotePorMovimiento = async (lote, nuevoStockActual, n
   }
 
   if (lote.lote_tabla === 'lote_carmin') {
+    const costoUnitario = Number(lote.costo_unitario ?? 0)
+    const nuevoCostoTotalActual = nuevoStockActual * costoUnitario
+
     return await t.one(
       `UPDATE lotes.lote_carmin
        SET
          stock_actual = $1,
-         almacen_id = $2
-       WHERE lote_carmin_id = $3
+         costo_total_actual = $2,
+         almacen_id = $3
+       WHERE lote_carmin_id = $4
        RETURNING *`,
-      [nuevoStockActual, nuevoAlmacenId, lote.lote_id]
+      [nuevoStockActual, nuevoCostoTotalActual, nuevoAlmacenId, lote.lote_id]
     )
   }
 
@@ -157,57 +161,74 @@ export const actualizarSaldoLotePorMovimiento = async (lote, nuevoStockActual, n
 
 export const actualizarStockInicialLotePorAjuste = async (lote, nuevoStockInicial, t = db) => {
   if (lote.lote_tabla === 'lote_insumo') {
-    const costoTotal = Number(lote.costo_total ?? 0)
-    const nuevoCostoUnitario = nuevoStockInicial === 0 ? 0 : costoTotal / nuevoStockInicial
+    const costoTotalBase = Number(lote.costo_total_base ?? lote.costo_total ?? 0)
+    const nuevoCostoUnitario = nuevoStockInicial === 0 ? 0 : costoTotalBase / nuevoStockInicial
+    const stockActual = Number(lote.stock_actual ?? 0)
+    const nuevoCostoTotalActual = stockActual * nuevoCostoUnitario
 
     return await t.one(
       `UPDATE inventario.lote_insumo
        SET
          stock_inicial = $1,
-         costo_unitario = $2
-       WHERE lote_insumo_id = $3
+         costo_unitario = $2,
+         costo_total_actual = $3
+       WHERE lote_insumo_id = $4
        RETURNING *`,
-      [nuevoStockInicial, nuevoCostoUnitario, lote.lote_id]
+      [nuevoStockInicial, nuevoCostoUnitario, nuevoCostoTotalActual, lote.lote_id]
     )
   }
 
   if (lote.lote_tabla === 'lote_cochinilla') {
     const costoTotalBase = Number(lote.costo_total_base ?? lote.costo_total_actual ?? 0)
     const nuevoCostoUnitario = nuevoStockInicial === 0 ? 0 : costoTotalBase / nuevoStockInicial
+    const stockActual = Number(lote.stock_actual ?? 0)
+    const nuevoCostoTotalActual = stockActual * nuevoCostoUnitario
 
     return await t.one(
       `UPDATE lotes.lote_cochinilla
        SET
          stock_inicial = $1,
-         costo_unitario = $2
-       WHERE lote_cochinilla_id = $3
+         costo_unitario = $2,
+         costo_total_actual = $3
+       WHERE lote_cochinilla_id = $4
        RETURNING *`,
-      [nuevoStockInicial, nuevoCostoUnitario, lote.lote_id]
+      [nuevoStockInicial, nuevoCostoUnitario, nuevoCostoTotalActual, lote.lote_id]
     )
   }
 
   if (lote.lote_tabla === 'lote_carmin') {
+    const costoTotalBase = Number(lote.costo_total_base ?? lote.costo_total_actual ?? 0)
+    const nuevoCostoUnitario = nuevoStockInicial === 0 ? 0 : costoTotalBase / nuevoStockInicial
+    const stockActual = Number(lote.stock_actual ?? 0)
+    const nuevoCostoTotalActual = stockActual * nuevoCostoUnitario
+
     return await t.one(
       `UPDATE lotes.lote_carmin
-       SET stock_inicial = $1
-       WHERE lote_carmin_id = $2
+       SET
+         stock_inicial = $1,
+         costo_unitario = $2,
+         costo_total_actual = $3
+       WHERE lote_carmin_id = $4
        RETURNING *`,
-      [nuevoStockInicial, lote.lote_id]
+      [nuevoStockInicial, nuevoCostoUnitario, nuevoCostoTotalActual, lote.lote_id]
     )
   }
 
   if (lote.lote_tabla === 'extracto') {
     const costoTotalBase = Number(lote.costo_total_base ?? lote.costo_total_actual ?? 0)
     const nuevoCostoUnitario = nuevoStockInicial === 0 ? 0 : costoTotalBase / nuevoStockInicial
+    const stockActual = Number(lote.stock_actual ?? 0)
+    const nuevoCostoTotalActual = stockActual * nuevoCostoUnitario
 
     return await t.one(
       `UPDATE lotes.extracto
        SET
          stock_inicial = $1,
-         costo_unitario = $2
-       WHERE extracto_id = $3
+         costo_unitario = $2,
+         costo_total_actual = $3
+       WHERE extracto_id = $4
        RETURNING *`,
-      [nuevoStockInicial, nuevoCostoUnitario, lote.lote_id]
+      [nuevoStockInicial, nuevoCostoUnitario, nuevoCostoTotalActual, lote.lote_id]
     )
   }
 

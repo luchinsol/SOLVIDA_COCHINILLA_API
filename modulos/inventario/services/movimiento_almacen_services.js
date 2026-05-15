@@ -187,6 +187,29 @@ const normalizarAjusteMovimientoDatos = (movimientoDatos) => {
   }
 }
 
+const normalizarTrasladoMovimientoDatos = (movimientoDatos) => {
+  if (!movimientoDatos.motivo_movimiento || !movimientoDatos.motivo_movimiento.trim()) {
+    throw new Error('motivo_movimiento es obligatorio')
+  }
+
+  const almacenDestinoId = parsePositiveInteger(
+    movimientoDatos.almacen_destino_id,
+    'almacen_destino_id'
+  )
+
+  return {
+    usuario_id: parsePositiveInteger(movimientoDatos.usuario_id, 'usuario_id', false),
+    item_inventario_id: parsePositiveInteger(
+      movimientoDatos.item_inventario_id,
+      'item_inventario_id'
+    ),
+    motivo_movimiento: movimientoDatos.motivo_movimiento.trim(),
+    fecha_hora: movimientoDatos.fecha_hora ?? new Date(),
+    observaciones: movimientoDatos.observaciones ?? null,
+    almacen_destino_id: almacenDestinoId
+  }
+}
+
 const normalizarTextoClave = (value) =>
   String(value ?? '')
     .trim()
@@ -426,6 +449,74 @@ export const createAjusteMovimientoAlmacenService = async (movimientoDatos, t = 
       stock_inicial_anterior: stockInicialActual,
       stock_actual_anterior: stockActualAnterior,
       stock_inicial_resultante: loteActualizado.stock_inicial,
+      stock_actual_resultante: loteActualizado.stock_actual,
+      almacen_id_resultante: loteActualizado.almacen_id
+    }
+  })
+}
+
+export const createTrasladoMovimientoAlmacenService = async (movimientoDatos, t = db) => {
+  const movimientoNormalizado = normalizarTrasladoMovimientoDatos(movimientoDatos)
+
+  return await t.tx(async (tx) => {
+    const tipoMovimiento = await obtenerTipoMovimientoAlmacenPorId(4, tx)
+
+    if (!tipoMovimiento) {
+      throw new Error('tipo_movimientos_almacen_id no encontrado')
+    }
+
+    const lotes = await obtenerLotesPorItemInventarioId(
+      movimientoNormalizado.item_inventario_id,
+      tx
+    )
+
+    if (lotes.length === 0) {
+      throw new Error('No se encontro un lote asociado al item_inventario_id')
+    }
+
+    if (lotes.length > 1) {
+      throw new Error('El item_inventario_id esta asociado a mas de un lote')
+    }
+
+    const lote = lotes[0]
+    const almacenActual = lote.almacen_id == null ? null : Number(lote.almacen_id)
+
+    if (almacenActual == null) {
+      throw new Error('El lote no tiene almacen actual para registrar un traslado')
+    }
+
+    if (movimientoNormalizado.almacen_destino_id === almacenActual) {
+      throw new Error('almacen_destino_id no puede ser igual al almacen actual del lote')
+    }
+
+    const stockActual = Number(lote.stock_actual ?? 0)
+
+    const loteActualizado = await actualizarSaldoLotePorMovimiento(
+      lote,
+      stockActual,
+      movimientoNormalizado.almacen_destino_id,
+      tx
+    )
+
+    const movimientoCreado = await createMovimientoAlmacen(
+      {
+        usuario_id: movimientoNormalizado.usuario_id,
+        item_inventario_id: movimientoNormalizado.item_inventario_id,
+        motivo_movimiento: movimientoNormalizado.motivo_movimiento,
+        fecha_hora: movimientoNormalizado.fecha_hora,
+        cantidad: stockActual,
+        saldo: stockActual,
+        observaciones: movimientoNormalizado.observaciones,
+        almacen_origen_id: almacenActual,
+        almacen_destino_id: movimientoNormalizado.almacen_destino_id,
+        tipo_movimientos_almacen_id: Number(tipoMovimiento.tipo_mov_id ?? 4)
+      },
+      tx
+    )
+
+    return {
+      ...movimientoCreado,
+      lote_tabla: lote.lote_tabla,
       stock_actual_resultante: loteActualizado.stock_actual,
       almacen_id_resultante: loteActualizado.almacen_id
     }

@@ -114,7 +114,7 @@ export const crearLoteCochinillaPorCompraService = async (data) => {
 
   const stockInicial = Number(data.stock_inicial)
   const costoTotalInicial = Number(data.costo_total_inicial)
-  const costoKiloDolares = costoTotalInicial / stockInicial
+  const costoUnitario = costoTotalInicial / stockInicial
 
   const codigoLote = generarCodigoLoteCompra(data)
 
@@ -145,7 +145,7 @@ export const crearLoteCochinillaPorCompraService = async (data) => {
         estado_lote: 'por analizar',
         costo_total_inicial: costoTotalInicial,
         costo_total_actual: costoTotalInicial,
-        costo_kilo_dolares: costoKiloDolares,
+        costo_unitario: costoUnitario,
         unidad_medida_stock: 'kg',
         unidad_medida_dinero: 'UDS'
       },
@@ -181,6 +181,10 @@ export const crearLoteCochinillaPorMezclaService = async (data) => {
     throw new Error('stock_inicial no puede ser negativo')
   }
 
+  const stockInicial = Number(data.stock_inicial ?? 0)
+  const costoTotalInicial = Number(data.costo_total_inicial ?? 0)
+  const costoUnitario = stockInicial > 0 ? costoTotalInicial / stockInicial : 0
+
   const codigoLote = generarCodigoLoteMezcla(data)
 
   return await db.tx(async (t) => {
@@ -203,10 +207,11 @@ export const crearLoteCochinillaPorMezclaService = async (data) => {
         ...data,
         item_inventario_id: itemInventario.item_inventario_id,
         creado_por: data.creado_por ?? null,
-        stock_inicial: data.stock_inicial ?? 0,
-        stock_actual: data.stock_actual ?? data.stock_inicial ?? 0,
-        costo_total_inicial: data.costo_total_inicial ?? 0,
-        costo_total_actual: data.costo_total_actual ?? data.costo_total_inicial ?? 0,
+        stock_inicial: stockInicial,
+        stock_actual: data.stock_actual ?? stockInicial,
+        costo_total_inicial: costoTotalInicial,
+        costo_total_actual: data.costo_total_actual ?? costoTotalInicial,
+        costo_unitario: costoUnitario,
         codigo_lote: codigoLote,
         tipo_lote: 'preparado',
         estado_lote: 'por analizar',
