@@ -1,5 +1,6 @@
 import {
     listarRolesService,
+    listarRolesActivosService,
     createRoleService,
     updateRoleService,
     deleteRoleService
@@ -8,6 +9,15 @@ import {
 export const getRoles = async (req, res) => {
     try {
         const roles = await listarRolesService();
+        res.status(200).json(roles);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+export const getRolesActivos = async (req, res) => {
+    try {
+        const roles = await listarRolesActivosService();
         res.status(200).json(roles);
     } catch (error) {
         res.status(500).json({ error: error.message });

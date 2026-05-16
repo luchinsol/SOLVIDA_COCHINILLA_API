@@ -5,7 +5,9 @@
 import jwt from "jsonwebtoken";
 import {
   listarUsuariosService,
+  obtenerResumenUsuariosService,
   createUsuarioService,
+  patchDatosUsuarioService,
   updateUsuarioService,
   deleteUsuarioService,
   loginService,
@@ -16,7 +18,6 @@ import {
 export const login = async (req, res) => {
   const { nickname, password } = req.body;
   try {
-    console.log("en controller", nickname, password)
     const usuario = await loginService(nickname, password);
     if (!usuario) {
       return res.status(401).json({ error: "Credenciales inválidas" });
@@ -36,7 +37,6 @@ export const login = async (req, res) => {
   }
 };
 export const postUsuarios = async (req, res) => {
-  console.log("en controller", req.body)
   const { nombre, rol_id, correo, password, nickname, activo } = req.body;
   try {
     const usuario = {
@@ -56,11 +56,24 @@ export const postUsuarios = async (req, res) => {
 };
 // CONTROLLER USUARIOS
 
-export const getUsuarios = async (_, res) => {
+export const getUsuarios = async (req, res) => {
   try {
-    const usuarios = await listarUsuariosService();
+    const usuarios = await listarUsuariosService(req.query);
 
     res.json(usuarios);
+  } catch (error) {
+    if (error.message.includes('rol_id debe ser')) {
+      return res.status(400).json({ error: error.message });
+    }
+
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const getResumenUsuarios = async (_, res) => {
+  try {
+    const resumen = await obtenerResumenUsuariosService();
+    res.json(resumen);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -75,6 +88,29 @@ export const putUsuarios = async (req, res) => {
 
     res.json(putUsuario);
   } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const patchDatosUsuario = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const usuarioActualizado = await patchDatosUsuarioService(id, req.body);
+    res.json(usuarioActualizado);
+  } catch (error) {
+    if (
+      error.message.includes('id debe ser') ||
+      error.message.includes('rol_id debe ser') ||
+      error.message.includes('Debes enviar al menos un campo')
+    ) {
+      return res.status(400).json({ error: error.message });
+    }
+
+    if (error.message === 'Usuario no encontrado') {
+      return res.status(404).json({ error: error.message });
+    }
+
     res.status(500).json({ error: error.message });
   }
 };
