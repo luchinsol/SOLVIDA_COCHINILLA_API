@@ -5,6 +5,8 @@ import express from 'express'
 // Rutas de usuarios
 import usuarioRoutes from './modulos/usuarios/routes/usuario_routes.js'
 import rolesRoutes from './modulos/usuarios/routes/roles_routes.js'
+import permisosRoutes from './modulos/usuarios/routes/permisos_routes.js'
+import rolPermisoRoutes from './modulos/usuarios/routes/rol_permiso_routes.js'
 
 //Rutas de lotes
 import loteCarminRoutes from './modulos/lotes/routes/lote_carmin_route.js'
@@ -43,6 +45,8 @@ app.use(cors())
 
 // Ruta pública para login (no requiere token)
 app.use('/api/usuarios', usuarioRoutes)
+app.use('/api/permisos', permisosRoutes)
+app.use('/api/rol-permisos', rolPermisoRoutes)
 
 // Rutas protegidas por autenticación
 //app.use(verifyToken) // Middleware para verificar el token en todas las rutas siguientes

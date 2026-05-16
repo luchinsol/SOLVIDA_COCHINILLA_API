@@ -4,9 +4,30 @@ import db from '../../../config/database.js'
 export const listarRolesRepo = async () => {
 
   const result = await db.query(
-    'SELECT * FROM seguridad.rol'
+    `SELECT
+       rol_id::int AS rol_id,
+       nombre,
+       descripcion,
+       activo,
+       creado_en
+     FROM seguridad.rol
+     ORDER BY rol_id ASC`
   )
-  console.log("..en repository",result)
+  return result
+}
+
+export const listarRolesActivosRepo = async () => {
+  const result = await db.query(
+    `SELECT
+       rol_id::int AS rol_id,
+       nombre,
+       descripcion,
+       activo,
+       creado_en
+     FROM seguridad.rol
+     WHERE activo = true
+     ORDER BY rol_id ASC`
+  )
   return result
 }
 

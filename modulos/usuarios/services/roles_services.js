@@ -1,7 +1,18 @@
-import {listarRolesRepo,crearRolesRepo,actualizarRolesRepo,eliminarRolesRepo}  from '../repositories/roles_repositories.js';
+import {
+  listarRolesRepo,
+  listarRolesActivosRepo,
+  crearRolesRepo,
+  actualizarRolesRepo,
+  eliminarRolesRepo
+} from '../repositories/roles_repositories.js';
 
 export const listarRolesService = async () => {
   const roles = await listarRolesRepo();
+  return roles;
+}
+
+export const listarRolesActivosService = async () => {
+  const roles = await listarRolesActivosRepo();
   return roles;
 }
 
