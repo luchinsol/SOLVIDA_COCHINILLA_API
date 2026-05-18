@@ -73,19 +73,64 @@ export const obtenerResumenUsuariosRepo = async () => {
   );
 };
 
+export const existeUsuarioPorCorreoRepo = async (correo) => {
+  return await db.oneOrNone(
+    `SELECT id
+     FROM seguridad.usuario
+     WHERE LOWER(correo) = LOWER($1)`,
+    [correo],
+  );
+};
+
+export const existeUsuarioPorNicknameRepo = async (nickname) => {
+  return await db.oneOrNone(
+    `SELECT id
+     FROM seguridad.usuario
+     WHERE LOWER(nickname) = LOWER($1)`,
+    [nickname],
+  );
+};
+
 export const crearUsuarioRepo = async (usuario) => {
   const result = await db.one(
-    "INSERT INTO seguridad.usuario (rol_id, nombre,correo, password,activo,nickname) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
+    `INSERT INTO seguridad.usuario
+     (rol_id, nombres, apellidos, correo, password, estado, nickname, dni, departamento)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+     RETURNING id`,
     [
       usuario.rol_id,
-      usuario.nombre,
+      usuario.nombres,
+      usuario.apellidos,
       usuario.correo,
       usuario.password,
-      usuario.activo,
+      usuario.estado,
       usuario.nickname,
+      usuario.dni,
+      usuario.departamento,
     ],
   );
-  return result;
+
+  return await db.one(
+    `SELECT
+       u.id::int AS id,
+       u.nombres,
+       u.apellidos,
+       u.correo,
+       u.rol_id::int AS rol_id,
+       r.nombre AS rol_nombre,
+       u.dni,
+       u.departamento,
+       CASE
+         WHEN u.estado = true THEN 'Activo'
+         ELSE 'Bloqueado'
+       END AS estado,
+       u.ultimo_acceso
+     FROM seguridad.usuario u
+     LEFT JOIN seguridad.rol r
+       ON u.rol_id = r.rol_id
+     WHERE u.id = $1`,
+    [result.id],
+  );
 };
 
 export const actualizarUsuarioRepo = async (id, usuario) => {

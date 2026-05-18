@@ -4,7 +4,7 @@ import {
     actualizarProveedorService,
     eliminarProveedorService,
     actualizarActivoProveedorService,
-    actualizarTipoProveedorService
+    actualizarNombreItemProveeService
 } from '../services/proveedor_services.js';
 import { handleControllerError } from '../../../utils/handle_controller_error.js';
 
@@ -15,9 +15,9 @@ const normalizeProveedorError = (error) => {
 
     if (
         error.message === 'nombre_razon_social es obligatorio' ||
-        error.message === 'tipo_proveedor es obligatorio' ||
+        error.message === 'nombre_item_provee es obligatorio' ||
         error.message === 'Debe enviar el valor de activo' ||
-        error.message === 'Debe enviar el tipo_proveedor'
+        error.message === 'Debe enviar el nombre_item_provee'
     ) {
         error.name = 'ValidationError';
     }
@@ -67,11 +67,11 @@ export const actualizarActivoProveedorController = async (req, res) => {
     }
 };
 
-export const actualizarTipoProveedorController = async (req, res) => {
+export const actualizarNombreItemProveeController = async (req, res) => {
     try {
         const id = req.params.id;
-        const { tipo_proveedor } = req.body;
-        const proveedorActualizado = await actualizarTipoProveedorService(id, tipo_proveedor);
+        const { nombre_item_provee } = req.body;
+        const proveedorActualizado = await actualizarNombreItemProveeService(id, nombre_item_provee);
         res.json(proveedorActualizado);
     } catch (error) {
         handleControllerError(res, normalizeProveedorError(error));

@@ -1,4 +1,4 @@
-import { listarPermisosPorRolService } from '../services/rol_permiso_services.js'
+import { listarPermisosPorRolService, crearRolPermisoService } from '../services/rol_permiso_services.js'
 
 export const getPermisosPorRol = async (req, res) => {
   try {
@@ -9,6 +9,24 @@ export const getPermisosPorRol = async (req, res) => {
     if (
       error.message === 'rol_id es obligatorio' ||
       error.message === 'rol_id debe ser un entero positivo'
+    ) {
+      return res.status(400).json({ error: error.message })
+    }
+
+    res.status(500).json({ error: error.message })
+  }
+}
+
+export const postRolPermiso = async (req, res) => {
+  try {
+    const rolPermiso = await crearRolPermisoService(req.body)
+    res.status(201).json(rolPermiso)
+  } catch (error) {
+    if (
+      error.message === 'rol_id es obligatorio' ||
+      error.message === 'permiso_id es obligatorio' ||
+      error.message === 'rol_id debe ser un entero positivo' ||
+      error.message === 'permiso_id debe ser un entero positivo'
     ) {
       return res.status(400).json({ error: error.message })
     }

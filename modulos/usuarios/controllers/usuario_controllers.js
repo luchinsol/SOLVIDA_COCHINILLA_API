@@ -26,6 +26,7 @@ export const login = async (req, res) => {
       {
         id: usuario.id,
         nickname: usuario.nickname,
+        rol_id: usuario.rol_id,
       },
       process.env.JWT_SECRET,
       { expiresIn: "1h" },
@@ -37,20 +38,39 @@ export const login = async (req, res) => {
   }
 };
 export const postUsuarios = async (req, res) => {
-  const { nombre, rol_id, correo, password, nickname, activo } = req.body;
+  const { nombres, apellidos, rol_id, correo, nickname, dni, departamento } = req.body;
   try {
     const usuario = {
-      nombre: nombre ?? null,
+      nombres: nombres ?? null,
+      apellidos: apellidos ?? null,
       rol_id: rol_id ?? null,
       correo: correo ?? null,
-      password: password ?? null,
+      password: dni !== undefined && dni !== null ? String(dni).trim() : null,
       nickname: nickname ?? null,
-      activo: activo ?? true,
+      dni: dni ?? null,
+      departamento: departamento ?? null,
+      estado: true,
     };
     const postUsuario = await createUsuarioService(usuario);
 
     res.status(201).json(postUsuario);
   } catch (error) {
+    if (
+      error.message === 'nombres es obligatorio' ||
+      error.message === 'apellidos es obligatorio' ||
+      error.message === 'rol_id es obligatorio' ||
+      error.message === 'correo es obligatorio' ||
+      error.message === 'nickname es obligatorio' ||
+      error.message === 'dni es obligatorio' ||
+      error.message === 'departamento es obligatorio' ||
+      error.message === 'rol_id debe ser un entero positivo' ||
+      error.message === 'dni debe ser un numero valido' ||
+      error.message === 'correo ya registrado' ||
+      error.message === 'nickname ya registrado'
+    ) {
+      return res.status(400).json({ error: error.message });
+    }
+
     res.status(500).json({ error: error.message });
   }
 };

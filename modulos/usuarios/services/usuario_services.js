@@ -6,6 +6,8 @@ import {
   login,
   listarUsuariosRepo,
   obtenerResumenUsuariosRepo,
+  existeUsuarioPorCorreoRepo,
+  existeUsuarioPorNicknameRepo,
   crearUsuarioRepo,
   actualizarDatosUsuarioRepo,
   actualizarUsuarioRepo,
@@ -68,7 +70,69 @@ export const obtenerResumenUsuariosService = async () => {
 }
 
 export const createUsuarioService = async (usuario) => {
-  const newUsuario = await crearUsuarioRepo(usuario);
+  if (!usuario.nombres || !String(usuario.nombres).trim()) {
+    throw new Error('nombres es obligatorio')
+  }
+
+  if (!usuario.apellidos || !String(usuario.apellidos).trim()) {
+    throw new Error('apellidos es obligatorio')
+  }
+
+  if (usuario.rol_id === undefined || usuario.rol_id === null || usuario.rol_id === '') {
+    throw new Error('rol_id es obligatorio')
+  }
+
+  if (!usuario.correo || !String(usuario.correo).trim()) {
+    throw new Error('correo es obligatorio')
+  }
+
+  if (!usuario.nickname || !String(usuario.nickname).trim()) {
+    throw new Error('nickname es obligatorio')
+  }
+
+  if (usuario.dni === undefined || usuario.dni === null || usuario.dni === '') {
+    throw new Error('dni es obligatorio')
+  }
+
+  if (!usuario.departamento || !String(usuario.departamento).trim()) {
+    throw new Error('departamento es obligatorio')
+  }
+
+  const parsedRolId = Number(usuario.rol_id)
+  const parsedDni = Number(usuario.dni)
+
+  if (!Number.isInteger(parsedRolId) || parsedRolId <= 0) {
+    throw new Error('rol_id debe ser un entero positivo')
+  }
+
+  if (!Number.isFinite(parsedDni) || parsedDni <= 0) {
+    throw new Error('dni debe ser un numero valido')
+  }
+
+  const correo = String(usuario.correo).trim()
+  const nickname = String(usuario.nickname).trim()
+
+  const usuarioPorCorreo = await existeUsuarioPorCorreoRepo(correo)
+  if (usuarioPorCorreo) {
+    throw new Error('correo ya registrado')
+  }
+
+  const usuarioPorNickname = await existeUsuarioPorNicknameRepo(nickname)
+  if (usuarioPorNickname) {
+    throw new Error('nickname ya registrado')
+  }
+
+  const newUsuario = await crearUsuarioRepo({
+    nombres: String(usuario.nombres).trim(),
+    apellidos: String(usuario.apellidos).trim(),
+    rol_id: parsedRolId,
+    correo,
+    password: String(usuario.password ?? parsedDni).trim(),
+    nickname,
+    dni: parsedDni,
+    departamento: String(usuario.departamento).trim(),
+    estado: usuario.estado ?? true
+  });
   return newUsuario;
 }
 
