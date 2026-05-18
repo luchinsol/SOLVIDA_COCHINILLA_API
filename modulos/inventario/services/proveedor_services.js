@@ -4,7 +4,7 @@ import {
     updateProveedor,
     deleteProveedor,
     actualizarActivoProveedor,
-    actualizarTipoProveedor
+    actualizarNombreItemProvee
 } from '../repositories/proveedor_repositories.js';
 
 export const obtenerProveedoresService = async (nombreItemProvee) => {
@@ -25,15 +25,15 @@ export const crearProveedorService = async (proveedorDatos) => {
         throw error;
     }
 
-    if (!proveedorDatos.tipo_proveedor) {
-        const error = new Error('tipo_proveedor es obligatorio');
+    if (!proveedorDatos.nombre_item_provee) {
+        const error = new Error('nombre_item_provee es obligatorio');
         error.statusCode = 400;
         throw error;
     }
 
     const payload = {
         nombre_razon_social: proveedorDatos.nombre_razon_social,
-        tipo_proveedor: proveedorDatos.tipo_proveedor,
+        nombre_item_provee: proveedorDatos.nombre_item_provee,
         telefono: proveedorDatos.telefono ?? null,
         correo: proveedorDatos.correo ?? null,
         direccion: proveedorDatos.direccion ?? null,
@@ -62,12 +62,12 @@ export const actualizarActivoProveedorService = async (id, activo) => {
     return proveedorActualizado;
 };
 
-export const actualizarTipoProveedorService = async (id, tipo_proveedor) => {
-    if (!tipo_proveedor) {
-        throw new Error('Debe enviar el tipo_proveedor');
+export const actualizarNombreItemProveeService = async (id, nombre_item_provee) => {
+    if (!nombre_item_provee) {
+        throw new Error('Debe enviar el nombre_item_provee');
     }
 
-    const proveedorActualizado = await actualizarTipoProveedor(id, tipo_proveedor);
+    const proveedorActualizado = await actualizarNombreItemProvee(id, nombre_item_provee);
 
     if (!proveedorActualizado) {
         throw new Error('Proveedor no encontrado');

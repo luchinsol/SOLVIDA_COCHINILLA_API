@@ -19,12 +19,12 @@ export const getProveedores = async (nombresItemProvee = []) => {
 export const createProveedor = async (proveedorDatos) => {
     const result = await db.one(
         `INSERT INTO inventario.proveedor
-        (nombre_razon_social, tipo_proveedor, telefono, correo, direccion, activo, ruc)
+        (nombre_razon_social, nombre_item_provee, telefono, correo, direccion, activo, ruc)
         VALUES ($1, $2, $3, $4, $5, $6, $7)
         RETURNING *`,
         [
             proveedorDatos.nombre_razon_social,
-            proveedorDatos.tipo_proveedor,
+            proveedorDatos.nombre_item_provee,
             proveedorDatos.telefono,
             proveedorDatos.correo,
             proveedorDatos.direccion,
@@ -38,12 +38,12 @@ export const createProveedor = async (proveedorDatos) => {
 export const updateProveedor = async (id, proveedorDatos) => {
     const resultado = await db.one(
         `UPDATE inventario.proveedor
-        SET nombre_razon_social = $1, tipo_proveedor = $2, telefono = $3, correo = $4, direccion = $5, activo = $6, ruc = $7
+        SET nombre_razon_social = $1, nombre_item_provee = $2, telefono = $3, correo = $4, direccion = $5, activo = $6, ruc = $7
         WHERE proveedor_id = $8
         RETURNING *`,
         [
             proveedorDatos.nombre_razon_social,
-            proveedorDatos.tipo_proveedor,
+            proveedorDatos.nombre_item_provee,
             proveedorDatos.telefono,
             proveedorDatos.correo,
             proveedorDatos.direccion,
@@ -65,13 +65,13 @@ export const actualizarActivoProveedor = async (id, activo) => {
     );
 }
 
-export const actualizarTipoProveedor = async (id, tipo_proveedor) => {
+export const actualizarNombreItemProvee = async (id, nombre_item_provee) => {
     return await db.oneOrNone(
         `UPDATE inventario.proveedor
-        SET tipo_proveedor = $1
+        SET nombre_item_provee = $1
         WHERE proveedor_id = $2
         RETURNING *`,
-        [tipo_proveedor, id]
+        [nombre_item_provee, id]
     );
 }
 
