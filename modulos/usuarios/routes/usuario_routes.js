@@ -1,15 +1,20 @@
 import express from 'express'
-import { login,getUsuarios,getResumenUsuarios,putUsuarios,patchDatosUsuario,deleteUsuarios,postUsuarios} from '../controllers/usuario_controllers.js'
-import { verifyToken, requirePermission } from '../../../middlewares/authmiddleware.js'
+import { getUsuarios,getResumenUsuarios,putUsuarios,patchDatosUsuario,deleteUsuarios,postUsuarios} from '../controllers/usuario_controllers.js'
+import { requirePermission } from '../../../middlewares/authmiddleware.js'
 
 const usuarioRoutes = express.Router()
+const PERMISOS_USUARIO = {
+    ver: 'usuario.ver',
+    crear: 'usuario.crear',
+    editar: 'usuario.editar',
+    eliminar: 'usuario.eliminar'
+}
 
-usuarioRoutes.post('/login', login)
-usuarioRoutes.get('/resumen-estados', verifyToken, requirePermission('usuario.ver'), getResumenUsuarios)
-usuarioRoutes.get('/', verifyToken, requirePermission('usuario.ver'), getUsuarios)
-usuarioRoutes.patch('/:id/datos', verifyToken, requirePermission('usuario.editar'), patchDatosUsuario)
-usuarioRoutes.put('/:id', verifyToken, requirePermission('usuario.editar'), putUsuarios)
-usuarioRoutes.post('/', verifyToken, requirePermission('usuario.crear'), postUsuarios)
-usuarioRoutes.delete('/:id', verifyToken, requirePermission('usuario.eliminar'), deleteUsuarios)
+usuarioRoutes.get('/resumen-estados', requirePermission(PERMISOS_USUARIO.ver), getResumenUsuarios)
+usuarioRoutes.get('/', requirePermission(PERMISOS_USUARIO.ver), getUsuarios)
+usuarioRoutes.patch('/:id/datos', requirePermission(PERMISOS_USUARIO.editar), patchDatosUsuario)
+usuarioRoutes.put('/:id', requirePermission(PERMISOS_USUARIO.editar), putUsuarios)
+usuarioRoutes.post('/', requirePermission(PERMISOS_USUARIO.crear), postUsuarios)
+usuarioRoutes.delete('/:id', requirePermission(PERMISOS_USUARIO.eliminar), deleteUsuarios)
 
 export default usuarioRoutes
