@@ -66,7 +66,7 @@ export const getInsumosController = async (req, res) => {
       almacen_id,
       proveedor_id,
       tipo_insumo_id
-    });
+    }, req.userPermissions);
     res.json(insumos);
   } catch (error) {
     handleControllerError(res, normalizeLoteInsumoError(error));
@@ -76,7 +76,7 @@ export const getInsumosController = async (req, res) => {
 export const getInsumoByIdController = async (req, res) => {
   try {
     const { id } = req.params;
-    const insumo = await getInsumoByIdService(id);
+    const insumo = await getInsumoByIdService(id, req.userPermissions);
     res.json(insumo);
   } catch (error) {
     handleControllerError(res, normalizeLoteInsumoError(error));

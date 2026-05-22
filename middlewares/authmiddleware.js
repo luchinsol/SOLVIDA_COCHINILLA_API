@@ -1,5 +1,8 @@
 import jwt from "jsonwebtoken";
-import { verificarPermisoPorRolService } from "../modulos/usuarios/services/rol_permiso_services.js";
+import {
+  listarPermisosPorRolService,
+  verificarPermisoPorRolService
+} from "../modulos/usuarios/services/rol_permiso_services.js";
 
 export const verifyToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
@@ -41,6 +44,40 @@ export const requirePermission = (permisoCodigo) => {
         error.message === 'rol_id del token no es valido' ||
         error.message === 'permiso.codigo es obligatorio'
       ) {
+        return res.status(403).json({ error: error.message });
+      }
+
+      return res.status(500).json({ error: error.message });
+    }
+  };
+};
+
+export const requireAnyPermission = (permisosCodigo = []) => {
+  return async (req, res, next) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ error: "Usuario no autenticado" });
+      }
+
+      if (!Array.isArray(permisosCodigo) || permisosCodigo.length === 0) {
+        return res.status(500).json({ error: "No se definieron permisos para la ruta" });
+      }
+
+      const permisosDelRol = await listarPermisosPorRolService(req.user.rol_id);
+      const codigosPermisos = permisosDelRol.map((permiso) => permiso.permiso_codigo);
+      req.userPermissions = codigosPermisos;
+
+      const hasAnyPermission = permisosCodigo.some((permisoCodigo) =>
+        codigosPermisos.includes(permisoCodigo)
+      );
+
+      if (!hasAnyPermission) {
+        return res.status(403).json({ error: "No tienes permisos para esta acción" });
+      }
+
+      next();
+    } catch (error) {
+      if (error.message === 'rol_id del token no es valido') {
         return res.status(403).json({ error: error.message });
       }
 
