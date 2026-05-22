@@ -5,6 +5,7 @@ import express from 'express'
 // Rutas de usuarios
 import usuarioRoutes from './modulos/usuarios/routes/usuario_routes.js'
 import rolesRoutes from './modulos/usuarios/routes/roles_routes.js'
+import modulosRoutes from './modulos/usuarios/routes/modulo_routes.js'
 import permisosRoutes from './modulos/usuarios/routes/permisos_routes.js'
 import rolPermisoRoutes from './modulos/usuarios/routes/rol_permiso_routes.js'
 import { login } from './modulos/usuarios/controllers/usuario_controllers.js'
@@ -52,6 +53,7 @@ app.use(verifyToken) // Middleware para verificar el token en todas las rutas si
 
 app.use('/api/almacen',almacenRoutes)
 app.use('/api/roles', rolesRoutes)
+app.use('/api/modulos', modulosRoutes)
 app.use('/api/usuarios', usuarioRoutes)
 app.use('/api/permisos', permisosRoutes)
 app.use('/api/rol-permisos', rolPermisoRoutes)

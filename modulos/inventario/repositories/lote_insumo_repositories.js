@@ -147,24 +147,6 @@ export const actualizarStockActualInsumo = async (id, stock_actual, costo_total_
   return await db.oneOrNone(query, [stock_actual, costo_total_actual, id]);
 };
 
-export const updateInsumo = async (insumo_id, insumoDatos) => {
-  const query =
-    "UPDATE inventario.insumo SET proveedor_id = $1, almacen_id = $2, nombre = $3, tipo_insumo = $4, unidad_medida = $5, concentracion = $6, costo_unitario = $7, clasificacion_controlada = $8, stock_actual = $9 WHERE insumo_id = $10";
-  const result = await db.query(query, [
-    insumoDatos.proveedor_id,
-    insumoDatos.almacen_id,
-    insumoDatos.nombre,
-    insumoDatos.tipo_insumo,
-    insumoDatos.unidad_medida,
-    insumoDatos.concentracion,
-    insumoDatos.costo_unitario,
-    insumoDatos.clasificacion_controlada,
-    insumoDatos.stock_actual,
-    insumo_id,
-  ]);
-  return result;
-};
-
 export const deleteInsumo = async (insumo_id) => {
   const query =
     "UPDATE inventario.insumo SET activo = false WHERE insumo_id = $1";
