@@ -7,6 +7,7 @@ import usuarioRoutes from './modulos/usuarios/routes/usuario_routes.js'
 import rolesRoutes from './modulos/usuarios/routes/roles_routes.js'
 import permisosRoutes from './modulos/usuarios/routes/permisos_routes.js'
 import rolPermisoRoutes from './modulos/usuarios/routes/rol_permiso_routes.js'
+import { login } from './modulos/usuarios/controllers/usuario_controllers.js'
 
 //Rutas de lotes
 import loteCarminRoutes from './modulos/lotes/routes/lote_carmin_route.js'
@@ -44,15 +45,16 @@ app.use(morgan('dev'))
 app.use(cors())
 
 // Ruta pública para login (no requiere token)
-app.use('/api/usuarios', usuarioRoutes)
-app.use('/api/permisos', permisosRoutes)
-app.use('/api/rol-permisos', rolPermisoRoutes)
+app.post('/api/usuarios/login', login)
 
 // Rutas protegidas por autenticación
-//app.use(verifyToken) // Middleware para verificar el token en todas las rutas siguientes
+app.use(verifyToken) // Middleware para verificar el token en todas las rutas siguientes
 
 app.use('/api/almacen',almacenRoutes)
 app.use('/api/roles', rolesRoutes)
+app.use('/api/usuarios', usuarioRoutes)
+app.use('/api/permisos', permisosRoutes)
+app.use('/api/rol-permisos', rolPermisoRoutes)
 app.use('/api/lotes-carmin', loteCarminRoutes)
 app.use('/api/composicion-carmin', composicionCarminRoutes)
 app.use('/api/proceso-mezclado', procesoMezcladoRoutes)
