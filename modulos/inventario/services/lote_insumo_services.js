@@ -21,6 +21,45 @@ import PDFDocument from 'pdfkit';
 import ExcelJS from 'exceljs';
 import db from '../../../config/database.js';
 
+const CAMPOS_NO_VALORADOS = [
+  'lote_insumo_id',
+  'proveedor_id',
+  'almacen_id',
+  'item_inventario_id',
+  'nombre',
+  'concentracion',
+  'stock_actual',
+  'stock_inicial',
+  'tipo_insumo_id',
+  'estado_lote',
+  'unidad_medida_cantidad',
+  'unidad_medida_concentracion',
+  'codigo_item',
+  'proveedor_nombre',
+  'almacen_nombre',
+  'tipo_insumo_nombre'
+];
+
+const CAMPOS_VALORADOS = [
+  ...CAMPOS_NO_VALORADOS,
+  'costo_unitario',
+  'costo_total_inicial',
+  'costo_total_actual',
+  'unidad_medida_moneda'
+];
+
+const construirVistaInsumo = (registro, puedeVerValorado) => {
+  const camposPermitidos = puedeVerValorado ? CAMPOS_VALORADOS : CAMPOS_NO_VALORADOS;
+
+  return camposPermitidos.reduce((resultado, campo) => {
+    resultado[campo] = registro[campo] ?? null;
+    return resultado;
+  }, {});
+};
+
+const puedeVerInsumosValorados = (userPermissions = []) =>
+  Array.isArray(userPermissions) &&
+  userPermissions.includes('lote_insumos.ver.valorado');
 
 export const getInsumoPdfServicePDF = async () => {
  const datos = await getInsumoPdf();
@@ -52,7 +91,7 @@ export const getInsumoPdfServicePDF = async () => {
 };
 
 
-export const getInsumosService = async (filters = {}) => {
+export const getInsumosService = async (filters = {}, userPermissions = []) => {
   const parsedFilters = {};
 
   if (filters.almacen_id !== undefined) {
@@ -85,10 +124,13 @@ export const getInsumosService = async (filters = {}) => {
     parsedFilters.tipo_insumo_id = tipoInsumoId;
   }
 
-  return await getInsumos(parsedFilters);
+  const insumos = await getInsumos(parsedFilters);
+  const puedeVerValorado = puedeVerInsumosValorados(userPermissions);
+
+  return insumos.map((insumo) => construirVistaInsumo(insumo, puedeVerValorado));
 };
 
-export const getInsumoByIdService = async (id) => {
+export const getInsumoByIdService = async (id, userPermissions = []) => {
   const loteInsumoId = Number(id);
 
   if (!Number.isInteger(loteInsumoId) || loteInsumoId <= 0) {
@@ -101,7 +143,7 @@ export const getInsumoByIdService = async (id) => {
     throw new Error('Lote de insumo no encontrado');
   }
 
-  return loteInsumo;
+  return construirVistaInsumo(loteInsumo, puedeVerInsumosValorados(userPermissions));
 };
 
 export const getResumenInsumosPorTipoService = async (tipoInsumoId) => {
