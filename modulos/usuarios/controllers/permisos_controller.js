@@ -15,7 +15,9 @@ export const postPermisos = async (req, res) => {
     res.status(201).json(permiso)
   } catch (error) {
     if (
-      error.message === 'modulo es obligatorio' ||
+      error.message === 'modulo_id es obligatorio' ||
+      error.message === 'modulo_id debe ser un entero positivo' ||
+      error.message === 'Modulo no encontrado' ||
       error.message === 'recurso es obligatorio' ||
       error.message === 'accion es obligatoria'
     ) {

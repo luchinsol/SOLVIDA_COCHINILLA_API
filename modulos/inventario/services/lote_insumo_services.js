@@ -3,7 +3,6 @@ import {
   getInsumoById,
   getResumenInsumosPorTipo,
   createInsumo,
-  updateInsumo,
   deleteInsumo,
   getInsumoPdf,
   getCostoUnitario,
@@ -279,10 +278,6 @@ export const createInsumoService = async (insumoDatos) => {
 
     return await getInsumoById(loteCreado.lote_insumo_id);
   });
-};
-
-export const updateInsumoService = async (insumo_id, insumoDatos) => {
-  return await updateInsumo(insumo_id, insumoDatos);
 };
 
 export const actualizarEstadoLoteInsumoService = async (id, estado_lote) => {

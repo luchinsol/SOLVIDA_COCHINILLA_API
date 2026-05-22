@@ -6,7 +6,6 @@ import {
   getInsumoByIdController,
   getResumenInsumosPorTipoController,
   createInsumoController,
-  updateInsumoController,
   deleteInsumoController,
   actualizarEstadoLoteInsumoController,
   actualizarStockActualInsumoController
@@ -16,7 +15,8 @@ const insumoRoutes = express.Router()
 const PERMISOS_LOTE_INSUMOS = {
   crearValorado: 'lote_insumos.crear.valorado',
   verNoValorado: 'lote_insumos.ver.no_valorado',
-  verValorado: 'lote_insumos.ver.valorado'
+  verValorado: 'lote_insumos.ver.valorado',
+  editar: 'lote_insumos.editar'
 }
 
 insumoRoutes.get(
@@ -38,9 +38,8 @@ insumoRoutes.get(
   getInsumoByIdController
 )
 insumoRoutes.post('/', requirePermission(PERMISOS_LOTE_INSUMOS.crearValorado), createInsumoController)
-insumoRoutes.put('/:id', updateInsumoController)
-insumoRoutes.patch('/:id/estado-lote', actualizarEstadoLoteInsumoController)
-insumoRoutes.patch('/:id/stock-actual', actualizarStockActualInsumoController)
+insumoRoutes.patch('/:id/estado-lote', requirePermission(PERMISOS_LOTE_INSUMOS.editar), actualizarEstadoLoteInsumoController)
+insumoRoutes.patch('/:id/stock-actual', requirePermission(PERMISOS_LOTE_INSUMOS.editar), actualizarStockActualInsumoController)
 insumoRoutes.delete('/:id', deleteInsumoController)
 
 export default insumoRoutes

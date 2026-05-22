@@ -1,4 +1,8 @@
-import { listarPermisosRepo, crearPermisoRepo } from '../repositories/permisos_repositories.js'
+import {
+  listarPermisosRepo,
+  crearPermisoRepo,
+  obtenerModuloPorIdRepo
+} from '../repositories/permisos_repositories.js'
 
 export const listarPermisosService = async () => {
   return await listarPermisosRepo()
@@ -13,8 +17,8 @@ const normalizarParteCodigo = (value) =>
     .replace(/\s+/g, '_')
 
 export const crearPermisoService = async (data) => {
-  if (!data.modulo || !String(data.modulo).trim()) {
-    throw new Error('modulo es obligatorio')
+  if (data.modulo_id === undefined || data.modulo_id === null || data.modulo_id === '') {
+    throw new Error('modulo_id es obligatorio')
   }
 
   if (!data.recurso || !String(data.recurso).trim()) {
@@ -25,13 +29,24 @@ export const crearPermisoService = async (data) => {
     throw new Error('accion es obligatoria')
   }
 
-  const modulo = String(data.modulo).trim()
+  const moduloId = Number(data.modulo_id)
+
+  if (!Number.isInteger(moduloId) || moduloId <= 0) {
+    throw new Error('modulo_id debe ser un entero positivo')
+  }
+
   const recurso = String(data.recurso).trim()
   const accion = String(data.accion).trim()
   const alcance =
     data.alcance !== undefined && data.alcance !== null && String(data.alcance).trim() !== ''
       ? String(data.alcance).trim()
       : null
+
+  const modulo = await obtenerModuloPorIdRepo(moduloId)
+
+  if (!modulo) {
+    throw new Error('Modulo no encontrado')
+  }
 
   const codigoPartes = [recurso, accion]
 
@@ -47,7 +62,8 @@ export const crearPermisoService = async (data) => {
       data.descripcion !== undefined && data.descripcion !== null && String(data.descripcion).trim() !== ''
         ? String(data.descripcion).trim()
         : null,
-    modulo,
+    modulo: modulo.nombre,
+    modulo_id: modulo.modulo_id,
     recurso,
     accion,
     alcance

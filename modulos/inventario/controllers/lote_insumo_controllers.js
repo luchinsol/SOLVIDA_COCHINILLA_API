@@ -4,7 +4,6 @@ import {
   getInsumoByIdService,
   getResumenInsumosPorTipoService,
   createInsumoService,
-  updateInsumoService,
   deleteInsumoService,
   actualizarEstadoLoteInsumoService,
   actualizarStockActualInsumoService
@@ -98,17 +97,6 @@ export const createInsumoController = async (req, res) => {
   try {
     const nuevoInsumo = await createInsumoService(insumoDatos);
     res.status(201).json(nuevoInsumo);
-  } catch (error) {
-    handleControllerError(res, normalizeLoteInsumoError(error));
-  }
-};
-
-export const updateInsumoController = async (req, res) => {
-  const { id } = req.params;
-  const insumoDatos = req.body;
-  try {
-    const insumoActualizado = await updateInsumoService(id, insumoDatos);
-    res.json(insumoActualizado);
   } catch (error) {
     handleControllerError(res, normalizeLoteInsumoError(error));
   }
