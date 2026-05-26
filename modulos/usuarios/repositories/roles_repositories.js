@@ -5,12 +5,16 @@ export const listarRolesRepo = async () => {
 
   const result = await db.query(
     `SELECT
-       rol_id::int AS rol_id,
-       nombre,
-       descripcion,
-       activo,
-       creado_en
-     FROM seguridad.rol
+       r.rol_id::int AS rol_id,
+       r.nombre,
+       r.descripcion,
+       r.activo,
+       r.creado_en,
+       COUNT(u.id)::int AS total_usuarios
+     FROM seguridad.rol r
+     LEFT JOIN seguridad.usuario u
+       ON u.rol_id = r.rol_id
+     GROUP BY r.rol_id, r.nombre, r.descripcion, r.activo, r.creado_en
      ORDER BY rol_id ASC`
   )
   return result
@@ -19,13 +23,17 @@ export const listarRolesRepo = async () => {
 export const listarRolesActivosRepo = async () => {
   const result = await db.query(
     `SELECT
-       rol_id::int AS rol_id,
-       nombre,
-       descripcion,
-       activo,
-       creado_en
-     FROM seguridad.rol
-     WHERE activo = true
+       r.rol_id::int AS rol_id,
+       r.nombre,
+       r.descripcion,
+       r.activo,
+       r.creado_en,
+       COUNT(u.id)::int AS total_usuarios
+     FROM seguridad.rol r
+     LEFT JOIN seguridad.usuario u
+       ON u.rol_id = r.rol_id
+     WHERE r.activo = true
+     GROUP BY r.rol_id, r.nombre, r.descripcion, r.activo, r.creado_en
      ORDER BY rol_id ASC`
   )
   return result
