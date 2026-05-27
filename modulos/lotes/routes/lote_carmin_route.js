@@ -1,4 +1,5 @@
 import express from 'express'
+import { requirePermission } from '../../../middlewares/authmiddleware.js'
 import {
   crearLoteDesdeLaqueo,
   crearLoteDesdeMolienda,
@@ -19,6 +20,9 @@ import {
 } from '../controllers/lote_carmin_controllers.js'
 
 const loteCarminRoutes = express.Router()
+const PERMISOS_LOTE_CARMIN = {
+  verValorado: 'lote_carmin.ver.valorado'
+}
 
 /* ======================================================
    READ
@@ -28,7 +32,7 @@ const loteCarminRoutes = express.Router()
 loteCarminRoutes.get('/', listarLotes)
 
 // búsqueda por filtros OK
-loteCarminRoutes.get('/resumen', obtenerResumenLotesCarmin)
+loteCarminRoutes.get('/resumen', requirePermission(PERMISOS_LOTE_CARMIN.verValorado), obtenerResumenLotesCarmin)
 loteCarminRoutes.get('/buscar', buscarLotesConFiltros)
 
 // listar lotes sin análisis OK 

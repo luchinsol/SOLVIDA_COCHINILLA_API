@@ -1,7 +1,3 @@
-// CAPA DE PRESENTACIÓN - CONTROLADORES
-// Aquí se manejan las solicitudes HTTP, se validan los datos de entrada y se llaman a los servicios correspondientes.
-// Se importan los servicios necesarios para manejar la lógica de negocio.
-// Interactuan con el cliente y devuelven respuestas adecuadas.
 import jwt from "jsonwebtoken";
 import {
   listarUsuariosService,
@@ -13,15 +9,18 @@ import {
   loginService,
 } from "../services/usuario_services.js";
 
-// CONTROLLER LOGIN
-
 export const login = async (req, res) => {
   const { nickname, password } = req.body;
+
   try {
-    const usuario = await loginService(nickname, password);
-    if (!usuario) {
+    const loginResult = await loginService(nickname, password);
+
+    if (!loginResult) {
       return res.status(401).json({ error: "Credenciales inválidas" });
     }
+
+    const { usuario, permisos, modulos_acceso } = loginResult;
+
     const token = jwt.sign(
       {
         id: usuario.id,
@@ -32,13 +31,15 @@ export const login = async (req, res) => {
       { expiresIn: "1h" },
     );
 
-    return res.status(200).json({ usuario, token });
+    return res.status(200).json({ usuario, permisos, modulos_acceso, token });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
+
 export const postUsuarios = async (req, res) => {
   const { nombres, apellidos, rol_id, correo, nickname, dni, departamento } = req.body;
+
   try {
     const usuario = {
       nombres: nombres ?? null,
@@ -51,22 +52,22 @@ export const postUsuarios = async (req, res) => {
       departamento: departamento ?? null,
       estado: true,
     };
-    const postUsuario = await createUsuarioService(usuario);
 
+    const postUsuario = await createUsuarioService(usuario);
     res.status(201).json(postUsuario);
   } catch (error) {
     if (
-      error.message === 'nombres es obligatorio' ||
-      error.message === 'apellidos es obligatorio' ||
-      error.message === 'rol_id es obligatorio' ||
-      error.message === 'correo es obligatorio' ||
-      error.message === 'nickname es obligatorio' ||
-      error.message === 'dni es obligatorio' ||
-      error.message === 'departamento es obligatorio' ||
-      error.message === 'rol_id debe ser un entero positivo' ||
-      error.message === 'dni debe ser un numero valido' ||
-      error.message === 'correo ya registrado' ||
-      error.message === 'nickname ya registrado'
+      error.message === "nombres es obligatorio" ||
+      error.message === "apellidos es obligatorio" ||
+      error.message === "rol_id es obligatorio" ||
+      error.message === "correo es obligatorio" ||
+      error.message === "nickname es obligatorio" ||
+      error.message === "dni es obligatorio" ||
+      error.message === "departamento es obligatorio" ||
+      error.message === "rol_id debe ser un entero positivo" ||
+      error.message === "dni debe ser un numero valido" ||
+      error.message === "correo ya registrado" ||
+      error.message === "nickname ya registrado"
     ) {
       return res.status(400).json({ error: error.message });
     }
@@ -74,15 +75,13 @@ export const postUsuarios = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
-// CONTROLLER USUARIOS
 
 export const getUsuarios = async (req, res) => {
   try {
     const usuarios = await listarUsuariosService(req.query);
-
     res.json(usuarios);
   } catch (error) {
-    if (error.message.includes('rol_id debe ser')) {
+    if (error.message.includes("rol_id debe ser")) {
       return res.status(400).json({ error: error.message });
     }
 
@@ -101,11 +100,10 @@ export const getResumenUsuarios = async (_, res) => {
 
 export const putUsuarios = async (req, res) => {
   const { id } = req.params;
- 
-  try {
-     const usuario = req.body;
-    const putUsuario = await updateUsuarioService(id, usuario);
 
+  try {
+    const usuario = req.body;
+    const putUsuario = await updateUsuarioService(id, usuario);
     res.json(putUsuario);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -120,14 +118,14 @@ export const patchDatosUsuario = async (req, res) => {
     res.json(usuarioActualizado);
   } catch (error) {
     if (
-      error.message.includes('id debe ser') ||
-      error.message.includes('rol_id debe ser') ||
-      error.message.includes('Debes enviar al menos un campo')
+      error.message.includes("id debe ser") ||
+      error.message.includes("rol_id debe ser") ||
+      error.message.includes("Debes enviar al menos un campo")
     ) {
       return res.status(400).json({ error: error.message });
     }
 
-    if (error.message === 'Usuario no encontrado') {
+    if (error.message === "Usuario no encontrado") {
       return res.status(404).json({ error: error.message });
     }
 
@@ -135,13 +133,11 @@ export const patchDatosUsuario = async (req, res) => {
   }
 };
 
-
-
 export const deleteUsuarios = async (req, res) => {
   const { id } = req.params;
+
   try {
     const deleteUsuario = await deleteUsuarioService(id);
-
     res.json(deleteUsuario);
   } catch (error) {
     res.status(500).json({ error: error.message });

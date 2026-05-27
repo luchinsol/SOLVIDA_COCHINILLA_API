@@ -14,6 +14,7 @@ import {
   eliminarUsuarioRepo
 } from '../repositories/usuario_repositories.js'
 import { actualizarUltimoAccesoRepo } from '../repositories/usuario_repositories.js'
+import { obtenerAccesosPorRolService } from './rol_permiso_services.js'
 
 // olas bolas
 
@@ -25,7 +26,13 @@ export const loginService = async (nombre, password_hash) => {
   }
 
   const usuarioActualizado = await actualizarUltimoAccesoRepo(result.id)
-  return usuarioActualizado ?? result
+  const usuario = usuarioActualizado ?? result
+  const accesos = await obtenerAccesosPorRolService(usuario.rol_id)
+
+  return {
+    usuario,
+    ...accesos
+  }
 }
 
 export const listarUsuariosService = async (filters = {}) => {
