@@ -18,6 +18,36 @@ export const listarPermisosRepo = async () => {
   )
 }
 
+export const listarCatalogoPermisosRepo = async ({ moduloId = null } = {}) => {
+  const values = []
+  const conditions = []
+
+  if (moduloId != null) {
+    values.push(moduloId)
+    conditions.push(`p.modulo_id = $${values.length}`)
+  }
+
+  const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''
+
+  return await db.query(
+    `SELECT
+       p.permiso_id::int AS permiso_id,
+       p.codigo,
+       p.descripcion,
+       p.modulo_id::int AS modulo_id,
+       m.nombre AS modulo_nombre,
+       p.recurso,
+       p.accion,
+       p.alcance
+     FROM seguridad.permiso p
+     LEFT JOIN seguridad.modulo m
+       ON p.modulo_id = m.modulo_id
+     ${whereClause}
+     ORDER BY p.modulo_id ASC, p.recurso ASC, p.accion ASC, p.permiso_id ASC`,
+    values
+  )
+}
+
 export const obtenerModuloPorIdRepo = async (moduloId) => {
   return await db.oneOrNone(
     `SELECT

@@ -1,4 +1,5 @@
 import { Router } from 'express'
+import { requirePermission } from '../../../middlewares/authmiddleware.js'
 
 import {
   crearLoteCochinillaPorCompra,
@@ -15,6 +16,9 @@ import {
 } from '../controllers/lote_cochinilla_controllers.js'
 
 const router = Router()
+const PERMISOS_LOTE_COCHINILLA = {
+  verValorado: 'lote_cochinilla.ver.valorado'
+}
 
 /* ======================================================
    CREATE
@@ -26,7 +30,7 @@ router.post('/mezcla', crearLoteCochinillaPorMezcla)
    READ
 ====================================================== */
 router.get('/', listarLotesCochinilla)
-router.get('/resumen', obtenerResumenLotesCochinilla)
+router.get('/resumen', requirePermission(PERMISOS_LOTE_COCHINILLA.verValorado), obtenerResumenLotesCochinilla)
 router.get('/:id', obtenerLoteCochinillaPorId)
 
 /* ======================================================
