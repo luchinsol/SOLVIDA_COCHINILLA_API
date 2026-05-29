@@ -1,6 +1,7 @@
 import {
   crearItemInventarioService,
   listarItemsInventarioService,
+  listarMuestrasPendientesLaboratorioService,
   listarNombresItemService,
   listarTiposPorNombreItemService
 } from '../services/item_inventario_services.js'
@@ -12,6 +13,14 @@ const normalizeItemInventarioError = (error) => {
     error.message === 'codigo_item es obligatorio' ||
     error.message === 'nombre_item no es válido'
   ) {
+    error.name = 'ValidationError'
+  }
+
+  if (error.message === 'orden no es válido') {
+    error.name = 'ValidationError'
+  }
+
+  if (error.message === 'estado_lote_id debe ser un entero positivo') {
     error.name = 'ValidationError'
   }
 
@@ -43,6 +52,20 @@ export const listarItemsInventario = async (req, res) => {
       tipo,
       almacen_nombre,
       codigo
+    })
+    res.json(data)
+  } catch (error) {
+    handleControllerError(res, normalizeItemInventarioError(error))
+  }
+}
+
+export const listarMuestrasPendientesLaboratorio = async (req, res) => {
+  try {
+    const { estado_lote_id, producto, orden } = req.query
+    const data = await listarMuestrasPendientesLaboratorioService({
+      estado_lote_id,
+      producto,
+      orden
     })
     res.json(data)
   } catch (error) {

@@ -17,9 +17,11 @@ export const crearExtractoRepo = async (data, t = db) => {
        costo_unitario,
        estado_lote,
        observaciones,
+       creado_en,
+       modificado_en,
        unidad_medida_dinero
      )
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW(), NOW(), $14)
      RETURNING *`,
     [
       data.item_inventario_id,
@@ -106,13 +108,15 @@ export const obtenerResumenExtractosRepo = async () => {
   )
 }
 
-export const actualizarEstadoLoteExtractoRepo = async (id, estadoLote) => {
+export const actualizarEstadoLoteExtractoRepo = async (id, estadoLoteId) => {
   return await db.oneOrNone(
     `UPDATE lotes.extracto
-     SET estado_lote = $1
+     SET
+       estado_lote_id = $1,
+       modificado_en = NOW()
      WHERE extracto_id = $2
      RETURNING *`,
-    [estadoLote, id]
+    [estadoLoteId, id]
   )
 }
 

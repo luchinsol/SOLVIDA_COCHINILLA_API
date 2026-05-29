@@ -30,7 +30,8 @@ const normalizeLoteInsumoError = (error) => {
     error.message === 'unidad_medida_concentracion es obligatoria' ||
     error.message === 'stock_inicial debe ser mayor a 0' ||
     error.message === 'costo_total_inicial debe ser un numero valido' ||
-    error.message === 'estado_lote es obligatorio' ||
+    error.message === 'estado_lote_id es obligatorio' ||
+    error.message === 'estado_lote_id debe ser un entero positivo' ||
     error.message === 'stock_actual es obligatorio' ||
     error.message === 'stock_actual debe ser un numero valido' ||
     error.message === 'stock_actual no puede ser mayor que stock_inicial' ||
@@ -104,9 +105,9 @@ export const createInsumoController = async (req, res) => {
 
 export const actualizarEstadoLoteInsumoController = async (req, res) => {
   const { id } = req.params;
-  const { estado_lote } = req.body;
+  const { estado_lote_id } = req.body;
   try {
-    const loteActualizado = await actualizarEstadoLoteInsumoService(id, estado_lote);
+    const loteActualizado = await actualizarEstadoLoteInsumoService(id, estado_lote_id);
     res.json(loteActualizado);
   } catch (error) {
     handleControllerError(res, normalizeLoteInsumoError(error));

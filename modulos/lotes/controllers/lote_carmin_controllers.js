@@ -81,8 +81,8 @@ export const actualizarObservaciones = async (req, res) => {
 export const actualizarEstadoLoteCarmin = async (req, res) => {
   try {
     const { id } = req.params
-    const { estado_lote } = req.body
-    const data = await actualizarEstadoLoteCarminService(id, estado_lote)
+    const { estado_lote_id } = req.body
+    const data = await actualizarEstadoLoteCarminService(id, estado_lote_id)
     res.json(data)
   } catch (error) {
     res.status(400).json({ error: error.message })

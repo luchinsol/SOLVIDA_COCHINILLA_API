@@ -313,11 +313,17 @@ export const actualizarEstadoLoteCochinillaService = async (id, data) => {
     throw new Error('Lote de cochinilla no encontrado')
   }
 
-  if (!data.estado_lote) {
-    throw new Error('estado_lote es obligatorio')
+  if (data.estado_lote_id == null || data.estado_lote_id === '') {
+    throw new Error('estado_lote_id es obligatorio')
   }
 
-  return await actualizarEstadoLoteCochinillaRepo(id, data.estado_lote)
+  const estadoLoteId = Number(data.estado_lote_id)
+
+  if (!Number.isInteger(estadoLoteId) || estadoLoteId <= 0) {
+    throw new Error('estado_lote_id debe ser un entero positivo')
+  }
+
+  return await actualizarEstadoLoteCochinillaRepo(id, estadoLoteId)
 }
 
 export const actualizarStockActualLoteCochinillaService = async (id, data) => {
@@ -387,20 +393,24 @@ export const actualizarConsumoLoteCochinillaService = async (id, data) => {
      ¿Para qué?
      - evitar updates incompletos
   ------------------------------------------------------ */
-  if (data.masa_total_kg == null) {
-    throw new Error('masa_total_kg es obligatoria')
+  if (data.stock_actual == null || data.stock_actual === '') {
+    throw new Error('stock_actual es obligatorio')
   }
 
-  const nuevaMasa = Number(data.masa_total_kg)
-  const masaActual = Number(loteActual.masa_total_kg)
+  const nuevoStockActual = Number(data.stock_actual)
+  const stockActual = Number(loteActual.stock_actual)
 
   /* ------------------------------------------------------
      3. Validar que la nueva masa no sea negativa
      ¿Para qué?
      - evitar datos imposibles en inventario
   ------------------------------------------------------ */
-  if (nuevaMasa < 0) {
-    throw new Error('La masa_total_kg no puede ser negativa')
+  if (Number.isNaN(nuevoStockActual)) {
+    throw new Error('stock_actual debe ser numérico')
+  }
+
+  if (nuevoStockActual < 0) {
+    throw new Error('stock_actual no puede ser negativo')
   }
 
   /* ------------------------------------------------------
@@ -408,8 +418,8 @@ export const actualizarConsumoLoteCochinillaService = async (id, data) => {
      ¿Para qué?
      - en un consumo, la masa solo puede mantenerse o disminuir
   ------------------------------------------------------ */
-  if (nuevaMasa > masaActual) {
-    throw new Error('La masa nueva no puede ser mayor que la masa actual del lote')
+  if (nuevoStockActual > stockActual) {
+    throw new Error('stock_actual no puede ser mayor que el stock actual del lote')
   }
 
   /* ------------------------------------------------------
@@ -418,13 +428,7 @@ export const actualizarConsumoLoteCochinillaService = async (id, data) => {
      - no depender de que frontend mande el estado correcto
      - mantener consistencia de negocio
   ------------------------------------------------------ */
-  let nuevoEstado = 'disponible'
-
-  if (nuevaMasa === 0) {
-    nuevoEstado = 'agotado'
-  } else if (nuevaMasa < masaActual) {
-    nuevoEstado = 'usado'
-  }
+  const nuevoEstadoLoteId = nuevoStockActual === 0 ? 4 : 1
 
   /* ------------------------------------------------------
      6. Guardar la nueva masa y el estado calculado
@@ -432,8 +436,8 @@ export const actualizarConsumoLoteCochinillaService = async (id, data) => {
      - actualizar la base con una lógica coherente
   ------------------------------------------------------ */
   return await actualizarConsumoLoteCochinillaRepo(id, {
-    masa_total_kg: nuevaMasa,
-    estado: nuevoEstado
+    stock_actual: nuevoStockActual,
+    estado_lote_id: nuevoEstadoLoteId
   })
 }
 

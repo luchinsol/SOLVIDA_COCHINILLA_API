@@ -234,7 +234,7 @@ export const createInsumoService = async (insumoDatos) => {
     costo_total_actual: costoTotalInicial,
     stock_inicial: stockInicial,
     tipo_insumo_id: insumoDatos.tipo_insumo_id,
-    estado_lote: 'disponible',
+    estado_lote_id: 1,
     unidad_medida_cantidad: insumoDatos.unidad_medida_cantidad,
     unidad_medida_moneda: insumoDatos.unidad_medida_moneda,
     unidad_medida_concentracion: insumoDatos.unidad_medida_concentracion
@@ -280,12 +280,18 @@ export const createInsumoService = async (insumoDatos) => {
   });
 };
 
-export const actualizarEstadoLoteInsumoService = async (id, estado_lote) => {
-  if (!estado_lote) {
-    throw new Error('estado_lote es obligatorio');
+export const actualizarEstadoLoteInsumoService = async (id, estado_lote_id) => {
+  if (estado_lote_id === undefined || estado_lote_id === null || estado_lote_id === '') {
+    throw new Error('estado_lote_id es obligatorio');
   }
 
-  const loteActualizado = await actualizarEstadoLoteInsumo(id, estado_lote);
+  const estadoLoteId = Number(estado_lote_id);
+
+  if (!Number.isInteger(estadoLoteId) || estadoLoteId <= 0) {
+    throw new Error('estado_lote_id debe ser un entero positivo');
+  }
+
+  const loteActualizado = await actualizarEstadoLoteInsumo(id, estadoLoteId);
 
   if (!loteActualizado) {
     throw new Error('Lote de insumo no encontrado');

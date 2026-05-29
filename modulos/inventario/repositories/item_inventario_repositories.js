@@ -82,6 +82,60 @@ export const listarItemsInventarioRepo = async (filters = {}) => {
   )
 }
 
+export const listarMuestrasPendientesLaboratorioRepo = async (filters = {}) => {
+  const values = []
+  const conditions = [
+    `LOWER(ii.nombre_item) IN ('carmin', 'cochinilla', 'extracto')`,
+    `COALESCE(lc.estado_lote_id, lco.estado_lote_id, e.estado_lote_id) IN (2, 6, 3)`
+  ]
+
+  if (filters.estado_lote_id) {
+    values.push(filters.estado_lote_id)
+    conditions.push(
+      `COALESCE(lc.estado_lote_id, lco.estado_lote_id, e.estado_lote_id) = $${values.length}`
+    )
+  }
+
+  if (filters.producto) {
+    values.push(filters.producto)
+    conditions.push(`LOWER(ii.nombre_item) = LOWER($${values.length})`)
+  }
+
+  const orderDirection =
+    filters.orden === 'antiguo' || filters.orden === 'asc'
+      ? 'ASC'
+      : 'DESC'
+
+  return await db.any(
+    `SELECT
+       ii.codigo_item,
+       COALESCE(lc.nombre_lote, lco.codigo_lote, e.nombre_extracto) AS nombre_lote,
+       COALESCE(lc.estado_lote_id, lco.estado_lote_id, e.estado_lote_id)::int AS estado_lote_id,
+       COALESCE(elc.nombre, elco.nombre, ee.nombre) AS estado,
+       TO_CHAR(
+         COALESCE(lc.modificado_en, lco.modificado_en, e.modificado_en)::date,
+         'DD/MM/YYYY'
+       ) AS fecha
+     FROM inventario.item_inventario ii
+     LEFT JOIN lotes.lote_carmin lc
+       ON ii.item_inventario_id = lc.item_inventario_id
+     LEFT JOIN lotes.estado_lote elc
+       ON lc.estado_lote_id = elc.estado_lote_id
+     LEFT JOIN lotes.lote_cochinilla lco
+       ON ii.item_inventario_id = lco.item_inventario_id
+     LEFT JOIN lotes.estado_lote elco
+       ON lco.estado_lote_id = elco.estado_lote_id
+     LEFT JOIN lotes.extracto e
+       ON ii.item_inventario_id = e.item_inventario_id
+     LEFT JOIN lotes.estado_lote ee
+       ON e.estado_lote_id = ee.estado_lote_id
+     WHERE ${conditions.join(' AND ')}
+     ORDER BY COALESCE(lc.modificado_en, lco.modificado_en, e.modificado_en) ${orderDirection},
+              ii.item_inventario_id ${orderDirection}`,
+    values
+  )
+}
+
 export const listarTiposPorNombreItemRepo = async (nombreItem) => {
   if (nombreItem === 'Insumos Quimicos') {
     return await db.any(

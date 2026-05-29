@@ -21,7 +21,8 @@ const normalizeExtractoError = (error) => {
     error.message === 'stock_inicial debe ser numerico' ||
     error.message === 'stock_inicial no puede ser negativo' ||
     error.message === 'costo_total_inicial debe ser numerico' ||
-    error.message === 'estado_lote es obligatorio' ||
+    error.message === 'estado_lote_id es obligatorio' ||
+    error.message === 'estado_lote_id debe ser un entero positivo' ||
     error.message === 'stock_actual es obligatorio' ||
     error.message === 'stock_actual debe ser numerico' ||
     error.message === 'stock_actual no puede ser negativo' ||
@@ -75,8 +76,8 @@ export const obtenerResumenExtractos = async (req, res) => {
 export const actualizarEstadoLoteExtracto = async (req, res) => {
   try {
     const { id } = req.params
-    const { estado_lote } = req.body
-    const data = await actualizarEstadoLoteExtractoService(id, estado_lote)
+    const { estado_lote_id } = req.body
+    const data = await actualizarEstadoLoteExtractoService(id, estado_lote_id)
     res.json(data)
   } catch (error) {
     handleControllerError(res, normalizeExtractoError(error))

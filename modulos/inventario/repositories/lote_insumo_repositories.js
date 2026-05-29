@@ -114,7 +114,7 @@ export const getResumenInsumosPorTipo = async (tipoInsumoId) => {
 //CREATE INSUMO
 export const createInsumo = async (insumoDatos, t = db) => {
   const query =
-    "INSERT INTO inventario.lote_insumo (proveedor_id, almacen_id, item_inventario_id, nombre, concentracion, costo_unitario, stock_actual, costo_total_inicial, costo_total_actual, stock_inicial, tipo_insumo_id, estado_lote, unidad_medida_cantidad, unidad_medida_moneda, unidad_medida_concentracion) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING *";
+    "INSERT INTO inventario.lote_insumo (proveedor_id, almacen_id, item_inventario_id, nombre, concentracion, costo_unitario, stock_actual, creado_en, costo_total_inicial, stock_inicial, tipo_insumo_id, unidad_medida_cantidad, unidad_medida_moneda, unidad_medida_concentracion, costo_total_actual, estado_lote_id, modificado_en) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), $8, $9, $10, $11, $12, $13, $14, $15, NOW()) RETURNING *";
   const result = await t.one(query, [
     insumoDatos.proveedor_id,
     insumoDatos.almacen_id,
@@ -124,26 +124,26 @@ export const createInsumo = async (insumoDatos, t = db) => {
     insumoDatos.costo_unitario,
     insumoDatos.stock_actual,
     insumoDatos.costo_total_inicial,
-    insumoDatos.costo_total_actual,
     insumoDatos.stock_inicial,
     insumoDatos.tipo_insumo_id,
-    insumoDatos.estado_lote,
     insumoDatos.unidad_medida_cantidad,
     insumoDatos.unidad_medida_moneda,
     insumoDatos.unidad_medida_concentracion,
+    insumoDatos.costo_total_actual,
+    insumoDatos.estado_lote_id,
   ]);
   return result;
 };
 
-export const actualizarEstadoLoteInsumo = async (id, estado_lote) => {
+export const actualizarEstadoLoteInsumo = async (id, estado_lote_id) => {
   const query =
-    "UPDATE inventario.lote_insumo SET estado_lote = $1 WHERE lote_insumo_id = $2 RETURNING *";
-  return await db.oneOrNone(query, [estado_lote, id]);
+    "UPDATE inventario.lote_insumo SET estado_lote_id = $1, modificado_en = NOW() WHERE lote_insumo_id = $2 RETURNING *";
+  return await db.oneOrNone(query, [estado_lote_id, id]);
 };
 
 export const actualizarStockActualInsumo = async (id, stock_actual, costo_total_actual) => {
   const query =
-    "UPDATE inventario.lote_insumo SET stock_actual = $1, costo_total_actual = $2 WHERE lote_insumo_id = $3 RETURNING *";
+    "UPDATE inventario.lote_insumo SET stock_actual = $1, costo_total_actual = $2, modificado_en = NOW() WHERE lote_insumo_id = $3 RETURNING *";
   return await db.oneOrNone(query, [stock_actual, costo_total_actual, id]);
 };
 

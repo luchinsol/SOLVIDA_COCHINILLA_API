@@ -39,11 +39,13 @@ export const crearLoteCarminDesdeLaqueoRepo = async (data, t = db) => {
       color_a_actual,
       color_b_actual,
       observaciones,
+      creado_en,
+      modificado_en,
       unidad_medida_stock,
       calidad_lote,
       estado_lote
     )
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, NOW(), NOW(), $17, $18, $19)
     RETURNING *`,
     [
       data.item_inventario_id,
@@ -92,11 +94,13 @@ export const crearLoteCarminDesdeMoliendaRepo = async (data, t = db) => {
       color_a_actual,
       color_b_actual,
       observaciones,
+      creado_en,
+      modificado_en,
       unidad_medida_stock,
       calidad_lote,
       estado_lote
     )
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, NOW(), NOW(), $17, $18, $19)
     RETURNING *`,
     [
       data.item_inventario_id,
@@ -145,11 +149,13 @@ export const crearLoteCarminDesdeMezcladoRepo = async (data, t = db) => {
       color_a_actual,
       color_b_actual,
       observaciones,
+      creado_en,
+      modificado_en,
       unidad_medida_stock,
       calidad_lote,
       estado_lote
     )
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, NOW(), NOW(), $17, $18, $19)
     RETURNING *`,
     [
       data.item_inventario_id,
@@ -431,14 +437,16 @@ export const actualizarObservacionesLoteCarminRepo = async (id, observaciones) =
 }
 
 // UPDATE: cambiar estado del lote a bloqueado en caso de problemas de calidad o para evitar su uso en producción
-export const actualizarEstadoLoteCarminRepo = async (id, estadoLote) => {
+export const actualizarEstadoLoteCarminRepo = async (id, estadoLoteId) => {
   const result = await db.oneOrNone(
     `UPDATE lotes.lote_carmin
-     SET estado_lote = $1
+     SET
+       estado_lote_id = $1,
+       modificado_en = NOW()
      WHERE lote_carmin_id = $2
      RETURNING *`,
     [
-      estadoLote,
+      estadoLoteId,
       id
     ]
   )

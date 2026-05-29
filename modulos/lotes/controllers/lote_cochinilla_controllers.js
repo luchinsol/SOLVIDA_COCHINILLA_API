@@ -30,14 +30,16 @@ const normalizeLoteCochinillaError = (error) => {
     error.message === 'stock_inicial debe ser mayor a 0' ||
     error.message === 'costo_total_inicial debe ser mayor a 0' ||
     error.message === 'stock_inicial no puede ser negativo' ||
-    error.message === 'estado_lote es obligatorio' ||
+    error.message === 'estado_lote_id es obligatorio' ||
+    error.message === 'estado_lote_id debe ser un entero positivo' ||
     error.message === 'stock_actual es obligatorio' ||
     error.message === 'stock_actual debe ser numérico' ||
     error.message === 'stock_actual no puede ser negativo' ||
     error.message === 'stock_actual no puede ser mayor que stock_inicial' ||
-    error.message === 'masa_total_kg es obligatoria' ||
-    error.message === 'La masa_total_kg no puede ser negativa' ||
-    error.message === 'La masa nueva no puede ser mayor que la masa actual del lote' ||
+    error.message === 'stock_actual es obligatorio' ||
+    error.message === 'stock_actual debe ser numérico' ||
+    error.message === 'stock_actual no puede ser negativo' ||
+    error.message === 'stock_actual no puede ser mayor que el stock actual del lote' ||
     error.message === 'delta es obligatorio' ||
     error.message === 'delta debe ser numérico' ||
     error.message === 'La masa resultante no puede ser negativa' ||
