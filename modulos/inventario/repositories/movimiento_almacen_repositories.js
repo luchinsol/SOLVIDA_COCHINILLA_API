@@ -94,7 +94,8 @@ export const actualizarSaldoLotePorMovimiento = async (lote, nuevoStockActual, n
        SET
          stock_actual = $1,
          costo_total_actual = $2,
-         almacen_id = $3
+         almacen_id = $3,
+         modificado_en = NOW()
        WHERE lote_insumo_id = $4
        RETURNING *`,
       [nuevoStockActual, nuevoCostoTotalActual, nuevoAlmacenId, lote.lote_id]
@@ -133,7 +134,8 @@ export const actualizarSaldoLotePorMovimiento = async (lote, nuevoStockActual, n
        SET
          stock_actual = $1,
          costo_total_actual = $2,
-         almacen_id = $3
+         almacen_id = $3,
+         modificado_en = NOW()
        WHERE lote_carmin_id = $4
        RETURNING *`,
       [nuevoStockActual, nuevoCostoTotalActual, nuevoAlmacenId, lote.lote_id]
@@ -149,7 +151,8 @@ export const actualizarSaldoLotePorMovimiento = async (lote, nuevoStockActual, n
        SET
          stock_actual = $1,
          costo_total_actual = $2,
-         almacen_id = $3
+         almacen_id = $3,
+         modificado_en = NOW()
        WHERE extracto_id = $4
        RETURNING *`,
       [nuevoStockActual, nuevoCostoTotalActual, nuevoAlmacenId, lote.lote_id]
@@ -171,7 +174,8 @@ export const actualizarStockInicialLotePorAjuste = async (lote, nuevoStockInicia
        SET
          stock_inicial = $1,
          costo_unitario = $2,
-         costo_total_actual = $3
+         costo_total_actual = $3,
+         modificado_en = NOW()
        WHERE lote_insumo_id = $4
        RETURNING *`,
       [nuevoStockInicial, nuevoCostoUnitario, nuevoCostoTotalActual, lote.lote_id]

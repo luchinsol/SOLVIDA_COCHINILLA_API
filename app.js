@@ -17,6 +17,7 @@ import composicionLoteCochinillaRoutes from './modulos/lotes/routes/composicion_
 import loteCochinillaRoutes from './modulos/lotes/routes/lote_cochinilla_routes.js'
 import tipoCochinillaRoutes from './modulos/lotes/routes/tipo_cochinilla_routes.js'
 import extractoRoutes from './modulos/lotes/routes/extracto_route.js'
+import estadoLoteRoutes from './modulos/lotes/routes/estado_lote_routes.js'
 
 //Rutas de producción
 import procesoMezcladoRoutes from './modulos/produccion/routes/proceso_mezclado_routes.js'
@@ -71,6 +72,7 @@ app.use('/api/comp_lotecochini', composicionLoteCochinillaRoutes)
 app.use('/api/lotes-cochinilla', loteCochinillaRoutes)
 app.use('/api/tipos-cochinilla', tipoCochinillaRoutes)
 app.use('/api/extractos', extractoRoutes)
+app.use('/api/estados-lote', estadoLoteRoutes)
 app.use('/api/recetas-extraccion', recetaExtraccionRoutes)
 app.use('/api/tipo-insumo', tipoInsumoRoutes)
 app.use('/api/unidades-medida', unidadesMedidaRoutes)

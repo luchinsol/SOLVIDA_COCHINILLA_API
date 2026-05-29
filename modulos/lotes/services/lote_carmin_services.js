@@ -255,18 +255,24 @@ export const actualizarObservacionesService = async (id, observaciones) => {
   return await actualizarObservacionesLoteCarminRepo(id, observaciones)
 }
 
-export const actualizarEstadoLoteCarminService = async (id, estadoLote) => {
+export const actualizarEstadoLoteCarminService = async (id, estadoLoteId) => {
   const lote = await obtenerLoteCarminPorIdRepo(id)
 
   if (!lote) {
     throw new Error('Lote de carmin no encontrado')
   }
 
-  if (!estadoLote || !estadoLote.trim()) {
-    throw new Error('estado_lote es obligatorio')
+  if (estadoLoteId == null || estadoLoteId === '') {
+    throw new Error('estado_lote_id es obligatorio')
   }
 
-  return await actualizarEstadoLoteCarminRepo(id, estadoLote.trim())
+  const parsedEstadoLoteId = Number(estadoLoteId)
+
+  if (!Number.isInteger(parsedEstadoLoteId) || parsedEstadoLoteId <= 0) {
+    throw new Error('estado_lote_id debe ser un entero positivo')
+  }
+
+  return await actualizarEstadoLoteCarminRepo(id, parsedEstadoLoteId)
 }
 
 export const actualizarStockActualLoteCarminService = async (id, stockActual, options = {}) => {

@@ -26,6 +26,8 @@ export const crearLoteCochinillaPorCompraRepo = async (data, t = db) => {
       estado_lote,
       observaciones
       ,
+      creado_en,
+      modificado_en,
       costo_total_inicial,
       costo_total_actual,
       costo_puntoac_dolares,
@@ -33,7 +35,7 @@ export const crearLoteCochinillaPorCompraRepo = async (data, t = db) => {
       unidad_medida_stock,
       unidad_medida_dinero
     )
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, NOW(), NOW(), $17, $18, $19, $20, $21, $22)
     RETURNING *`,
     [
       data.item_inventario_id,
@@ -90,6 +92,8 @@ export const crearLoteCochinillaPorMezclaRepo = async (data, t = db) => {
       estado_lote,
       observaciones
       ,
+      creado_en,
+      modificado_en,
       costo_total_inicial,
       costo_total_actual,
       costo_puntoac_dolares,
@@ -97,7 +101,7 @@ export const crearLoteCochinillaPorMezclaRepo = async (data, t = db) => {
       unidad_medida_stock,
       unidad_medida_dinero
     )
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, NOW(), NOW(), $17, $18, $19, $20, $21, $22)
     RETURNING *`,
     [
       data.item_inventario_id,
@@ -226,7 +230,8 @@ export const actualizarAnalisisLoteCochinillaRepo = async (id, data, t = db) => 
        concentracion_ac_actual = $2,
        humedad_actual = $3,
        costo_puntoac_dolares = $4,
-       estado_lote = $5
+       estado_lote = $5,
+       modificado_en = NOW()
      WHERE lote_cochinilla_id = $6
      RETURNING *`,
     [
@@ -242,13 +247,15 @@ export const actualizarAnalisisLoteCochinillaRepo = async (id, data, t = db) => 
   return result
 }
 
-export const actualizarEstadoLoteCochinillaRepo = async (id, estado_lote, t = db) => {
+export const actualizarEstadoLoteCochinillaRepo = async (id, estadoLoteId, t = db) => {
   const result = await t.oneOrNone(
     `UPDATE lotes.lote_cochinilla
-     SET estado_lote = $1
+     SET
+       estado_lote_id = $1,
+       modificado_en = NOW()
      WHERE lote_cochinilla_id = $2
      RETURNING *`,
-    [estado_lote, id]
+    [estadoLoteId, id]
   )
 
   return result
@@ -257,7 +264,9 @@ export const actualizarEstadoLoteCochinillaRepo = async (id, estado_lote, t = db
 export const actualizarStockActualLoteCochinillaRepo = async (id, stockActual, t = db) => {
   const result = await t.oneOrNone(
     `UPDATE lotes.lote_cochinilla
-     SET stock_actual = $1
+     SET
+       stock_actual = $1,
+       modificado_en = NOW()
      WHERE lote_cochinilla_id = $2
      RETURNING *`,
     [stockActual, id]
@@ -267,16 +276,35 @@ export const actualizarStockActualLoteCochinillaRepo = async (id, stockActual, t
 }
 
 export const actualizarConsumoLoteCochinillaRepo = async (id, data, t = db) => {
+  const stockActual = data.stock_actual ?? data.masa_total_kg
+
+  const estadoLoteIdMap = {
+    disponible: 1,
+    'por analizar': 2,
+    bloqueado: 3,
+    agotado: 4,
+    'por moler': 5,
+    'en analisis': 6,
+    usado: 1
+  }
+
+  const estadoLoteId =
+    data.estado_lote_id ??
+    (typeof data.estado === 'string'
+      ? estadoLoteIdMap[data.estado.toLowerCase()] ?? null
+      : data.estado ?? null)
+
   const result = await t.oneOrNone(
     `UPDATE lotes.lote_cochinilla
      SET
-       masa_total_kg = $1,
-       estado = $2
+       stock_actual = $1,
+       estado_lote_id = $2,
+       modificado_en = NOW()
      WHERE lote_cochinilla_id = $3
      RETURNING *`,
     [
-      data.masa_total_kg,
-      data.estado,
+      stockActual,
+      estadoLoteId,
       id
     ]
   )

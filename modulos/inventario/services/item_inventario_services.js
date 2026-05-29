@@ -1,6 +1,7 @@
 import {
   crearItemInventarioRepo,
   listarItemsInventarioRepo,
+  listarMuestrasPendientesLaboratorioRepo,
   listarTiposPorNombreItemRepo
 } from '../repositories/item_inventario_repositories.js'
 
@@ -39,6 +40,36 @@ export const listarItemsInventarioService = async (filters = {}) => {
   }
 
   return await listarItemsInventarioRepo(parsedFilters)
+}
+
+export const listarMuestrasPendientesLaboratorioService = async (filters = {}) => {
+  const parsedFilters = {}
+
+  if (filters.estado_lote_id !== undefined && filters.estado_lote_id !== '') {
+    const estadoLoteId = Number(filters.estado_lote_id)
+
+    if (!Number.isInteger(estadoLoteId) || estadoLoteId <= 0) {
+      throw new Error('estado_lote_id debe ser un entero positivo')
+    }
+
+    parsedFilters.estado_lote_id = estadoLoteId
+  }
+
+  if (filters.producto !== undefined && filters.producto !== '') {
+    parsedFilters.producto = String(filters.producto).trim()
+  }
+
+  if (filters.orden !== undefined && filters.orden !== '') {
+    const ordenNormalizado = String(filters.orden).trim().toLowerCase()
+
+    if (!['asc', 'desc'].includes(ordenNormalizado)) {
+      throw new Error('orden no es válido')
+    }
+
+    parsedFilters.orden = ordenNormalizado
+  }
+
+  return await listarMuestrasPendientesLaboratorioRepo(parsedFilters)
 }
 
 export const listarTiposPorNombreItemService = async (nombreItem) => {

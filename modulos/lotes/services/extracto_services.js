@@ -139,7 +139,7 @@ export const obtenerResumenExtractosService = async () => {
   return await obtenerResumenExtractosRepo()
 }
 
-export const actualizarEstadoLoteExtractoService = async (id, estadoLote) => {
+export const actualizarEstadoLoteExtractoService = async (id, estadoLoteId) => {
   const extractoId = Number(id)
 
   if (!Number.isInteger(extractoId) || extractoId <= 0) {
@@ -152,11 +152,17 @@ export const actualizarEstadoLoteExtractoService = async (id, estadoLote) => {
     throw new Error('Extracto no encontrado')
   }
 
-  if (!estadoLote || !estadoLote.trim()) {
-    throw new Error('estado_lote es obligatorio')
+  if (estadoLoteId == null || estadoLoteId === '') {
+    throw new Error('estado_lote_id es obligatorio')
   }
 
-  return await actualizarEstadoLoteExtractoRepo(extractoId, estadoLote.trim())
+  const parsedEstadoLoteId = Number(estadoLoteId)
+
+  if (!Number.isInteger(parsedEstadoLoteId) || parsedEstadoLoteId <= 0) {
+    throw new Error('estado_lote_id debe ser un entero positivo')
+  }
+
+  return await actualizarEstadoLoteExtractoRepo(extractoId, parsedEstadoLoteId)
 }
 
 export const actualizarStockActualExtractoService = async (id, stockActual, options = {}) => {
