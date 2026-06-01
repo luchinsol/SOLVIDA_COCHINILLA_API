@@ -1,4 +1,6 @@
 import {
+  contarMuestrasEnAnalisisService,
+  contarMuestrasPendientesLaboratorioService,
   crearItemInventarioService,
   listarItemsInventarioService,
   listarMuestrasPendientesLaboratorioService,
@@ -67,6 +69,24 @@ export const listarMuestrasPendientesLaboratorio = async (req, res) => {
       producto,
       orden
     })
+    res.json(data)
+  } catch (error) {
+    handleControllerError(res, normalizeItemInventarioError(error))
+  }
+}
+
+export const contarMuestrasPendientesLaboratorio = async (_req, res) => {
+  try {
+    const data = await contarMuestrasPendientesLaboratorioService()
+    res.json(data)
+  } catch (error) {
+    handleControllerError(res, normalizeItemInventarioError(error))
+  }
+}
+
+export const contarMuestrasEnAnalisis = async (_req, res) => {
+  try {
+    const data = await contarMuestrasEnAnalisisService()
     res.json(data)
   } catch (error) {
     handleControllerError(res, normalizeItemInventarioError(error))

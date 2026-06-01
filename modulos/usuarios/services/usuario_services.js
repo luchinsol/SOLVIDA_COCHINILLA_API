@@ -159,7 +159,8 @@ export const patchDatosUsuarioService = async (id, usuario) => {
     usuario.nombres === undefined &&
     usuario.apellidos === undefined &&
     usuario.correo === undefined &&
-    usuario.rol_id === undefined
+    usuario.rol_id === undefined &&
+    usuario.estado === undefined
   ) {
     throw new Error('Debes enviar al menos un campo para actualizar');
   }
@@ -174,11 +175,22 @@ export const patchDatosUsuarioService = async (id, usuario) => {
     }
   }
 
+  let parsedEstado = null;
+
+  if (usuario.estado !== undefined) {
+    if (typeof usuario.estado !== 'boolean') {
+      throw new Error('estado debe ser booleano');
+    }
+
+    parsedEstado = usuario.estado;
+  }
+
   const updatedUsuario = await actualizarDatosUsuarioRepo(parsedId, {
-    nombres: usuario.nombres ?? null,
-    apellidos: usuario.apellidos ?? null,
-    correo: usuario.correo ?? null,
-    rol_id: parsedRolId
+    nombres: usuario.nombres !== undefined ? usuario.nombres : null,
+    apellidos: usuario.apellidos !== undefined ? usuario.apellidos : null,
+    correo: usuario.correo !== undefined ? usuario.correo : null,
+    rol_id: parsedRolId,
+    estado: parsedEstado
   });
 
   if (!updatedUsuario) {

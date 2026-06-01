@@ -1,6 +1,8 @@
 import { Router } from 'express'
 import { requirePermission } from '../../../middlewares/authmiddleware.js'
 import {
+  contarMuestrasEnAnalisis,
+  contarMuestrasPendientesLaboratorio,
   crearItemInventario,
   listarItemsInventario,
   listarMuestrasPendientesLaboratorio,
@@ -10,10 +12,20 @@ import {
 
 const router = Router()
 const PERMISOS_LABORATORIO = {
-  ver: 'laboratorio.ver'
+  ver: 'analisis.ver'
 }
 
 router.get('/', listarItemsInventario)
+router.get(
+  '/muestras-en-analisis/resumen',
+  requirePermission(PERMISOS_LABORATORIO.ver),
+  contarMuestrasEnAnalisis
+)
+router.get(
+  '/muestras-pendientes-laboratorio/resumen',
+  requirePermission(PERMISOS_LABORATORIO.ver),
+  contarMuestrasPendientesLaboratorio
+)
 router.get(
   '/muestras-pendientes-laboratorio',
   requirePermission(PERMISOS_LABORATORIO.ver),

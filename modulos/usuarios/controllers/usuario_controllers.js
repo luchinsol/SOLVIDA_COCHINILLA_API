@@ -120,6 +120,7 @@ export const patchDatosUsuario = async (req, res) => {
     if (
       error.message.includes("id debe ser") ||
       error.message.includes("rol_id debe ser") ||
+      error.message.includes("estado debe ser") ||
       error.message.includes("Debes enviar al menos un campo")
     ) {
       return res.status(400).json({ error: error.message });

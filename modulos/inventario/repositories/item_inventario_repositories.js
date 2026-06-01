@@ -136,6 +136,36 @@ export const listarMuestrasPendientesLaboratorioRepo = async (filters = {}) => {
   )
 }
 
+export const contarMuestrasPendientesLaboratorioRepo = async () => {
+  return await db.one(
+    `SELECT COUNT(*)::int AS total_muestras_pendientes
+     FROM inventario.item_inventario ii
+     LEFT JOIN lotes.lote_carmin lc
+       ON ii.item_inventario_id = lc.item_inventario_id
+     LEFT JOIN lotes.lote_cochinilla lco
+       ON ii.item_inventario_id = lco.item_inventario_id
+     LEFT JOIN lotes.extracto e
+       ON ii.item_inventario_id = e.item_inventario_id
+     WHERE LOWER(ii.nombre_item) IN ('carmin', 'cochinilla', 'extracto')
+       AND COALESCE(lc.estado_lote_id, lco.estado_lote_id, e.estado_lote_id) IN (2, 6, 3)`
+  )
+}
+
+export const contarMuestrasEnAnalisisRepo = async () => {
+  return await db.one(
+    `SELECT COUNT(*)::int AS total_muestras_en_analisis
+     FROM inventario.item_inventario ii
+     LEFT JOIN lotes.lote_carmin lc
+       ON ii.item_inventario_id = lc.item_inventario_id
+     LEFT JOIN lotes.lote_cochinilla lco
+       ON ii.item_inventario_id = lco.item_inventario_id
+     LEFT JOIN lotes.extracto e
+       ON ii.item_inventario_id = e.item_inventario_id
+     WHERE LOWER(ii.nombre_item) IN ('carmin', 'cochinilla', 'extracto')
+       AND COALESCE(lc.estado_lote_id, lco.estado_lote_id, e.estado_lote_id) = 6`
+  )
+}
+
 export const listarTiposPorNombreItemRepo = async (nombreItem) => {
   if (nombreItem === 'Insumos Quimicos') {
     return await db.any(
