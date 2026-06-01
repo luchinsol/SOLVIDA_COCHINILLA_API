@@ -1,42 +1,77 @@
-import {obtenerTodosAnalisisService,crearAnalisisService,actualizarAnalisisService,eliminarAnalisisService} from '../services/laboratorio_services.js'
+import {
+  obtenerTodosAnalisisService,
+  obtenerAnalisisNoConformesService,
+  contarMuestrasAnalizadasHoyService,
+  contarNoConformidadesHoyService,
+  crearAnalisisService,
+  actualizarAnalisisService,
+  eliminarAnalisisService
+} from '../services/laboratorio_services.js'
 
-export const obtenerTodosAnalisisController = async (req, res) => {
-    try {
-        const analisis = await obtenerTodosAnalisisService();
-        res.json(analisis);
-    } catch (error) {
-        res.status(500).json({ error: 'Error al obtener análisis' });
-    }
+export const obtenerTodosAnalisisController = async (_req, res) => {
+  try {
+    const analisis = await obtenerTodosAnalisisService()
+    res.json(analisis)
+  } catch (error) {
+    res.status(500).json({ error: 'Error al obtener análisis' })
+  }
+}
+
+export const contarMuestrasAnalizadasHoyController = async (_req, res) => {
+  try {
+    const resumen = await contarMuestrasAnalizadasHoyService()
+    res.json(resumen)
+  } catch (error) {
+    res.status(500).json({ error: 'Error al obtener el resumen de muestras analizadas hoy' })
+  }
+}
+
+export const contarNoConformidadesHoyController = async (_req, res) => {
+  try {
+    const resumen = await contarNoConformidadesHoyService()
+    res.json(resumen)
+  } catch (error) {
+    res.status(500).json({ error: 'Error al obtener el resumen de no conformidades de hoy' })
+  }
+}
+
+export const obtenerAnalisisNoConformesController = async (_req, res) => {
+  try {
+    const analisis = await obtenerAnalisisNoConformesService()
+    res.json(analisis)
+  } catch (error) {
+    res.status(500).json({ error: 'Error al obtener los analisis no conformes' })
+  }
 }
 
 export const crearAnalisisController = async (req, res) => {
-    try {
-        const analisisDatos = req.body;
-        const nuevoAnalisis = await crearAnalisisService(analisisDatos);
-        res.status(201).json(nuevoAnalisis);
-    } catch (error) {
-  console.error(error)
-  res.status(500).json({ error: error.message })
+  try {
+    const analisisDatos = req.body
+    const nuevoAnalisis = await crearAnalisisService(analisisDatos)
+    res.status(201).json(nuevoAnalisis)
+  } catch (error) {
+    console.error(error)
+    res.status(500).json({ error: error.message })
+  }
 }
-};
 
 export const actualizarAnalisisController = async (req, res) => {
-    try {
-        const analisis_id = req.params.id;
-        const analisisDatos = req.body;
-        const analisisActualizado = await actualizarAnalisisService(analisis_id, analisisDatos);
-        res.json(analisisActualizado);
-    } catch (error) {
-        res.status(500).json({ error: 'Error al actualizar análisis' });
-    }
-};
+  try {
+    const analisis_id = req.params.id
+    const analisisDatos = req.body
+    const analisisActualizado = await actualizarAnalisisService(analisis_id, analisisDatos)
+    res.json(analisisActualizado)
+  } catch (error) {
+    res.status(500).json({ error: 'Error al actualizar análisis' })
+  }
+}
 
 export const eliminarAnalisisController = async (req, res) => {
-    try {
-        const analisis_id = req.params.id;
-        const resultado = await eliminarAnalisisService(analisis_id);
-        res.json(resultado);
-    } catch (error) {
-        res.status(500).json({ error: 'Error al eliminar análisis' });
-    }
+  try {
+    const analisis_id = req.params.id
+    const resultado = await eliminarAnalisisService(analisis_id)
+    res.json(resultado)
+  } catch (error) {
+    res.status(500).json({ error: 'Error al eliminar análisis' })
+  }
 }

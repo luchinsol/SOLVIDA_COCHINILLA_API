@@ -6,6 +6,39 @@ export const obtenerTodosAnalisis = async () => {
     return db.query(query);
 };
 
+export const contarMuestrasAnalizadasHoy = async () => {
+    const query = `
+        SELECT COUNT(DISTINCT item_inventario_id)::int AS total_muestras_analizadas_hoy
+        FROM laboratorio.analisis_laboratorio
+        WHERE item_inventario_id IS NOT NULL
+          AND DATE(COALESCE(modificado_en, creado_en)) = CURRENT_DATE
+    `;
+
+    return db.one(query);
+};
+
+export const contarNoConformidadesHoy = async () => {
+    const query = `
+        SELECT COUNT(*)::int AS total_no_conformidades_hoy
+        FROM laboratorio.analisis_laboratorio
+        WHERE conforme = false
+          AND DATE(COALESCE(modificado_en, creado_en)) = CURRENT_DATE
+    `;
+
+    return db.one(query);
+};
+
+export const obtenerAnalisisNoConformes = async () => {
+    const query = `
+        SELECT *
+        FROM laboratorio.analisis_laboratorio
+        WHERE conforme = false
+        ORDER BY COALESCE(modificado_en, creado_en) DESC, analisis_id DESC
+    `;
+
+    return db.query(query);
+};
+
 export const crearAnalisis = async (datos, t = db) => {
   const query = `
     INSERT INTO laboratorio.analisis_laboratorio

@@ -1,5 +1,7 @@
 import {
+  contarMuestrasEnAnalisisRepo,
   crearItemInventarioRepo,
+  contarMuestrasPendientesLaboratorioRepo,
   listarItemsInventarioRepo,
   listarMuestrasPendientesLaboratorioRepo,
   listarTiposPorNombreItemRepo
@@ -70,6 +72,14 @@ export const listarMuestrasPendientesLaboratorioService = async (filters = {}) =
   }
 
   return await listarMuestrasPendientesLaboratorioRepo(parsedFilters)
+}
+
+export const contarMuestrasPendientesLaboratorioService = async () => {
+  return await contarMuestrasPendientesLaboratorioRepo()
+}
+
+export const contarMuestrasEnAnalisisService = async () => {
+  return await contarMuestrasEnAnalisisRepo()
 }
 
 export const listarTiposPorNombreItemService = async (nombreItem) => {

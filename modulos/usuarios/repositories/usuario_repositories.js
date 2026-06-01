@@ -153,17 +153,19 @@ export const actualizarDatosUsuarioRepo = async (id, usuario) => {
   const result = await db.oneOrNone(
     `UPDATE seguridad.usuario u
      SET
-       nombres = $1,
-       apellidos = $2,
-       correo = $3,
-       rol_id = $4
-     WHERE u.id = $5
+       nombres = COALESCE($1, u.nombres),
+       apellidos = COALESCE($2, u.apellidos),
+       correo = COALESCE($3, u.correo),
+       rol_id = COALESCE($4, u.rol_id),
+       estado = COALESCE($5, u.estado)
+     WHERE u.id = $6
      RETURNING u.id`,
     [
       usuario.nombres,
       usuario.apellidos,
       usuario.correo,
       usuario.rol_id,
+      usuario.estado,
       id,
     ],
   );
