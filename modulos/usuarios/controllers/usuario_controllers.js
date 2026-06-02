@@ -33,6 +33,10 @@ export const login = async (req, res) => {
 
     return res.status(200).json({ usuario, permisos, modulos_acceso, token });
   } catch (error) {
+    if (error.message === "Usuario bloqueado") {
+      return res.status(403).json({ error: error.message });
+    }
+
     res.status(500).json({ error: error.message });
   }
 };
