@@ -25,6 +25,10 @@ export const loginService = async (nombre, password_hash) => {
     return null
   }
 
+  if (result.estado !== true) {
+    throw new Error('Usuario bloqueado')
+  }
+
   const usuarioActualizado = await actualizarUltimoAccesoRepo(result.id)
   const usuario = usuarioActualizado ?? result
   const accesos = await obtenerAccesosPorRolService(usuario.rol_id)
