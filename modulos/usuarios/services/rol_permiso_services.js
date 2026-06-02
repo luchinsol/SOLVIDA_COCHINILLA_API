@@ -42,6 +42,9 @@ const crearAccionAlcance = () => ({
   }, {})
 })
 
+const tieneAlgunaAccionActiva = (acciones = {}) =>
+  Object.values(acciones).some((accion) => accion?.activo === true)
+
 export const listarPermisosPorRolService = async (filters = {}) => {
   const parsedFilters = {}
 
@@ -160,11 +163,15 @@ export const obtenerVistaPermisosPorRolService = async (filters = {}) => {
     }
   })
 
-  rol.modulos = Array.from(modulosMap.values()).map((modulo) => ({
-    modulo_id: modulo.modulo_id,
-    modulo_nombre: modulo.modulo_nombre,
-    recursos: Array.from(modulo.recursos.values())
-  }))
+  rol.modulos = Array.from(modulosMap.values())
+    .map((modulo) => ({
+      modulo_id: modulo.modulo_id,
+      modulo_nombre: modulo.modulo_nombre,
+      recursos: Array.from(modulo.recursos.values()).filter((recurso) =>
+        tieneAlgunaAccionActiva(recurso.acciones)
+      )
+    }))
+    .filter((modulo) => modulo.recursos.length > 0)
 
   return rol
 }
