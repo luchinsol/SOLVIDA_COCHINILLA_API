@@ -135,10 +135,10 @@ export const createInsumo = async (insumoDatos, t = db) => {
   return result;
 };
 
-export const actualizarEstadoLoteInsumo = async (id, estado_lote_id) => {
+export const actualizarEstadoLoteInsumo = async (id, estado_lote_id, t = db) => {
   const query =
     "UPDATE inventario.lote_insumo SET estado_lote_id = $1, modificado_en = NOW() WHERE lote_insumo_id = $2 RETURNING *";
-  return await db.oneOrNone(query, [estado_lote_id, id]);
+  return await t.oneOrNone(query, [estado_lote_id, id]);
 };
 
 export const actualizarStockActualInsumo = async (id, stock_actual, costo_total_actual) => {
