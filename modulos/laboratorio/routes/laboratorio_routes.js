@@ -4,6 +4,7 @@ import {
   crearAnalisisController,
   actualizarAnalisisController,
   obtenerTodosAnalisisController,
+  obtenerAnalisisPorIdController,
   obtenerAnalisisNoConformesController,
   contarMuestrasAnalizadasHoyController,
   contarNoConformidadesHoyController,
@@ -19,7 +20,9 @@ laboratorioRouter.get('/', obtenerTodosAnalisisController);
 laboratorioRouter.get('/no-conformes', requirePermission(PERMISOS_ANALISIS.ver), obtenerAnalisisNoConformesController);
 laboratorioRouter.get('/muestras-analizadas-hoy/resumen', requirePermission(PERMISOS_ANALISIS.ver), contarMuestrasAnalizadasHoyController);
 laboratorioRouter.get('/no-conformidades-hoy/resumen', requirePermission(PERMISOS_ANALISIS.ver), contarNoConformidadesHoyController);
+laboratorioRouter.get('/:id', requirePermission(PERMISOS_ANALISIS.ver), obtenerAnalisisPorIdController);
 laboratorioRouter.post('/', crearAnalisisController);
+laboratorioRouter.patch('/:id', actualizarAnalisisController);
 laboratorioRouter.put('/:id', actualizarAnalisisController);
 laboratorioRouter.delete('/:id', eliminarAnalisisController);
 

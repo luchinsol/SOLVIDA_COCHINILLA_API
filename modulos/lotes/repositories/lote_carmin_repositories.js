@@ -437,8 +437,8 @@ export const actualizarObservacionesLoteCarminRepo = async (id, observaciones) =
 }
 
 // UPDATE: cambiar estado del lote a bloqueado en caso de problemas de calidad o para evitar su uso en producción
-export const actualizarEstadoLoteCarminRepo = async (id, estadoLoteId) => {
-  const result = await db.oneOrNone(
+export const actualizarEstadoLoteCarminRepo = async (id, estadoLoteId, t = db) => {
+  const result = await t.oneOrNone(
     `UPDATE lotes.lote_carmin
      SET
        estado_lote_id = $1,

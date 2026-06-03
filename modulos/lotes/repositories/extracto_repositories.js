@@ -108,8 +108,8 @@ export const obtenerResumenExtractosRepo = async () => {
   )
 }
 
-export const actualizarEstadoLoteExtractoRepo = async (id, estadoLoteId) => {
-  return await db.oneOrNone(
+export const actualizarEstadoLoteExtractoRepo = async (id, estadoLoteId, t = db) => {
+  return await t.oneOrNone(
     `UPDATE lotes.extracto
      SET
        estado_lote_id = $1,
