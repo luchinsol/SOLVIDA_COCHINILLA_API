@@ -27,6 +27,10 @@ import {
   actualizarCostosYMasaLoteCochinillaRepo,
   eliminarLoteCochinillaRepo
 } from '../repositories/lote_cochinilla_repositories.js'
+import {
+  crearSolicitudAnalisisLaboratorioRepo,
+  crearSolicitudParametroLaboratorioRepo
+} from '../../laboratorio/repositories/solicitud_analisis_repositories.js'
 
 
 
@@ -82,6 +86,27 @@ const calcularCostoPuntoAcDolares = ({
   }
 
   return costoTotalActual / (stockActual * concentracionActual)
+}
+
+const crearSolicitudAnalisisInicialCochinilla = async (
+  { item_inventario_id, usuario_id, observacion_laboratorio },
+  t
+) => {
+  const solicitud = await crearSolicitudAnalisisLaboratorioRepo(
+    {
+      item_inventario_id,
+      usuario_id,
+      observacion_laboratorio:
+        observacion_laboratorio ??
+        'Solicitud automatica de analisis inicial de humedad y acido carminico'
+    },
+    t
+  )
+
+  await crearSolicitudParametroLaboratorioRepo(solicitud.solicitud_id, 'humedad', t)
+  await crearSolicitudParametroLaboratorioRepo(solicitud.solicitud_id, 'acido_carminico', t)
+
+  return solicitud
 }
 
 export const obtenerResumenLotesCochinillaService = async () => {
@@ -166,6 +191,15 @@ export const crearLoteCochinillaPorCompraService = async (data) => {
       t
     )
 
+    await crearSolicitudAnalisisInicialCochinilla(
+      {
+        item_inventario_id: itemInventario.item_inventario_id,
+        usuario_id: data.creado_por ?? 1,
+        observacion_laboratorio: data.observacion_laboratorio ?? null
+      },
+      t
+    )
+
     return await obtenerLoteCochinillaPorIdRepo(loteCreado.lote_cochinilla_id)
   })
 }
@@ -202,7 +236,7 @@ export const crearLoteCochinillaPorMezclaService = async (data) => {
       t
     )
 
-    return await crearLoteCochinillaPorMezclaRepo(
+    const loteCreado = await crearLoteCochinillaPorMezclaRepo(
       {
         ...data,
         item_inventario_id: itemInventario.item_inventario_id,
@@ -219,6 +253,17 @@ export const crearLoteCochinillaPorMezclaService = async (data) => {
       },
       t
     )
+
+    await crearSolicitudAnalisisInicialCochinilla(
+      {
+        item_inventario_id: itemInventario.item_inventario_id,
+        usuario_id: data.creado_por ?? 1,
+        observacion_laboratorio: data.observacion_laboratorio ?? null
+      },
+      t
+    )
+
+    return loteCreado
   })
 }
 /* ======================================================

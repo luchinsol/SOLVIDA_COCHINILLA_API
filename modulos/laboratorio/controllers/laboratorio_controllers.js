@@ -1,5 +1,7 @@
 import {
+  obtenerAnalisisOSolicitudPorItemInventarioService,
   obtenerTodosAnalisisService,
+  obtenerAnalisisActivoPorItemInventarioService,
   obtenerAnalisisPorIdService,
   obtenerAnalisisNoConformesService,
   contarMuestrasAnalizadasHoyService,
@@ -13,7 +15,8 @@ export const obtenerTodosAnalisisController = async (_req, res) => {
   try {
     const analisis = await obtenerTodosAnalisisService()
     res.json(analisis)
-  } catch (_error) {
+  } catch (error) {
+    console.error('Error en obtenerTodosAnalisisController:', error)
     res.status(500).json({ error: 'Error al obtener analisis' })
   }
 }
@@ -31,6 +34,38 @@ export const obtenerAnalisisPorIdController = async (req, res) => {
     }
 
     res.status(500).json({ error: 'Error al obtener el analisis' })
+  }
+}
+
+export const obtenerAnalisisActivoPorItemInventarioController = async (req, res) => {
+  try {
+    const analisis = await obtenerAnalisisActivoPorItemInventarioService(req.params.item_inventario_id)
+    res.json(analisis)
+  } catch (error) {
+    if (
+      error.message.includes('item_inventario_id debe ser') ||
+      error.message.includes('no existe un lote en analisis')
+    ) {
+      return res.status(400).json({ error: error.message })
+    }
+
+    res.status(500).json({ error: 'Error al obtener el analisis activo del lote' })
+  }
+}
+
+export const obtenerAnalisisOSolicitudPorItemInventarioController = async (req, res) => {
+  try {
+    const resultado = await obtenerAnalisisOSolicitudPorItemInventarioService(req.params.item_inventario_id)
+    res.json(resultado)
+  } catch (error) {
+    if (
+      error.message.includes('item_inventario_id debe ser') ||
+      error.message.includes('no existe analisis activo ni solicitud pendiente')
+    ) {
+      return res.status(400).json({ error: error.message })
+    }
+
+    res.status(500).json({ error: 'Error al obtener el analisis o la solicitud del lote' })
   }
 }
 
@@ -73,14 +108,16 @@ export const crearAnalisisController = async (req, res) => {
       error.message.includes('usuario_id debe ser') ||
       error.message.includes('item_inventario_id debe ser') ||
       error.message.includes('item_inventario_id no encontrado') ||
-      error.message.includes('estado_analisis_id es obligatorio') ||
-      error.message.includes('estado_analisis_id debe ser') ||
+      error.message.includes('solicitud_id es obligatorio') ||
+      error.message.includes('solicitud_id debe ser') ||
+      error.message.includes('solicitud de analisis no encontrada') ||
+      error.message.includes('solicitud de analisis no corresponde') ||
+      error.message.includes('solicitud de analisis ya fue atendida') ||
+      error.message.includes('solicitud de analisis no tiene parametros') ||
       error.message.includes('peso_muestra_g es obligatorio') ||
       error.message.includes('observaciones es obligatorio') ||
       error.message.includes('observaciones debe ser texto') ||
-      error.message.includes('tipos_ensayo debe ser') ||
       error.message.includes('tipo de ensayo no permitido') ||
-      error.message.includes('cada tipo de ensayo debe ser texto') ||
       error.message.includes('debe ser un numero valido')
     ) {
       return res.status(400).json({ error: error.message })

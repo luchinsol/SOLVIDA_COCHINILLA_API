@@ -37,6 +37,7 @@ import unidadesMedidaRoutes from './modulos/inventario/routes/unidades_medida_ro
 
 // Rutas de laboratorio
 import laboratorioRoutes from './modulos/laboratorio/routes/laboratorio_routes.js'
+import solicitudAnalisisRoutes from './modulos/laboratorio/routes/solicitud_analisis_routes.js'
 
 // Middleware de autenticación
 import { verifyToken } from './middlewares/authmiddleware.js'
@@ -68,6 +69,7 @@ app.use('/api/tipos-movimientos-almacen', tiposMovimientosAlmacenRoutes)
 app.use('/api/item-inventario', itemInventarioRoutes)
 app.use('/api/proveedores', proveedorRoutes)
 app.use('/api/laboratorio', laboratorioRoutes)
+app.use('/api/solicitudes-analisis', solicitudAnalisisRoutes)
 app.use('/api/comp_lotecochini', composicionLoteCochinillaRoutes)
 app.use('/api/lotes-cochinilla', loteCochinillaRoutes)
 app.use('/api/tipos-cochinilla', tipoCochinillaRoutes)
