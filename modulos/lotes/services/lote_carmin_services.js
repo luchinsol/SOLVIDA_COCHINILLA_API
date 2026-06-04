@@ -20,6 +20,10 @@ import {
   crearItemInventarioRepo
 } from '../../inventario/repositories/item_inventario_repositories.js'
 import { createAjusteMovimientoAlmacenService } from '../../inventario/services/movimiento_almacen_services.js'
+import {
+  crearSolicitudAnalisisLaboratorioRepo,
+  crearSolicitudParametroLaboratorioRepo
+} from '../../laboratorio/repositories/solicitud_analisis_repositories.js'
 
 import db from '../../../config/database.js'
 
@@ -125,6 +129,28 @@ const validarProcesoMezcladoId = (data) => {
   }
 }
 
+const crearSolicitudAnalisisInicialCarmin = async (
+  { item_inventario_id, usuario_id, observacion_laboratorio },
+  t
+) => {
+  const solicitud = await crearSolicitudAnalisisLaboratorioRepo(
+    {
+      item_inventario_id,
+      usuario_id,
+      observacion_laboratorio:
+        observacion_laboratorio ??
+        'Solicitud automatica para analisis de humedad, acido carminico y color cielab'
+    },
+    t
+  )
+
+  await crearSolicitudParametroLaboratorioRepo(solicitud.solicitud_id, 'humedad', t)
+  await crearSolicitudParametroLaboratorioRepo(solicitud.solicitud_id, 'acido_carminico', t)
+  await crearSolicitudParametroLaboratorioRepo(solicitud.solicitud_id, 'color_cielab', t)
+
+  return solicitud
+}
+
 /* ======================================================
    🧪 CREATE: LAQUEO (NO MOLIDO)
 ====================================================== */
@@ -148,12 +174,23 @@ export const crearLoteDesdeLaqueoService = async (data) => {
       t
     )
 
-    return await crearLoteCarminDesdeLaqueoRepo({
+    const loteCreado = await crearLoteCarminDesdeLaqueoRepo({
       ...normalizarDatosCosto(normalizarDatosStock(data)),
       item_inventario_id: itemInventario.item_inventario_id,
       nombre_lote: null,
       estado_lote: 'por_moler'
     }, t)
+
+    await crearSolicitudAnalisisInicialCarmin(
+      {
+        item_inventario_id: itemInventario.item_inventario_id,
+        usuario_id: data.creado_por ?? 1,
+        observacion_laboratorio: data.observacion_laboratorio ?? null
+      },
+      t
+    )
+
+    return loteCreado
   })
 }
 
@@ -181,7 +218,7 @@ export const crearLoteDesdeMoliendaService = async (data) => {
       t
     )
 
-    return await crearLoteCarminDesdeMoliendaRepo({
+    const loteCreado = await crearLoteCarminDesdeMoliendaRepo({
       ...normalizarDatosCosto(normalizarDatosStock(data)),
       item_inventario_id: itemInventario.item_inventario_id,
       nombre_lote: null,
@@ -189,6 +226,17 @@ export const crearLoteDesdeMoliendaService = async (data) => {
       observaciones: data.observaciones ?? null,
       estado_lote: 'por_analizar'
     }, t)
+
+    await crearSolicitudAnalisisInicialCarmin(
+      {
+        item_inventario_id: itemInventario.item_inventario_id,
+        usuario_id: data.creado_por ?? 1,
+        observacion_laboratorio: data.observacion_laboratorio ?? null
+      },
+      t
+    )
+
+    return loteCreado
   })
 }
 
@@ -216,7 +264,7 @@ export const crearLoteDesdeMezcladoService = async (data) => {
       t
     )
 
-    return await crearLoteCarminDesdeMezcladoRepo({
+    const loteCreado = await crearLoteCarminDesdeMezcladoRepo({
       ...normalizarDatosCosto(normalizarDatosStock(data)),
       item_inventario_id: itemInventario.item_inventario_id,
       nombre_lote: null,
@@ -224,6 +272,17 @@ export const crearLoteDesdeMezcladoService = async (data) => {
       observaciones: data.observaciones ?? null,
       estado_lote: 'por_analizar'
     }, t)
+
+    await crearSolicitudAnalisisInicialCarmin(
+      {
+        item_inventario_id: itemInventario.item_inventario_id,
+        usuario_id: data.creado_por ?? 1,
+        observacion_laboratorio: data.observacion_laboratorio ?? null
+      },
+      t
+    )
+
+    return loteCreado
   })
 }
 

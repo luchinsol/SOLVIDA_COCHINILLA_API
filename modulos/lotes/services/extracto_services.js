@@ -11,7 +11,32 @@ import {
   crearItemInventarioRepo
 } from '../../inventario/repositories/item_inventario_repositories.js'
 import { createAjusteMovimientoAlmacenService } from '../../inventario/services/movimiento_almacen_services.js'
+import {
+  crearSolicitudAnalisisLaboratorioRepo,
+  crearSolicitudParametroLaboratorioRepo
+} from '../../laboratorio/repositories/solicitud_analisis_repositories.js'
 import db from '../../../config/database.js'
+
+const crearSolicitudAnalisisInicialExtracto = async (
+  { item_inventario_id, usuario_id, observacion_laboratorio },
+  t
+) => {
+  const solicitud = await crearSolicitudAnalisisLaboratorioRepo(
+    {
+      item_inventario_id,
+      usuario_id,
+      observacion_laboratorio:
+        observacion_laboratorio ??
+        'Solicitud automatica para analisis de acido carminico y color cielab'
+    },
+    t
+  )
+
+  await crearSolicitudParametroLaboratorioRepo(solicitud.solicitud_id, 'acido_carminico', t)
+  await crearSolicitudParametroLaboratorioRepo(solicitud.solicitud_id, 'color_cielab', t)
+
+  return solicitud
+}
 
 export const crearExtractoService = async (data) => {
   if (data.almacen_id == null || data.almacen_id === '') {
@@ -82,7 +107,7 @@ export const crearExtractoService = async (data) => {
       t
     )
 
-    return await crearExtractoRepo({
+    const extractoCreado = await crearExtractoRepo({
       item_inventario_id: itemInventario.item_inventario_id,
       almacen_id: almacenId,
       proceso_filtrado_id: procesoFiltradoId,
@@ -98,6 +123,17 @@ export const crearExtractoService = async (data) => {
       unidad_medida_stock: data.unidad_medida_stock ?? 'kg',
       unidad_medida_dinero: 'USD'
     }, t)
+
+    await crearSolicitudAnalisisInicialExtracto(
+      {
+        item_inventario_id: itemInventario.item_inventario_id,
+        usuario_id: data.creado_por ?? 1,
+        observacion_laboratorio: data.observacion_laboratorio ?? null
+      },
+      t
+    )
+
+    return extractoCreado
   })
 }
 

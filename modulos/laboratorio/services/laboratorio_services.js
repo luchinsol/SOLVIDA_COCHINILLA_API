@@ -5,6 +5,7 @@ import {
   crearEnsayoColorCielabRepo,
   crearEnsayoHumedadRepo,
   crearEnsayoLaboratorioRepo,
+  obtenerAnalisisActivoPorItemInventarioRepo,
   obtenerItemInventarioPorIdParaAnalisisRepo,
   obtenerTodosAnalisis,
   obtenerAnalisisPorId,
@@ -15,6 +16,11 @@ import {
   contarMuestrasAnalizadasHoy,
   contarNoConformidadesHoy
 } from '../repositories/laboratorio_repositories.js'
+import {
+  obtenerSolicitudAnalisisPorIdConParametrosRepo,
+  obtenerSolicitudAnalisisPendientePorItemInventarioRepo,
+  marcarSolicitudAnalisisAtendidaRepo
+} from '../repositories/solicitud_analisis_repositories.js'
 import { obtenerLotesPorItemInventarioId } from '../../inventario/repositories/movimiento_almacen_repositories.js'
 import { actualizarEstadoLoteInsumo } from '../../inventario/repositories/lote_insumo_repositories.js'
 import { actualizarEstadoLoteCochinillaRepo } from '../../lotes/repositories/lote_cochinilla_repositories.js'
@@ -83,6 +89,50 @@ export const obtenerAnalisisPorIdService = async (analisis_id) => {
   return analisis
 }
 
+export const obtenerAnalisisActivoPorItemInventarioService = async (item_inventario_id) => {
+  const itemInventarioId = Number(item_inventario_id)
+
+  if (!Number.isInteger(itemInventarioId) || itemInventarioId <= 0) {
+    throw new Error('item_inventario_id debe ser un entero positivo')
+  }
+
+  const analisis = await obtenerAnalisisActivoPorItemInventarioRepo(itemInventarioId)
+
+  if (!analisis) {
+    throw new Error('no existe un lote en analisis para ese item_inventario')
+  }
+
+  return analisis
+}
+
+export const obtenerAnalisisOSolicitudPorItemInventarioService = async (item_inventario_id) => {
+  const itemInventarioId = Number(item_inventario_id)
+
+  if (!Number.isInteger(itemInventarioId) || itemInventarioId <= 0) {
+    throw new Error('item_inventario_id debe ser un entero positivo')
+  }
+
+  const analisisActivo = await obtenerAnalisisActivoPorItemInventarioRepo(itemInventarioId)
+
+  if (analisisActivo) {
+    return {
+      tipo: 'analisis',
+      data: analisisActivo
+    }
+  }
+
+  const solicitudPendiente = await obtenerSolicitudAnalisisPendientePorItemInventarioRepo(itemInventarioId)
+
+  if (solicitudPendiente) {
+    return {
+      tipo: 'solicitud',
+      data: solicitudPendiente
+    }
+  }
+
+  throw new Error('no existe analisis activo ni solicitud pendiente para ese item_inventario')
+}
+
 export const contarMuestrasAnalizadasHoyService = async () => {
   return await contarMuestrasAnalizadasHoy()
 }
@@ -98,6 +148,7 @@ export const obtenerAnalisisNoConformesService = async () => {
 export const crearAnalisisService = async (datos) => {
   const usuarioId = Number(datos.usuario_id)
   const itemInventarioId = Number(datos.item_inventario_id)
+  const solicitudId = Number(datos.solicitud_id)
 
   if (!Number.isInteger(usuarioId) || usuarioId <= 0) {
     throw new Error('usuario_id debe ser un entero positivo')
@@ -108,17 +159,15 @@ export const crearAnalisisService = async (datos) => {
   }
 
   if (
-    datos.estado_analisis_id === undefined ||
-    datos.estado_analisis_id === null ||
-    datos.estado_analisis_id === ''
+    datos.solicitud_id === undefined ||
+    datos.solicitud_id === null ||
+    datos.solicitud_id === ''
   ) {
-    throw new Error('estado_analisis_id es obligatorio')
+    throw new Error('solicitud_id es obligatorio')
   }
 
-  const estadoAnalisisId = Number(datos.estado_analisis_id)
-
-  if (!Number.isInteger(estadoAnalisisId) || estadoAnalisisId <= 0) {
-    throw new Error('estado_analisis_id debe ser un entero positivo')
+  if (!Number.isInteger(solicitudId) || solicitudId <= 0) {
+    throw new Error('solicitud_id debe ser un entero positivo')
   }
 
   const parseNullableNumber = (value, fieldName) => {
@@ -133,10 +182,6 @@ export const crearAnalisisService = async (datos) => {
     }
 
     return parsed
-  }
-
-  if (!Array.isArray(datos.tipos_ensayo) || !datos.tipos_ensayo.length) {
-    throw new Error('tipos_ensayo debe ser un arreglo con al menos un ensayo')
   }
 
   if (
@@ -169,27 +214,7 @@ export const crearAnalisisService = async (datos) => {
     ['color cielab', 'color_cielab']
   ])
 
-  const tiposEnsayoNormalizados = [...new Set(datos.tipos_ensayo.map((tipo) => {
-    if (typeof tipo !== 'string') {
-      throw new Error('cada tipo de ensayo debe ser texto')
-    }
-
-    const tipoNormalizado = tiposEnsayoPermitidos.get(tipo.trim().toLowerCase())
-
-    if (!tipoNormalizado) {
-      throw new Error(`tipo de ensayo no permitido: ${tipo}`)
-    }
-
-    return tipoNormalizado
-  }))]
-
-  const actualizarEstadoLotePorAnalisis = async (itemInventarioId, estadoAnalisisId, t) => {
-    if (estadoAnalisisId !== 1 && estadoAnalisisId !== 6) {
-      return
-    }
-
-    await actualizarEstadoLotePorItemInventario(itemInventarioId, 6, t)
-  }
+  const estadoAnalisisId = 1
 
   const analisisNormalizado = {
     usuario_id: usuarioId,
@@ -197,7 +222,8 @@ export const crearAnalisisService = async (datos) => {
     peso_muestra_g: parseNullableNumber(datos.peso_muestra_g, 'peso_muestra_g'),
     item_inventario_id: itemInventarioId,
     estado_analisis_id: estadoAnalisisId,
-    nombre: null
+    nombre: null,
+    solicitud_id: solicitudId
   }
 
   return await db.tx(async (t) => {
@@ -217,6 +243,38 @@ export const crearAnalisisService = async (datos) => {
     } else if (nombreItem === 'extracto') {
       prefijo = 'AN-EXT'
     }
+
+    const solicitud = await obtenerSolicitudAnalisisPorIdConParametrosRepo(solicitudId, t)
+
+    if (!solicitud) {
+      throw new Error('solicitud de analisis no encontrada')
+    }
+
+    if (solicitud.item_inventario_id !== itemInventarioId) {
+      throw new Error('solicitud de analisis no corresponde al item_inventario')
+    }
+
+    if (solicitud.atendido) {
+      throw new Error('solicitud de analisis ya fue atendida')
+    }
+
+    if (!Array.isArray(solicitud.parametros) || !solicitud.parametros.length) {
+      throw new Error('solicitud de analisis no tiene parametros')
+    }
+
+    const tiposEnsayoNormalizados = [...new Set(solicitud.parametros.map((parametro) => {
+      const tipoEnsayo = typeof parametro?.tipo_ensayo === 'string'
+        ? parametro.tipo_ensayo.trim().toLowerCase()
+        : ''
+
+      const tipoNormalizado = tiposEnsayoPermitidos.get(tipoEnsayo)
+
+      if (!tipoNormalizado) {
+        throw new Error(`tipo de ensayo no permitido: ${parametro?.tipo_ensayo ?? ''}`)
+      }
+
+      return tipoNormalizado
+    }))]
 
     const siguienteId = await t.one(
       `SELECT nextval(
@@ -251,8 +309,9 @@ export const crearAnalisisService = async (datos) => {
       ensayosCreados.push(ensayoCreado)
     }
 
+    await marcarSolicitudAnalisisAtendidaRepo(solicitudId, t)
     await actualizarAnalisisActualPorItemInventario(itemInventarioId, analisisCreado.analisis_id, t)
-    await actualizarEstadoLotePorAnalisis(itemInventarioId, estadoAnalisisId, t)
+    await actualizarEstadoLotePorItemInventario(itemInventarioId, 6, t)
 
     return {
       ...analisisCreado,
