@@ -5,7 +5,16 @@ import {
   crearEnsayoColorCielabRepo,
   crearEnsayoHumedadRepo,
   crearEnsayoLaboratorioRepo,
+  actualizarEnsayoAcidoCarminicoRepo,
+  actualizarEnsayoColorCielabRepo,
+  actualizarEnsayoHumedadRepo,
+  actualizarEnsayoLaboratorioRepo,
+  actualizarResultadosActualesEnLoteRepo,
+  actualizarObservacionesEnLoteRepo,
+  actualizarModificadoEnAnalisisRepo,
   obtenerAnalisisActivoPorItemInventarioRepo,
+  obtenerEnsayoPorIdYAnalisisRepo,
+  listarEnsayosPorAnalisisRepo,
   obtenerItemInventarioPorIdParaAnalisisRepo,
   obtenerTodosAnalisis,
   obtenerAnalisisPorId,
@@ -17,6 +26,8 @@ import {
   contarNoConformidadesHoy
 } from '../repositories/laboratorio_repositories.js'
 import {
+  crearSolicitudAnalisisLaboratorioRepo,
+  crearSolicitudParametroLaboratorioRepo,
   obtenerSolicitudAnalisisPorIdConParametrosRepo,
   obtenerSolicitudAnalisisPendientePorItemInventarioRepo,
   marcarSolicitudAnalisisAtendidaRepo
@@ -68,6 +79,124 @@ const actualizarAnalisisActualPorItemInventario = async (itemInventarioId, anali
   }
 }
 
+const actualizarResultadosActualesPorItemInventario = async (itemInventarioId, resultados, t) => {
+  const lotesRelacionados = await obtenerLotesPorItemInventarioId(itemInventarioId, t)
+
+  if (!lotesRelacionados.length) {
+    return
+  }
+
+  for (const lote of lotesRelacionados) {
+    await actualizarResultadosActualesEnLoteRepo(lote.lote_tabla, lote.lote_id, resultados, t)
+  }
+}
+
+const actualizarObservacionesPorItemInventario = async (itemInventarioId, observaciones, t) => {
+  const lotesRelacionados = await obtenerLotesPorItemInventarioId(itemInventarioId, t)
+
+  if (!lotesRelacionados.length) {
+    return
+  }
+
+  for (const lote of lotesRelacionados) {
+    await actualizarObservacionesEnLoteRepo(lote.lote_tabla, lote.lote_id, observaciones, t)
+  }
+}
+
+const evaluarConformidadEnsayo = (tipoEnsayo, detalleActualizado, conformeActual = null) => {
+  if (tipoEnsayo === 'acido_carminico') {
+    if (detalleActualizado?.absorbancia_nm === null || detalleActualizado?.absorbancia_nm === undefined) {
+      return null
+    }
+
+    return (
+      Number(detalleActualizado.absorbancia_nm) >= 0.650 &&
+      Number(detalleActualizado.absorbancia_nm) <= 0.750
+    )
+  }
+
+  if (tipoEnsayo === 'humedad') {
+    if (detalleActualizado?.resultado === null || detalleActualizado?.resultado === undefined) {
+      return null
+    }
+
+    return true
+  }
+
+  if (tipoEnsayo === 'color_cielab') {
+    if (
+      detalleActualizado?.resultado_l === null || detalleActualizado?.resultado_l === undefined ||
+      detalleActualizado?.resultado_a === null || detalleActualizado?.resultado_a === undefined ||
+      detalleActualizado?.resultado_b === null || detalleActualizado?.resultado_b === undefined
+    ) {
+      return null
+    }
+
+    return true
+  }
+
+  return conformeActual
+}
+
+const limpiarEnsayosAnalisis = (analisis) => {
+  if (!analisis || !Array.isArray(analisis.ensayos)) {
+    return analisis
+  }
+
+  return {
+    ...analisis,
+    ensayos: analisis.ensayos.map((ensayo) => {
+      const ensayoLimpio = {
+        ensayo_id: ensayo.ensayo_id,
+        tipo_ensayo: ensayo.tipo_ensayo
+      }
+
+      if (ensayo.tipo_ensayo === 'humedad' && ensayo.humedad) {
+        ensayoLimpio.humedad = ensayo.humedad
+      }
+
+      if (ensayo.tipo_ensayo === 'acido_carminico' && ensayo.acido_carminico) {
+        ensayoLimpio.acido_carminico = ensayo.acido_carminico
+      }
+
+      if (ensayo.tipo_ensayo === 'color_cielab' && ensayo.color_cielab) {
+        ensayoLimpio.color_cielab = ensayo.color_cielab
+      }
+
+      return ensayoLimpio
+    })
+  }
+}
+
+const obtenerDetalleEnsayoPayload = (ensayoPayload, tipoEnsayoNormalizado) => {
+  if (!ensayoPayload || typeof ensayoPayload !== 'object' || Array.isArray(ensayoPayload)) {
+    return {}
+  }
+
+  if (tipoEnsayoNormalizado === 'humedad') {
+    const detalle = ensayoPayload.humedad
+    return detalle && typeof detalle === 'object' && !Array.isArray(detalle)
+      ? detalle
+      : ensayoPayload
+  }
+
+  if (tipoEnsayoNormalizado === 'acido_carminico') {
+    const detalle = ensayoPayload.acido_carminico
+    return detalle && typeof detalle === 'object' && !Array.isArray(detalle)
+      ? detalle
+      : ensayoPayload
+  }
+
+  if (tipoEnsayoNormalizado === 'color_cielab') {
+    const detalle = ensayoPayload.color_cielab
+    return detalle && typeof detalle === 'object' && !Array.isArray(detalle)
+      ? detalle
+      : ensayoPayload
+  }
+
+  return ensayoPayload
+}
+
 export const obtenerTodosAnalisisService = async () => {
     const analisis = await obtenerTodosAnalisis();
     return analisis;
@@ -102,7 +231,7 @@ export const obtenerAnalisisActivoPorItemInventarioService = async (item_inventa
     throw new Error('no existe un lote en analisis para ese item_inventario')
   }
 
-  return analisis
+  return limpiarEnsayosAnalisis(analisis)
 }
 
 export const obtenerAnalisisOSolicitudPorItemInventarioService = async (item_inventario_id) => {
@@ -117,7 +246,7 @@ export const obtenerAnalisisOSolicitudPorItemInventarioService = async (item_inv
   if (analisisActivo) {
     return {
       tipo: 'analisis',
-      data: analisisActivo
+      data: limpiarEnsayosAnalisis(analisisActivo)
     }
   }
 
@@ -143,6 +272,30 @@ export const contarNoConformidadesHoyService = async () => {
 
 export const obtenerAnalisisNoConformesService = async () => {
   return await obtenerAnalisisNoConformes()
+}
+
+const extraerResultadosActualesDesdeEnsayo = (ensayo) => {
+  if (ensayo.tipo_ensayo === 'humedad' && ensayo.humedad) {
+    return {
+      humedad_actual: ensayo.humedad.resultado
+    }
+  }
+
+  if (ensayo.tipo_ensayo === 'acido_carminico' && ensayo.acido_carminico) {
+    return {
+      concentracion_ac_actual: ensayo.acido_carminico.resultado
+    }
+  }
+
+  if (ensayo.tipo_ensayo === 'color_cielab' && ensayo.color_cielab) {
+    return {
+      color_l_actual: ensayo.color_cielab.resultado_l,
+      color_a_actual: ensayo.color_cielab.resultado_a,
+      color_b_actual: ensayo.color_cielab.resultado_b
+    }
+  }
+
+  return {}
 }
 
 export const crearAnalisisService = async (datos) => {
@@ -465,6 +618,447 @@ export const actualizarAnalisisService = async (analisis_id, analisisDatos) => {
     }
 
     return analisisActualizado
+  })
+}
+
+export const actualizarEnsayosAnalisisService = async (analisis_id, payload) => {
+  const analisisId = Number(analisis_id)
+
+  if (!Number.isInteger(analisisId) || analisisId <= 0) {
+    throw new Error('analisis_id debe ser un entero positivo')
+  }
+
+  if (!Array.isArray(payload?.ensayos) || !payload.ensayos.length) {
+    throw new Error('ensayos debe ser un arreglo con al menos un ensayo')
+  }
+
+  const parseNullableNumber = (value, fieldName) => {
+    if (value === undefined) {
+      return undefined
+    }
+
+    if (value === null || value === '') {
+      return null
+    }
+
+    const parsed = Number(value)
+
+    if (!Number.isFinite(parsed)) {
+      throw new Error(`${fieldName} debe ser un numero valido`)
+    }
+
+    return parsed
+  }
+
+  let estadoAnalisisId = undefined
+
+  if (
+    Object.prototype.hasOwnProperty.call(payload ?? {}, 'estado_analisis_id') ||
+    Object.prototype.hasOwnProperty.call(payload ?? {}, 'estado_analisis')
+  ) {
+    const estadoAnalisisValue = Object.prototype.hasOwnProperty.call(payload ?? {}, 'estado_analisis_id')
+      ? payload.estado_analisis_id
+      : payload.estado_analisis
+
+    if (
+      estadoAnalisisValue === null ||
+      estadoAnalisisValue === undefined ||
+      estadoAnalisisValue === ''
+    ) {
+      throw new Error('estado_analisis_id debe ser un entero positivo')
+    }
+
+    estadoAnalisisId = Number(estadoAnalisisValue)
+
+    if (!Number.isInteger(estadoAnalisisId) || estadoAnalisisId <= 0) {
+      throw new Error('estado_analisis_id debe ser un entero positivo')
+    }
+  }
+
+  const tiposEnsayoPermitidos = new Map([
+    ['humedad', 'humedad'],
+    ['acido_carminico', 'acido_carminico'],
+    ['acido carminico', 'acido_carminico'],
+    ['concentracion_acido_carminico', 'acido_carminico'],
+    ['concentracion de acido carminico', 'acido_carminico'],
+    ['color_cielab', 'color_cielab'],
+    ['color cielab', 'color_cielab']
+  ])
+
+  return await db.tx(async (t) => {
+    const actualizaciones = []
+    let itemInventarioId = null
+    let estadoAnalisisFinal = estadoAnalisisId
+    const resultadosActuales = {}
+
+    for (const ensayoPayload of payload.ensayos) {
+      if (!ensayoPayload || typeof ensayoPayload !== 'object' || Array.isArray(ensayoPayload)) {
+        throw new Error('cada ensayo debe ser un objeto valido')
+      }
+
+      const ensayoId = Number(ensayoPayload.ensayo_id)
+
+      if (!Number.isInteger(ensayoId) || ensayoId <= 0) {
+        throw new Error('ensayo_id debe ser un entero positivo')
+      }
+
+      if (
+        ensayoPayload.tipo_ensayo === undefined ||
+        ensayoPayload.tipo_ensayo === null ||
+        String(ensayoPayload.tipo_ensayo).trim() === ''
+      ) {
+        throw new Error('tipo_ensayo es obligatorio')
+      }
+
+      if (typeof ensayoPayload.tipo_ensayo !== 'string') {
+        throw new Error('tipo_ensayo debe ser texto')
+      }
+
+      const tipoEnsayoNormalizado = tiposEnsayoPermitidos.get(
+        ensayoPayload.tipo_ensayo.trim().toLowerCase()
+      )
+
+      if (!tipoEnsayoNormalizado) {
+        throw new Error(`tipo_ensayo no permitido: ${ensayoPayload.tipo_ensayo}`)
+      }
+
+      const ensayo = await obtenerEnsayoPorIdYAnalisisRepo(analisisId, ensayoId, t)
+
+      if (!ensayo) {
+        throw new Error(`ensayo no encontrado para analisis: ${ensayoId}`)
+      }
+
+      if (ensayo.tipo_ensayo !== tipoEnsayoNormalizado) {
+        throw new Error(`tipo_ensayo no coincide con ensayo_id: ${ensayoId}`)
+      }
+
+      const detallePayload = obtenerDetalleEnsayoPayload(ensayoPayload, tipoEnsayoNormalizado)
+      let detalleActualizado = null
+
+      if (tipoEnsayoNormalizado === 'humedad') {
+        const detalle = {}
+
+        if (Object.prototype.hasOwnProperty.call(detallePayload, 'peso_ensayo_g')) {
+          detalle.peso_ensayo_g = parseNullableNumber(detallePayload.peso_ensayo_g, 'peso_ensayo_g')
+        }
+
+        if (Object.prototype.hasOwnProperty.call(detallePayload, 'resultado')) {
+          detalle.resultado = parseNullableNumber(detallePayload.resultado, 'resultado')
+        }
+
+        detalleActualizado = await actualizarEnsayoHumedadRepo(ensayoId, detalle, t)
+
+        if (detalleActualizado?.resultado !== undefined) {
+          resultadosActuales.humedad_actual = detalleActualizado.resultado
+        }
+      } else if (tipoEnsayoNormalizado === 'acido_carminico') {
+        const detalle = {}
+
+        if (Object.prototype.hasOwnProperty.call(detallePayload, 'peso_ensayo_g')) {
+          detalle.peso_ensayo_g = parseNullableNumber(detallePayload.peso_ensayo_g, 'peso_ensayo_g')
+        }
+
+        if (Object.prototype.hasOwnProperty.call(detallePayload, 'absorbancia_nm')) {
+          detalle.absorbancia_nm = parseNullableNumber(detallePayload.absorbancia_nm, 'absorbancia_nm')
+        }
+
+        if (Object.prototype.hasOwnProperty.call(detallePayload, 'resultado')) {
+          detalle.resultado = parseNullableNumber(detallePayload.resultado, 'resultado')
+        }
+
+        detalleActualizado = await actualizarEnsayoAcidoCarminicoRepo(ensayoId, detalle, t)
+
+        if (detalleActualizado?.resultado !== undefined) {
+          resultadosActuales.concentracion_ac_actual = detalleActualizado.resultado
+        }
+      } else if (tipoEnsayoNormalizado === 'color_cielab') {
+        const detalle = {}
+
+        if (Object.prototype.hasOwnProperty.call(detallePayload, 'peso_ensayo_g')) {
+          detalle.peso_ensayo_g = parseNullableNumber(detallePayload.peso_ensayo_g, 'peso_ensayo_g')
+        }
+
+        if (Object.prototype.hasOwnProperty.call(detallePayload, 'resultado_l')) {
+          detalle.resultado_l = parseNullableNumber(detallePayload.resultado_l, 'resultado_l')
+        }
+
+        if (Object.prototype.hasOwnProperty.call(detallePayload, 'resultado_a')) {
+          detalle.resultado_a = parseNullableNumber(detallePayload.resultado_a, 'resultado_a')
+        }
+
+        const valorResultadoB = Object.prototype.hasOwnProperty.call(detallePayload, 'resultado_b')
+          ? detallePayload.resultado_b
+          : detallePayload.resultado_r
+
+        if (
+          Object.prototype.hasOwnProperty.call(detallePayload, 'resultado_b') ||
+          Object.prototype.hasOwnProperty.call(detallePayload, 'resultado_r')
+        ) {
+          detalle.resultado_b = parseNullableNumber(valorResultadoB, 'resultado_b')
+        }
+
+        detalleActualizado = await actualizarEnsayoColorCielabRepo(ensayoId, detalle, t)
+
+        if (detalleActualizado?.resultado_l !== undefined) {
+          resultadosActuales.color_l_actual = detalleActualizado.resultado_l
+        }
+
+        if (detalleActualizado?.resultado_a !== undefined) {
+          resultadosActuales.color_a_actual = detalleActualizado.resultado_a
+        }
+
+        if (detalleActualizado?.resultado_b !== undefined) {
+          resultadosActuales.color_b_actual = detalleActualizado.resultado_b
+        }
+      }
+
+      const conformeCalculado = evaluarConformidadEnsayo(
+        tipoEnsayoNormalizado,
+        detalleActualizado,
+        ensayo.conforme ?? null
+      )
+
+      const ensayoActualizado = await actualizarEnsayoLaboratorioRepo(
+        ensayoId,
+        Object.is(conformeCalculado, ensayo.conforme ?? null) ? {} : { conforme: conformeCalculado },
+        t
+      )
+
+      actualizaciones.push({
+        ...ensayoActualizado,
+        detalle: detalleActualizado
+      })
+    }
+
+    let analisisActualizado = null
+
+    if (estadoAnalisisId === 2) {
+      const conformidades = actualizaciones.map((ensayo) => ensayo.conforme)
+
+      if (conformidades.some((conforme) => conforme === null || conforme === undefined)) {
+        throw new Error('todos los ensayos deben tener resultados para finalizar el analisis')
+      }
+
+      if (conformidades.every((conforme) => conforme === true)) {
+        estadoAnalisisFinal = 2
+      } else if (conformidades.every((conforme) => conforme === false)) {
+        estadoAnalisisFinal = 3
+      } else {
+        estadoAnalisisFinal = 4
+      }
+    }
+
+    if (estadoAnalisisFinal !== undefined) {
+      analisisActualizado = await actualizarAnalisis(
+        analisisId,
+        { estado_analisis_id: estadoAnalisisFinal },
+        t
+      )
+
+      if (analisisActualizado?.item_inventario_id) {
+        itemInventarioId = Number(analisisActualizado.item_inventario_id)
+      }
+    } else {
+      analisisActualizado = await actualizarModificadoEnAnalisisRepo(analisisId, t)
+
+      if (analisisActualizado?.item_inventario_id) {
+        itemInventarioId = Number(analisisActualizado.item_inventario_id)
+      }
+    }
+
+    if (estadoAnalisisFinal !== undefined && itemInventarioId) {
+      let nuevoEstadoLoteId = null
+
+      if (estadoAnalisisFinal === 1 || estadoAnalisisFinal === 4) {
+        nuevoEstadoLoteId = 6
+      } else if (estadoAnalisisFinal === 2) {
+        nuevoEstadoLoteId = 1
+      } else if (estadoAnalisisFinal === 3) {
+        nuevoEstadoLoteId = 2
+      }
+
+      if (nuevoEstadoLoteId !== null) {
+        await actualizarEstadoLotePorItemInventario(itemInventarioId, nuevoEstadoLoteId, t)
+      }
+
+      if (estadoAnalisisFinal === 2) {
+        await actualizarResultadosActualesPorItemInventario(itemInventarioId, resultadosActuales, t)
+      }
+    }
+
+    return {
+      analisis_id: analisisId,
+      estado_analisis_id: analisisActualizado?.estado_analisis_id ?? estadoAnalisisFinal ?? null,
+      ensayos: actualizaciones
+    }
+  })
+}
+
+export const aprobarAnalisisEnRevisionService = async (analisis_id, payload = {}) => {
+  const analisisId = Number(analisis_id)
+
+  if (!Number.isInteger(analisisId) || analisisId <= 0) {
+    throw new Error('analisis_id debe ser un entero positivo')
+  }
+
+  if (
+    payload.observaciones === undefined ||
+    payload.observaciones === null ||
+    String(payload.observaciones).trim() === ''
+  ) {
+    throw new Error('observaciones es obligatorio')
+  }
+
+  if (typeof payload.observaciones !== 'string') {
+    throw new Error('observaciones debe ser texto')
+  }
+
+  if (
+    payload.mensaje_gerencia !== undefined &&
+    payload.mensaje_gerencia !== null &&
+    typeof payload.mensaje_gerencia !== 'string'
+  ) {
+    throw new Error('mensaje_gerencia debe ser texto')
+  }
+
+  if (!Array.isArray(payload?.ensayos)) {
+    throw new Error('ensayos debe ser un arreglo')
+  }
+
+  return await db.tx(async (t) => {
+    const analisis = await obtenerAnalisisPorId(analisisId, t)
+
+    if (!analisis) {
+      throw new Error('analisis no encontrado')
+    }
+
+    const itemInventarioId = Number(analisis.item_inventario_id)
+
+    if (!Number.isInteger(itemInventarioId) || itemInventarioId <= 0) {
+      throw new Error('analisis no tiene item_inventario_id valido')
+    }
+
+    const ensayos = await listarEnsayosPorAnalisisRepo(analisisId, t)
+    const ensayosPorId = new Map(ensayos.map((ensayo) => [ensayo.ensayo_id, ensayo]))
+    const decisionesPorId = new Map()
+
+    for (const ensayoPayload of payload.ensayos) {
+      if (!ensayoPayload || typeof ensayoPayload !== 'object' || Array.isArray(ensayoPayload)) {
+        throw new Error('cada ensayo debe ser un objeto valido')
+      }
+
+      const ensayoId = Number(ensayoPayload.ensayo_id)
+
+      if (!Number.isInteger(ensayoId) || ensayoId <= 0) {
+        throw new Error('ensayo_id debe ser un entero positivo')
+      }
+
+      if (typeof ensayoPayload.aprobar_no_conformidad !== 'boolean') {
+        throw new Error('aprobar_no_conformidad debe ser booleano')
+      }
+
+      const ensayo = ensayosPorId.get(ensayoId)
+
+      if (!ensayo) {
+        throw new Error(`ensayo no encontrado para analisis: ${ensayoId}`)
+      }
+
+      if (ensayo.conforme !== false) {
+        throw new Error(`solo se pueden decidir ensayos no conformes: ${ensayoId}`)
+      }
+
+      decisionesPorId.set(ensayoId, ensayoPayload.aprobar_no_conformidad)
+    }
+
+    const resultadosActuales = {}
+    const tiposReanalisis = []
+
+    for (const ensayo of ensayos) {
+      if (ensayo.conforme === true) {
+        Object.assign(resultadosActuales, extraerResultadosActualesDesdeEnsayo(ensayo))
+        await actualizarEnsayoLaboratorioRepo(
+          ensayo.ensayo_id,
+          { no_conformidad_abierta: false },
+          t
+        )
+        continue
+      }
+
+      if (ensayo.conforme === false) {
+        const aprobarNoConformidad = decisionesPorId.get(ensayo.ensayo_id)
+
+        if (aprobarNoConformidad === undefined) {
+          throw new Error(`falta decision para el ensayo no conforme: ${ensayo.ensayo_id}`)
+        }
+
+        if (aprobarNoConformidad) {
+          await actualizarEnsayoLaboratorioRepo(
+            ensayo.ensayo_id,
+            { no_conformidad_abierta: false },
+            t
+          )
+          Object.assign(resultadosActuales, extraerResultadosActualesDesdeEnsayo(ensayo))
+        } else {
+          await actualizarEnsayoLaboratorioRepo(
+            ensayo.ensayo_id,
+            { no_conformidad_abierta: true },
+            t
+          )
+          tiposReanalisis.push(ensayo.tipo_ensayo)
+        }
+      }
+    }
+
+    const observacionesFinales = payload.mensaje_gerencia && String(payload.mensaje_gerencia).trim() !== ''
+      ? `${payload.observaciones.trim()}\nMensaje a gerencia: ${payload.mensaje_gerencia.trim()}`
+      : payload.observaciones.trim()
+
+    const analisisActualizado = await actualizarAnalisis(
+      analisisId,
+      {
+        estado_analisis_id: 2,
+        observaciones: observacionesFinales
+      },
+      t
+    )
+
+    await actualizarResultadosActualesPorItemInventario(itemInventarioId, resultadosActuales, t)
+    await actualizarObservacionesPorItemInventario(itemInventarioId, observacionesFinales, t)
+
+    let solicitudCreada = null
+
+    if (tiposReanalisis.length) {
+      solicitudCreada = await crearSolicitudAnalisisLaboratorioRepo(
+        {
+          item_inventario_id: itemInventarioId,
+          usuario_id: Number(analisis.usuario_id),
+          observacion_laboratorio: payload.observaciones.trim()
+        },
+        t
+      )
+
+      for (const tipoEnsayo of [...new Set(tiposReanalisis)]) {
+        await crearSolicitudParametroLaboratorioRepo(solicitudCreada.solicitud_id, tipoEnsayo, t)
+      }
+
+      await actualizarEstadoLotePorItemInventario(itemInventarioId, 2, t)
+    } else {
+      await actualizarEstadoLotePorItemInventario(itemInventarioId, 1, t)
+    }
+
+    return {
+      analisis_id: analisisId,
+      estado_analisis_id: analisisActualizado?.estado_analisis_id ?? 2,
+      solicitud_reanalisis: solicitudCreada,
+      ensayos: ensayos.map((ensayo) => ({
+        ensayo_id: ensayo.ensayo_id,
+        tipo_ensayo: ensayo.tipo_ensayo,
+        conforme: ensayo.conforme,
+        no_conformidad_abierta: ensayosPorId.get(ensayo.ensayo_id)?.conforme === false
+          ? !decisionesPorId.get(ensayo.ensayo_id)
+          : false
+      }))
+    }
   })
 }
 

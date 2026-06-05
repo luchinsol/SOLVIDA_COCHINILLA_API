@@ -6,14 +6,14 @@ export const obtenerTodosAnalisis = async () => {
     return db.query(query);
 };
 
-export const obtenerAnalisisPorId = async (id) => {
+export const obtenerAnalisisPorId = async (id, t = db) => {
   const query = `
         SELECT *
         FROM laboratorio.analisis_laboratorio
         WHERE analisis_id = $1
     `;
 
-    return await db.oneOrNone(query, [id]);
+    return await t.oneOrNone(query, [id]);
 };
 
 export const obtenerAnalisisActivoPorItemInventarioRepo = async (itemInventarioId) => {
@@ -106,9 +106,7 @@ export const obtenerAnalisisActivoPorItemInventarioRepo = async (itemInventarioI
         json_agg(
           json_build_object(
             'ensayo_id', el.ensayo_id,
-            'analisis_id', el.analisis_id,
             'tipo_ensayo', el.tipo_ensayo,
-            'conforme', el.conforme,
             'humedad', CASE
               WHEN el.tipo_ensayo = 'humedad' THEN json_build_object(
                 'humedad_id', eh.humedad_id,
@@ -198,10 +196,50 @@ export const contarNoConformidadesHoy = async () => {
 
 export const obtenerAnalisisNoConformes = async () => {
     const query = `
-        SELECT *
-        FROM laboratorio.analisis_laboratorio
-        WHERE conforme = false
-        ORDER BY COALESCE(modificado_en, creado_en) DESC, analisis_id DESC
+        SELECT
+          al.analisis_id::int AS analisis_id,
+          al.usuario_id::int AS usuario_id,
+          al.proceso_extraccion_id::int AS proceso_extraccion_id,
+          al.creado_en,
+          al.observaciones,
+          al.peso_muestra_g,
+          al.item_inventario_id::int AS item_inventario_id,
+          al.estado_analisis_id::int AS estado_analisis_id,
+          al.modificado_en,
+          al.nombre,
+          al.unidad_medida_masa,
+          al.solicitud_id::int AS solicitud_id,
+          COALESCE(
+            json_agg(
+              json_build_object(
+                'ensayo_id', el.ensayo_id::int,
+                'tipo_ensayo', el.tipo_ensayo,
+                'conforme', el.conforme,
+                'no_conformidad_abierta', el.no_conformidad_abierta
+              )
+              ORDER BY el.ensayo_id
+            ) FILTER (WHERE el.ensayo_id IS NOT NULL),
+            '[]'::json
+          ) AS ensayos_no_conformes
+        FROM laboratorio.analisis_laboratorio al
+        INNER JOIN laboratorio.ensayo_laboratorio el
+          ON el.analisis_id = al.analisis_id
+        WHERE el.conforme = false
+          AND el.no_conformidad_abierta = true
+        GROUP BY
+          al.analisis_id,
+          al.usuario_id,
+          al.proceso_extraccion_id,
+          al.creado_en,
+          al.observaciones,
+          al.peso_muestra_g,
+          al.item_inventario_id,
+          al.estado_analisis_id,
+          al.modificado_en,
+          al.nombre,
+          al.unidad_medida_masa,
+          al.solicitud_id
+        ORDER BY COALESCE(al.modificado_en, al.creado_en) DESC, al.analisis_id DESC
     `;
 
     return db.query(query);
@@ -294,6 +332,203 @@ export const crearEnsayoColorCielabRepo = async (ensayoId, t = db) => {
   return await t.one(query, [ensayoId])
 }
 
+export const obtenerEnsayoPorIdYAnalisisRepo = async (analisisId, ensayoId, t = db) => {
+  const query = `
+    SELECT
+      ensayo_id::int AS ensayo_id,
+      analisis_id::int AS analisis_id,
+      tipo_ensayo,
+      conforme
+    FROM laboratorio.ensayo_laboratorio
+    WHERE analisis_id = $1
+      AND ensayo_id = $2
+  `
+
+  return await t.oneOrNone(query, [analisisId, ensayoId])
+}
+
+export const listarEnsayosPorAnalisisRepo = async (analisisId, t = db) => {
+  const query = `
+    SELECT
+      el.ensayo_id::int AS ensayo_id,
+      el.analisis_id::int AS analisis_id,
+      el.tipo_ensayo,
+      el.conforme,
+      el.no_conformidad_abierta,
+      CASE
+        WHEN el.tipo_ensayo = 'humedad' THEN json_build_object(
+          'humedad_id', eh.humedad_id,
+          'peso_ensayo_g', eh.peso_ensayo_g,
+          'resultado', eh.resultado
+        )
+        ELSE NULL
+      END AS humedad,
+      CASE
+        WHEN el.tipo_ensayo = 'acido_carminico' THEN json_build_object(
+          'acido_carminico_id', eac.acido_carminico_id,
+          'peso_ensayo_g', eac.peso_ensayo_g,
+          'absorbancia_nm', eac.absorbancia_nm,
+          'resultado', eac.resultado
+        )
+        ELSE NULL
+      END AS acido_carminico,
+      CASE
+        WHEN el.tipo_ensayo = 'color_cielab' THEN json_build_object(
+          'color_id', ecc.color_id,
+          'peso_ensayo_g', ecc.peso_ensayo_g,
+          'resultado_l', ecc.resultado_l,
+          'resultado_a', ecc.resultado_a,
+          'resultado_b', ecc.resultado_b
+        )
+        ELSE NULL
+      END AS color_cielab
+    FROM laboratorio.ensayo_laboratorio el
+    LEFT JOIN laboratorio.ensayo_humedad eh
+      ON eh.ensayo_id = el.ensayo_id
+    LEFT JOIN laboratorio.ensayo_acido_carminico eac
+      ON eac.ensayo_id = el.ensayo_id
+    LEFT JOIN laboratorio.ensayo_color_cielab ecc
+      ON ecc.ensayo_id = el.ensayo_id
+    WHERE el.analisis_id = $1
+    ORDER BY el.ensayo_id ASC
+  `
+
+  return await t.any(query, [analisisId])
+}
+
+export const actualizarEnsayoLaboratorioRepo = async (ensayoId, campos, t = db) => {
+  const allowedFields = ['conforme', 'no_conformidad_abierta']
+  const setClauses = []
+  const values = []
+
+  for (const field of allowedFields) {
+    if (Object.prototype.hasOwnProperty.call(campos, field)) {
+      values.push(campos[field])
+      setClauses.push(`${field} = $${values.length}`)
+    }
+  }
+
+  if (!setClauses.length) {
+    return await t.oneOrNone(
+      `SELECT ensayo_id::int AS ensayo_id, analisis_id::int AS analisis_id, tipo_ensayo, conforme
+       FROM laboratorio.ensayo_laboratorio
+       WHERE ensayo_id = $1`,
+      [ensayoId]
+    )
+  }
+
+  values.push(ensayoId)
+
+  const query = `
+    UPDATE laboratorio.ensayo_laboratorio
+    SET ${setClauses.join(', ')}
+    WHERE ensayo_id = $${values.length}
+    RETURNING ensayo_id::int AS ensayo_id, analisis_id::int AS analisis_id, tipo_ensayo, conforme
+  `
+
+  return await t.one(query, values)
+}
+
+export const actualizarEnsayoHumedadRepo = async (ensayoId, campos, t = db) => {
+  const allowedFields = ['peso_ensayo_g', 'resultado']
+  const setClauses = []
+  const values = []
+
+  for (const field of allowedFields) {
+    if (Object.prototype.hasOwnProperty.call(campos, field)) {
+      values.push(campos[field])
+      setClauses.push(`${field} = $${values.length}`)
+    }
+  }
+
+  if (!setClauses.length) {
+    return await t.oneOrNone(
+      `SELECT * FROM laboratorio.ensayo_humedad WHERE ensayo_id = $1`,
+      [ensayoId]
+    )
+  }
+
+  values.push(ensayoId)
+
+  return await t.one(
+    `UPDATE laboratorio.ensayo_humedad
+     SET ${setClauses.join(', ')}
+     WHERE ensayo_id = $${values.length}
+     RETURNING *`,
+    values
+  )
+}
+
+export const actualizarEnsayoAcidoCarminicoRepo = async (ensayoId, campos, t = db) => {
+  const allowedFields = ['peso_ensayo_g', 'absorbancia_nm', 'resultado']
+  const setClauses = []
+  const values = []
+
+  for (const field of allowedFields) {
+    if (Object.prototype.hasOwnProperty.call(campos, field)) {
+      values.push(campos[field])
+      setClauses.push(`${field} = $${values.length}`)
+    }
+  }
+
+  if (!setClauses.length) {
+    return await t.oneOrNone(
+      `SELECT * FROM laboratorio.ensayo_acido_carminico WHERE ensayo_id = $1`,
+      [ensayoId]
+    )
+  }
+
+  values.push(ensayoId)
+
+  return await t.one(
+    `UPDATE laboratorio.ensayo_acido_carminico
+     SET ${setClauses.join(', ')}
+     WHERE ensayo_id = $${values.length}
+     RETURNING *`,
+    values
+  )
+}
+
+export const actualizarEnsayoColorCielabRepo = async (ensayoId, campos, t = db) => {
+  const allowedFields = ['peso_ensayo_g', 'resultado_l', 'resultado_a', 'resultado_b']
+  const setClauses = []
+  const values = []
+
+  for (const field of allowedFields) {
+    if (Object.prototype.hasOwnProperty.call(campos, field)) {
+      values.push(campos[field])
+      setClauses.push(`${field} = $${values.length}`)
+    }
+  }
+
+  if (!setClauses.length) {
+    return await t.oneOrNone(
+      `SELECT * FROM laboratorio.ensayo_color_cielab WHERE ensayo_id = $1`,
+      [ensayoId]
+    )
+  }
+
+  values.push(ensayoId)
+
+  return await t.one(
+    `UPDATE laboratorio.ensayo_color_cielab
+     SET ${setClauses.join(', ')}
+     WHERE ensayo_id = $${values.length}
+     RETURNING *`,
+    values
+  )
+}
+
+export const actualizarModificadoEnAnalisisRepo = async (analisisId, t = db) => {
+  return await t.oneOrNone(
+    `UPDATE laboratorio.analisis_laboratorio
+     SET modificado_en = NOW()
+     WHERE analisis_id = $1
+     RETURNING *`,
+    [analisisId]
+  )
+}
+
 export const crearSolicitudAnalisisLaboratorioRepo = async (
   { item_inventario_id, usuario_id, observacion_laboratorio = null },
   t = db
@@ -381,6 +616,145 @@ export const actualizarAnalisisActualEnLoteRepo = async (loteTabla, loteId, anal
      WHERE ${tablaObjetivo.pk} = $2
      RETURNING *`,
     [analisisId, loteId]
+  )
+}
+
+export const actualizarResultadosActualesEnLoteRepo = async (loteTabla, loteId, resultados, t = db) => {
+  const tablasSoportadas = {
+    lote_insumo: {
+      schema: 'inventario',
+      table: 'lote_insumo',
+      pk: 'lote_insumo_id'
+    },
+    lote_cochinilla: {
+      schema: 'lotes',
+      table: 'lote_cochinilla',
+      pk: 'lote_cochinilla_id'
+    },
+    lote_carmin: {
+      schema: 'lotes',
+      table: 'lote_carmin',
+      pk: 'lote_carmin_id'
+    },
+    extracto: {
+      schema: 'lotes',
+      table: 'extracto',
+      pk: 'extracto_id'
+    }
+  }
+
+  const tablaObjetivo = tablasSoportadas[loteTabla]
+
+  if (!tablaObjetivo) {
+    return null
+  }
+
+  const columnasDisponibles = await t.any(
+    `SELECT column_name
+     FROM information_schema.columns
+     WHERE table_schema = $1
+       AND table_name = $2
+       AND column_name IN (
+         'concentracion_ac_actual',
+         'humedad_actual',
+         'color_l_actual',
+         'color_a_actual',
+         'color_b_actual'
+       )`,
+    [tablaObjetivo.schema, tablaObjetivo.table]
+  )
+
+  const columnasSet = new Set(columnasDisponibles.map((columna) => columna.column_name))
+  const setClauses = []
+  const values = []
+
+  const mapeo = [
+    ['concentracion_ac_actual', resultados.concentracion_ac_actual],
+    ['humedad_actual', resultados.humedad_actual],
+    ['color_l_actual', resultados.color_l_actual],
+    ['color_a_actual', resultados.color_a_actual],
+    ['color_b_actual', resultados.color_b_actual]
+  ]
+
+  for (const [columna, valor] of mapeo) {
+    if (!columnasSet.has(columna) || valor === undefined) {
+      continue
+    }
+
+    values.push(valor)
+    setClauses.push(`${columna} = $${values.length}`)
+  }
+
+  if (!setClauses.length) {
+    return null
+  }
+
+  values.push(loteId)
+
+  return await t.oneOrNone(
+    `UPDATE ${tablaObjetivo.schema}.${tablaObjetivo.table}
+     SET
+       ${setClauses.join(', ')},
+       modificado_en = NOW()
+     WHERE ${tablaObjetivo.pk} = $${values.length}
+     RETURNING *`,
+    values
+  )
+}
+
+export const actualizarObservacionesEnLoteRepo = async (loteTabla, loteId, observaciones, t = db) => {
+  const tablasSoportadas = {
+    lote_insumo: {
+      schema: 'inventario',
+      table: 'lote_insumo',
+      pk: 'lote_insumo_id'
+    },
+    lote_cochinilla: {
+      schema: 'lotes',
+      table: 'lote_cochinilla',
+      pk: 'lote_cochinilla_id'
+    },
+    lote_carmin: {
+      schema: 'lotes',
+      table: 'lote_carmin',
+      pk: 'lote_carmin_id'
+    },
+    extracto: {
+      schema: 'lotes',
+      table: 'extracto',
+      pk: 'extracto_id'
+    }
+  }
+
+  const tablaObjetivo = tablasSoportadas[loteTabla]
+
+  if (!tablaObjetivo) {
+    return null
+  }
+
+  const columnaExiste = await t.one(
+    `SELECT EXISTS (
+       SELECT 1
+       FROM information_schema.columns
+       WHERE table_schema = $1
+         AND table_name = $2
+         AND column_name = 'observaciones'
+     ) AS existe`,
+    [tablaObjetivo.schema, tablaObjetivo.table]
+  )
+
+  if (!columnaExiste.existe) {
+    return null
+  }
+
+  return await t.oneOrNone(
+    `UPDATE ${tablaObjetivo.schema}.${tablaObjetivo.table}
+     SET
+       observaciones = $1,
+       modificado_en = NOW()
+     WHERE ${tablaObjetivo.pk} = $2
+     RETURNING *`,
+    [observaciones ?? null, loteId]
   )
 }
 
