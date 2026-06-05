@@ -13,8 +13,6 @@ import {
 } from '../repositories/rol_permiso_repositories.js'
 
 const ACCIONES_BASE = ['ver', 'crear', 'editar', 'eliminar']
-const ALCANCES_BASE = ['valorado', 'no_valorado']
-
 const crearAccionBooleano = () => ({
   tipo_selector: 'booleano',
   activo: false,
@@ -33,13 +31,7 @@ const crearAccionAlcance = () => ({
   activo: false,
   permiso_id: null,
   alcance: null,
-  opciones: ALCANCES_BASE.reduce((acc, alcance) => {
-    acc[alcance] = {
-      activo: false,
-      permiso_id: null
-    }
-    return acc
-  }, {})
+  opciones: {}
 })
 
 const tieneAlgunaAccionActiva = (acciones = {}) =>
@@ -135,6 +127,13 @@ export const obtenerVistaPermisosPorRolService = async (filters = {}) => {
       }
 
       const accionConAlcance = recurso.acciones[permiso.accion]
+
+      if (!accionConAlcance.opciones[permiso.alcance]) {
+        accionConAlcance.opciones[permiso.alcance] = {
+          activo: false,
+          permiso_id: null
+        }
+      }
 
       accionConAlcance.opciones[permiso.alcance] = {
         activo: Boolean(permisoActivo),

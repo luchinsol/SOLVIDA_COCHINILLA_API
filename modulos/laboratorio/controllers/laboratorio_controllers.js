@@ -8,6 +8,8 @@ import {
   contarNoConformidadesHoyService,
   crearAnalisisService,
   actualizarAnalisisService,
+  actualizarEnsayosAnalisisService,
+  aprobarAnalisisEnRevisionService,
   eliminarAnalisisService
 } from '../services/laboratorio_services.js'
 
@@ -147,6 +149,59 @@ export const actualizarAnalisisController = async (req, res) => {
     }
 
     res.status(500).json({ error: 'Error al actualizar analisis' })
+  }
+}
+
+export const actualizarEnsayosAnalisisController = async (req, res) => {
+  try {
+    const resultado = await actualizarEnsayosAnalisisService(req.params.id, req.body)
+    res.json(resultado)
+  } catch (error) {
+    if (
+      error.message.includes('analisis_id debe ser') ||
+      error.message.includes('ensayos debe ser') ||
+      error.message.includes('cada ensayo debe ser un objeto') ||
+      error.message.includes('ensayo_id debe ser') ||
+      error.message.includes('estado_analisis_id debe ser') ||
+      error.message.includes('todos los ensayos deben tener resultados para finalizar el analisis') ||
+      error.message.includes('tipo_ensayo es obligatorio') ||
+      error.message.includes('tipo_ensayo debe ser texto') ||
+      error.message.includes('tipo_ensayo no permitido') ||
+      error.message.includes('tipo_ensayo no coincide con ensayo_id') ||
+      error.message.includes('ensayo no encontrado para analisis') ||
+      error.message.includes('debe ser un numero valido')
+    ) {
+      return res.status(400).json({ error: error.message })
+    }
+
+    res.status(500).json({ error: 'Error al actualizar los ensayos del analisis' })
+  }
+}
+
+export const aprobarAnalisisEnRevisionController = async (req, res) => {
+  try {
+    const resultado = await aprobarAnalisisEnRevisionService(req.params.id, req.body)
+    res.json(resultado)
+  } catch (error) {
+    if (
+      error.message.includes('analisis_id debe ser') ||
+      error.message.includes('observaciones es obligatorio') ||
+      error.message.includes('observaciones debe ser texto') ||
+      error.message.includes('mensaje_gerencia debe ser texto') ||
+      error.message.includes('ensayos debe ser un arreglo') ||
+      error.message.includes('cada ensayo debe ser un objeto valido') ||
+      error.message.includes('ensayo_id debe ser') ||
+      error.message.includes('aprobar_no_conformidad debe ser booleano') ||
+      error.message.includes('analisis no encontrado') ||
+      error.message.includes('analisis no tiene item_inventario_id valido') ||
+      error.message.includes('ensayo no encontrado para analisis') ||
+      error.message.includes('solo se pueden decidir ensayos no conformes') ||
+      error.message.includes('falta decision para el ensayo no conforme')
+    ) {
+      return res.status(400).json({ error: error.message })
+    }
+
+    res.status(500).json({ error: 'Error al aprobar el analisis en revision' })
   }
 }
 
