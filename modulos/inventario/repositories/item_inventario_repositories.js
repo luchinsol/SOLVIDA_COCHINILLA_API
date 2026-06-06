@@ -108,6 +108,7 @@ export const listarMuestrasPendientesLaboratorioRepo = async (filters = {}) => {
 
   return await db.any(
     `SELECT
+       ii.item_inventario_id::int AS item_inventario_id,
        ii.codigo_item,
        COALESCE(lc.nombre_lote, lco.codigo_lote, e.nombre_extracto) AS nombre_lote,
        COALESCE(lc.estado_lote_id, lco.estado_lote_id, e.estado_lote_id)::int AS estado_lote_id,

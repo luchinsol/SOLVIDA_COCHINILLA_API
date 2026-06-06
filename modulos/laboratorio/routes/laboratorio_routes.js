@@ -31,7 +31,7 @@ laboratorioRouter.get('/analisis-o-solicitud', requirePermission(PERMISOS_ANALIS
 laboratorioRouter.get('/analisis-activo', requirePermission(PERMISOS_ANALISIS.ver), obtenerAnalisisActivoPorItemInventarioController);
 laboratorioRouter.get('/:id', requirePermission(PERMISOS_ANALISIS.ver), obtenerAnalisisPorIdController);
 laboratorioRouter.post('/', requirePermission(PERMISOS_ANALISIS.crear), crearAnalisisController);
-laboratorioRouter.patch('/:id/ensayos', requirePermission(PERMISOS_ANALISIS.editarCaptura), actualizarEnsayosAnalisisController);
+laboratorioRouter.patch('/ensayos', requirePermission(PERMISOS_ANALISIS.editarCaptura), actualizarEnsayosAnalisisController);
 laboratorioRouter.patch('/:id/aprobacion', requirePermission(PERMISOS_ANALISIS.editarAprobar), aprobarAnalisisEnRevisionController);
 
 export default laboratorioRouter;
