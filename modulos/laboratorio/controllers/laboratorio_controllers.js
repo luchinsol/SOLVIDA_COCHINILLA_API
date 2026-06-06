@@ -41,7 +41,7 @@ export const obtenerAnalisisPorIdController = async (req, res) => {
 
 export const obtenerAnalisisActivoPorItemInventarioController = async (req, res) => {
   try {
-    const analisis = await obtenerAnalisisActivoPorItemInventarioService(req.params.item_inventario_id)
+    const analisis = await obtenerAnalisisActivoPorItemInventarioService(req.query.item_inventario_id)
     res.json(analisis)
   } catch (error) {
     if (
@@ -57,7 +57,7 @@ export const obtenerAnalisisActivoPorItemInventarioController = async (req, res)
 
 export const obtenerAnalisisOSolicitudPorItemInventarioController = async (req, res) => {
   try {
-    const resultado = await obtenerAnalisisOSolicitudPorItemInventarioService(req.params.item_inventario_id)
+    const resultado = await obtenerAnalisisOSolicitudPorItemInventarioService(req.query.item_inventario_id)
     res.json(resultado)
   } catch (error) {
     if (
