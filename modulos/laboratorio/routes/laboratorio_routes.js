@@ -27,8 +27,8 @@ laboratorioRouter.get('/', requirePermission(PERMISOS_ANALISIS.ver), obtenerTodo
 laboratorioRouter.get('/no-conformes', requirePermission(PERMISOS_ANALISIS.ver), obtenerAnalisisNoConformesController);
 laboratorioRouter.get('/muestras-analizadas-hoy/resumen', requirePermission(PERMISOS_ANALISIS.ver), contarMuestrasAnalizadasHoyController);
 laboratorioRouter.get('/no-conformidades-hoy/resumen', requirePermission(PERMISOS_ANALISIS.ver), contarNoConformidadesHoyController);
-laboratorioRouter.get('/item/:item_inventario_id/analisis-o-solicitud', requirePermission(PERMISOS_ANALISIS.ver), obtenerAnalisisOSolicitudPorItemInventarioController);
-laboratorioRouter.get('/item/:item_inventario_id/analisis-activo', requirePermission(PERMISOS_ANALISIS.ver), obtenerAnalisisActivoPorItemInventarioController);
+laboratorioRouter.get('/analisis-o-solicitud', requirePermission(PERMISOS_ANALISIS.ver), obtenerAnalisisOSolicitudPorItemInventarioController);
+laboratorioRouter.get('/analisis-activo', requirePermission(PERMISOS_ANALISIS.ver), obtenerAnalisisActivoPorItemInventarioController);
 laboratorioRouter.get('/:id', requirePermission(PERMISOS_ANALISIS.ver), obtenerAnalisisPorIdController);
 laboratorioRouter.post('/', requirePermission(PERMISOS_ANALISIS.crear), crearAnalisisController);
 laboratorioRouter.patch('/:id/ensayos', requirePermission(PERMISOS_ANALISIS.editarCaptura), actualizarEnsayosAnalisisController);
