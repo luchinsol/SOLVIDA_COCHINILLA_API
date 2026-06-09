@@ -47,6 +47,10 @@ app.use(express.json())
 app.use(morgan('dev'))
 app.use(cors())
 
+app.get('/health', (_, res) => {
+  res.status(200).json({ status: 'ok' })
+})
+
 // Ruta pública para login (no requiere token)
 app.post('/api/usuarios/login', login)
 
