@@ -154,7 +154,7 @@ export const actualizarAnalisisController = async (req, res) => {
 
 export const actualizarEnsayosAnalisisController = async (req, res) => {
   try {
-    const resultado = await actualizarEnsayosAnalisisService(req.params.id, req.body)
+    const resultado = await actualizarEnsayosAnalisisService(req.query.analisis_laboratorio_id, req.body)
     res.json(resultado)
   } catch (error) {
     if (
