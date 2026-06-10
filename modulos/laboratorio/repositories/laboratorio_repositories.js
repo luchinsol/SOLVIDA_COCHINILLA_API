@@ -79,9 +79,12 @@ export const obtenerAnalisisActivoPorItemInventarioRepo = async (itemInventarioI
         SELECT al.*
         FROM laboratorio.analisis_laboratorio al
         WHERE
-          (lea.analisis_actual_id IS NOT NULL AND al.analisis_id = lea.analisis_actual_id)
-          OR
-          (lea.analisis_actual_id IS NULL AND al.item_inventario_id = lea.item_inventario_id)
+          (
+            (lea.analisis_actual_id IS NOT NULL AND al.analisis_id = lea.analisis_actual_id)
+            OR
+            (lea.analisis_actual_id IS NULL AND al.item_inventario_id = lea.item_inventario_id)
+          )
+          AND al.estado_analisis_id <> 4
         ORDER BY COALESCE(al.modificado_en, al.creado_en) DESC, al.analisis_id DESC
         LIMIT 1
       ) al ON true
@@ -89,11 +92,15 @@ export const obtenerAnalisisActivoPorItemInventarioRepo = async (itemInventarioI
     SELECT
       ao.analisis_id::int AS analisis_id,
       ao.usuario_id::int AS usuario_id,
+      NULLIF(TRIM(CONCAT_WS(' ', u.nombres, u.apellidos)), '') AS nombre_usuario,
+      r.nombre AS rol_usuario,
       ao.proceso_extraccion_id::int AS proceso_extraccion_id,
       ao.creado_en,
       ao.observaciones,
       ao.peso_muestra_g,
       ao.item_inventario_id::int AS item_inventario_id,
+      ii.nombre_item,
+      ii.codigo_item,
       ao.estado_analisis_id::int AS estado_analisis_id,
       ao.modificado_en,
       ao.nombre,
@@ -140,6 +147,12 @@ export const obtenerAnalisisActivoPorItemInventarioRepo = async (itemInventarioI
         '[]'::json
       ) AS ensayos
     FROM analisis_objetivo ao
+    LEFT JOIN seguridad.usuario u
+      ON u.id = ao.usuario_id
+    LEFT JOIN seguridad.rol r
+      ON r.rol_id = u.rol_id
+    LEFT JOIN inventario.item_inventario ii
+      ON ii.item_inventario_id = ao.item_inventario_id
     LEFT JOIN laboratorio.ensayo_laboratorio el
       ON el.analisis_id = ao.analisis_id
     LEFT JOIN laboratorio.ensayo_humedad eh
@@ -151,11 +164,16 @@ export const obtenerAnalisisActivoPorItemInventarioRepo = async (itemInventarioI
     GROUP BY
       ao.analisis_id,
       ao.usuario_id,
+      u.nombres,
+      u.apellidos,
+      r.nombre,
       ao.proceso_extraccion_id,
       ao.creado_en,
       ao.observaciones,
       ao.peso_muestra_g,
       ao.item_inventario_id,
+      ii.nombre_item,
+      ii.codigo_item,
       ao.estado_analisis_id,
       ao.modificado_en,
       ao.nombre,
@@ -199,46 +217,151 @@ export const obtenerAnalisisNoConformes = async () => {
         SELECT
           al.analisis_id::int AS analisis_id,
           al.usuario_id::int AS usuario_id,
-          al.proceso_extraccion_id::int AS proceso_extraccion_id,
-          al.creado_en,
           al.observaciones,
-          al.peso_muestra_g,
-          al.item_inventario_id::int AS item_inventario_id,
+          ii.codigo_item,
           al.estado_analisis_id::int AS estado_analisis_id,
-          al.modificado_en,
+          TO_CHAR(al.modificado_en::date, 'DD/MM/YYYY') AS modificado_en,
           al.nombre,
-          al.unidad_medida_masa,
-          al.solicitud_id::int AS solicitud_id,
           COALESCE(
-            json_agg(
-              json_build_object(
+            jsonb_agg(
+              jsonb_build_object(
                 'ensayo_id', el.ensayo_id::int,
                 'tipo_ensayo', el.tipo_ensayo,
                 'conforme', el.conforme,
                 'no_conformidad_abierta', el.no_conformidad_abierta
-              )
+              ) ||
+              CASE
+                WHEN el.tipo_ensayo = 'humedad' THEN jsonb_build_object(
+                  'humedad', jsonb_build_object(
+                    'humedad_id', eh.humedad_id,
+                    'peso_ensayo_g', eh.peso_ensayo_g,
+                    'resultado', eh.resultado
+                  )
+                )
+                WHEN el.tipo_ensayo = 'acido_carminico' THEN jsonb_build_object(
+                  'acido_carminico', jsonb_build_object(
+                    'acido_carminico_id', eac.acido_carminico_id,
+                    'peso_ensayo_g', eac.peso_ensayo_g,
+                    'absorbancia_nm', eac.absorbancia_nm,
+                    'resultado', eac.resultado
+                  )
+                )
+                WHEN el.tipo_ensayo = 'color_cielab' THEN jsonb_build_object(
+                  'color_cielab', jsonb_build_object(
+                    'color_id', ecc.color_id,
+                    'peso_ensayo_g', ecc.peso_ensayo_g,
+                    'resultado_l', ecc.resultado_l,
+                    'resultado_a', ecc.resultado_a,
+                    'resultado_b', ecc.resultado_b
+                  )
+                )
+                ELSE '{}'::jsonb
+              END
               ORDER BY el.ensayo_id
             ) FILTER (WHERE el.ensayo_id IS NOT NULL),
-            '[]'::json
+            '[]'::jsonb
           ) AS ensayos_no_conformes
         FROM laboratorio.analisis_laboratorio al
+        LEFT JOIN inventario.item_inventario ii
+          ON ii.item_inventario_id = al.item_inventario_id
         INNER JOIN laboratorio.ensayo_laboratorio el
           ON el.analisis_id = al.analisis_id
+        LEFT JOIN laboratorio.ensayo_humedad eh
+          ON eh.ensayo_id = el.ensayo_id
+        LEFT JOIN laboratorio.ensayo_acido_carminico eac
+          ON eac.ensayo_id = el.ensayo_id
+        LEFT JOIN laboratorio.ensayo_color_cielab ecc
+          ON ecc.ensayo_id = el.ensayo_id
         WHERE el.conforme = false
           AND el.no_conformidad_abierta = true
+          AND al.estado_analisis_id = 4
         GROUP BY
           al.analisis_id,
           al.usuario_id,
-          al.proceso_extraccion_id,
-          al.creado_en,
           al.observaciones,
-          al.peso_muestra_g,
           al.item_inventario_id,
+          ii.codigo_item,
           al.estado_analisis_id,
           al.modificado_en,
+          al.nombre
+        ORDER BY COALESCE(al.modificado_en, al.creado_en) DESC, al.analisis_id DESC
+    `;
+
+    return db.query(query);
+};
+
+export const obtenerAnalisisNoConformesFinalizados = async () => {
+    const query = `
+        SELECT
+          al.analisis_id::int AS analisis_id,
+          al.usuario_id::int AS usuario_id,
+          al.observaciones,
+          ii.codigo_item,
+          al.estado_analisis_id::int AS estado_analisis_id,
+          TO_CHAR(al.modificado_en::date, 'DD/MM/YYYY') AS modificado_en,
           al.nombre,
-          al.unidad_medida_masa,
-          al.solicitud_id
+          COALESCE(
+            jsonb_agg(
+              jsonb_build_object(
+                'ensayo_id', el.ensayo_id::int,
+                'tipo_ensayo', el.tipo_ensayo,
+                'conforme', el.conforme,
+                'no_conformidad_abierta', el.no_conformidad_abierta
+              ) ||
+              CASE
+                WHEN el.tipo_ensayo = 'humedad' THEN jsonb_build_object(
+                  'humedad', jsonb_build_object(
+                    'humedad_id', eh.humedad_id,
+                    'peso_ensayo_g', eh.peso_ensayo_g,
+                    'resultado', eh.resultado
+                  )
+                )
+                WHEN el.tipo_ensayo = 'acido_carminico' THEN jsonb_build_object(
+                  'acido_carminico', jsonb_build_object(
+                    'acido_carminico_id', eac.acido_carminico_id,
+                    'peso_ensayo_g', eac.peso_ensayo_g,
+                    'absorbancia_nm', eac.absorbancia_nm,
+                    'resultado', eac.resultado
+                  )
+                )
+                WHEN el.tipo_ensayo = 'color_cielab' THEN jsonb_build_object(
+                  'color_cielab', jsonb_build_object(
+                    'color_id', ecc.color_id,
+                    'peso_ensayo_g', ecc.peso_ensayo_g,
+                    'resultado_l', ecc.resultado_l,
+                    'resultado_a', ecc.resultado_a,
+                    'resultado_b', ecc.resultado_b
+                  )
+                )
+                ELSE '{}'::jsonb
+              END
+              ORDER BY el.ensayo_id
+            ) FILTER (WHERE el.ensayo_id IS NOT NULL),
+            '[]'::jsonb
+          ) AS ensayos_no_conformes
+        FROM laboratorio.analisis_laboratorio al
+        LEFT JOIN inventario.item_inventario ii
+          ON ii.item_inventario_id = al.item_inventario_id
+        INNER JOIN laboratorio.ensayo_laboratorio el
+          ON el.analisis_id = al.analisis_id
+        LEFT JOIN laboratorio.ensayo_humedad eh
+          ON eh.ensayo_id = el.ensayo_id
+        LEFT JOIN laboratorio.ensayo_acido_carminico eac
+          ON eac.ensayo_id = el.ensayo_id
+        LEFT JOIN laboratorio.ensayo_color_cielab ecc
+          ON ecc.ensayo_id = el.ensayo_id
+        WHERE el.conforme = false
+          AND el.no_conformidad_abierta = true
+          AND al.estado_analisis_id = 2
+        GROUP BY
+          al.analisis_id,
+          al.usuario_id,
+          al.observaciones,
+          al.item_inventario_id,
+          ii.codigo_item,
+          al.estado_analisis_id,
+          al.modificado_en,
+          al.nombre
         ORDER BY COALESCE(al.modificado_en, al.creado_en) DESC, al.analisis_id DESC
     `;
 
@@ -264,7 +387,6 @@ export const crearAnalisis = async (datos, t = db) => {
       analisis_id,
       usuario_id,
       observaciones,
-      peso_muestra_g,
       item_inventario_id,
       estado_analisis_id,
       nombre,
@@ -273,7 +395,7 @@ export const crearAnalisis = async (datos, t = db) => {
       modificado_en
     )
     VALUES (
-      $1, $2, $3, $4, $5, $6, $7, $8,
+      $1, $2, $3, $4, $5, $6, $7,
       NOW(),
       NOW()
     )
@@ -284,7 +406,6 @@ export const crearAnalisis = async (datos, t = db) => {
     datos.analisis_id,
     datos.usuario_id,
     datos.observaciones ?? null,
-    datos.peso_muestra_g ?? null,
     datos.item_inventario_id,
     datos.estado_analisis_id,
     datos.nombre,
@@ -410,7 +531,7 @@ export const actualizarEnsayoLaboratorioRepo = async (ensayoId, campos, t = db) 
 
   if (!setClauses.length) {
     return await t.oneOrNone(
-      `SELECT ensayo_id::int AS ensayo_id, analisis_id::int AS analisis_id, tipo_ensayo, conforme
+      `SELECT ensayo_id::int AS ensayo_id, analisis_id::int AS analisis_id, tipo_ensayo, conforme, no_conformidad_abierta
        FROM laboratorio.ensayo_laboratorio
        WHERE ensayo_id = $1`,
       [ensayoId]
@@ -423,7 +544,7 @@ export const actualizarEnsayoLaboratorioRepo = async (ensayoId, campos, t = db) 
     UPDATE laboratorio.ensayo_laboratorio
     SET ${setClauses.join(', ')}
     WHERE ensayo_id = $${values.length}
-    RETURNING ensayo_id::int AS ensayo_id, analisis_id::int AS analisis_id, tipo_ensayo, conforme
+    RETURNING ensayo_id::int AS ensayo_id, analisis_id::int AS analisis_id, tipo_ensayo, conforme, no_conformidad_abierta
   `
 
   return await t.one(query, values)
