@@ -19,6 +19,7 @@ import {
   obtenerTodosAnalisis,
   obtenerAnalisisPorId,
   obtenerAnalisisNoConformes,
+  obtenerAnalisisNoConformesFinalizados,
   actualizarAnalisisActualEnLoteRepo,
   actualizarAnalisis,
   eliminarAnalisis,
@@ -138,6 +139,31 @@ const evaluarConformidadEnsayo = (tipoEnsayo, detalleActualizado, conformeActual
   return conformeActual
 }
 
+const tieneValorResultado = (valor) => valor !== null && valor !== undefined && valor !== ''
+
+const ensayoTieneResultadosCompletos = (tipoEnsayo, detalleActualizado) => {
+  if (tipoEnsayo === 'humedad') {
+    return tieneValorResultado(detalleActualizado?.resultado)
+  }
+
+  if (tipoEnsayo === 'acido_carminico') {
+    return (
+      tieneValorResultado(detalleActualizado?.absorbancia_nm) &&
+      tieneValorResultado(detalleActualizado?.resultado)
+    )
+  }
+
+  if (tipoEnsayo === 'color_cielab') {
+    return (
+      tieneValorResultado(detalleActualizado?.resultado_l) &&
+      tieneValorResultado(detalleActualizado?.resultado_a) &&
+      tieneValorResultado(detalleActualizado?.resultado_b)
+    )
+  }
+
+  return false
+}
+
 const limpiarEnsayosAnalisis = (analisis) => {
   if (!analisis || !Array.isArray(analisis.ensayos)) {
     return analisis
@@ -168,16 +194,74 @@ const limpiarEnsayosAnalisis = (analisis) => {
   }
 }
 
-const limpiarAnalisisOSolicitudResponse = (analisis) => {
+const formatearFechaDiaMesAnio = (fecha) => {
+  if (!fecha) {
+    return fecha
+  }
+
+  const fechaObj = fecha instanceof Date ? fecha : new Date(fecha)
+
+  if (Number.isNaN(fechaObj.getTime())) {
+    return fecha
+  }
+
+  const dia = String(fechaObj.getDate()).padStart(2, '0')
+  const mes = String(fechaObj.getMonth() + 1).padStart(2, '0')
+  const anio = fechaObj.getFullYear()
+
+  return `${dia}/${mes}/${anio}`
+}
+
+const limpiarAnalisisOSolicitudResponse = (
+  analisis,
+  { mostrarSolicitudId = false, mostrarCreadoEn = false } = {}
+) => {
   if (!analisis || typeof analisis !== 'object' || Array.isArray(analisis)) {
     return analisis
   }
 
   const analisisLimpio = { ...analisis }
+
+  if (Object.prototype.hasOwnProperty.call(analisisLimpio, 'nombre_item')) {
+    analisisLimpio['Tipo de muestra'] = analisisLimpio.nombre_item
+    delete analisisLimpio.nombre_item
+  }
+
+  if (
+    Object.prototype.hasOwnProperty.call(analisisLimpio, 'nombre_usuario') ||
+    Object.prototype.hasOwnProperty.call(analisisLimpio, 'rol_usuario')
+  ) {
+    const usuario = analisisLimpio.nombre_usuario ?? ''
+    const rol = analisisLimpio.rol_usuario ?? ''
+    analisisLimpio['Solicitado por'] = [usuario, rol].filter(Boolean).join(' - ')
+    delete analisisLimpio.nombre_usuario
+    delete analisisLimpio.rol_usuario
+  }
+
+  if (Array.isArray(analisisLimpio.parametros)) {
+    analisisLimpio['Ensayos requeridos'] = analisisLimpio.parametros.length
+  } else if (Array.isArray(analisisLimpio.ensayos)) {
+    analisisLimpio['Ensayos requeridos'] = analisisLimpio.ensayos.length
+  }
+
   delete analisisLimpio.proceso_extraccion_id
-  delete analisisLimpio.creado_en
   delete analisisLimpio.modificado_en
   delete analisisLimpio.unidad_medida_masa
+  delete analisisLimpio.estado_analisis_id
+  delete analisisLimpio.lote_tabla
+  delete analisisLimpio.estado_lote_id
+  delete analisisLimpio.item_inventario_id
+
+  if (!mostrarSolicitudId) {
+    delete analisisLimpio.solicitud_id
+  }
+
+  if (mostrarCreadoEn) {
+    analisisLimpio['Fecha solicitud'] = formatearFechaDiaMesAnio(analisisLimpio.creado_en)
+    delete analisisLimpio.creado_en
+  } else {
+    delete analisisLimpio.creado_en
+  }
 
   return analisisLimpio
 }
@@ -269,7 +353,10 @@ export const obtenerAnalisisOSolicitudPorItemInventarioService = async (item_inv
   if (solicitudPendiente) {
     return {
       tipo: 'solicitud',
-      data: solicitudPendiente
+      data: limpiarAnalisisOSolicitudResponse(solicitudPendiente, {
+        mostrarSolicitudId: true,
+        mostrarCreadoEn: true
+      })
     }
   }
 
@@ -286,6 +373,10 @@ export const contarNoConformidadesHoyService = async () => {
 
 export const obtenerAnalisisNoConformesService = async () => {
   return await obtenerAnalisisNoConformes()
+}
+
+export const obtenerAnalisisNoConformesFinalizadosService = async () => {
+  return await obtenerAnalisisNoConformesFinalizados()
 }
 
 const extraerResultadosActualesDesdeEnsayo = (ensayo) => {
@@ -313,6 +404,10 @@ const extraerResultadosActualesDesdeEnsayo = (ensayo) => {
 }
 
 export const crearAnalisisService = async (datos) => {
+  if (Object.prototype.hasOwnProperty.call(datos ?? {}, 'peso_muestra_g')) {
+    throw new Error('peso_muestra_g no se recibe en esta ruta')
+  }
+
   const usuarioId = Number(datos.usuario_id)
   const itemInventarioId = Number(datos.item_inventario_id)
   const solicitudId = Number(datos.solicitud_id)
@@ -335,28 +430,6 @@ export const crearAnalisisService = async (datos) => {
 
   if (!Number.isInteger(solicitudId) || solicitudId <= 0) {
     throw new Error('solicitud_id debe ser un entero positivo')
-  }
-
-  const parseNullableNumber = (value, fieldName) => {
-    if (value === undefined || value === null || value === '') {
-      return null
-    }
-
-    const parsed = Number(value)
-
-    if (!Number.isFinite(parsed)) {
-      throw new Error(`${fieldName} debe ser un numero valido`)
-    }
-
-    return parsed
-  }
-
-  if (
-    datos.peso_muestra_g === undefined ||
-    datos.peso_muestra_g === null ||
-    datos.peso_muestra_g === ''
-  ) {
-    throw new Error('peso_muestra_g es obligatorio')
   }
 
   if (
@@ -386,7 +459,6 @@ export const crearAnalisisService = async (datos) => {
   const analisisNormalizado = {
     usuario_id: usuarioId,
     observaciones: datos.observaciones.trim(),
-    peso_muestra_g: parseNullableNumber(datos.peso_muestra_g, 'peso_muestra_g'),
     item_inventario_id: itemInventarioId,
     estado_analisis_id: estadoAnalisisId,
     nombre: null,
@@ -665,6 +737,7 @@ export const actualizarEnsayosAnalisisService = async (analisis_id, payload) => 
   }
 
   let estadoAnalisisId = undefined
+  let pesoMuestraG = undefined
 
   if (
     Object.prototype.hasOwnProperty.call(payload ?? {}, 'estado_analisis_id') ||
@@ -687,6 +760,10 @@ export const actualizarEnsayosAnalisisService = async (analisis_id, payload) => 
     if (!Number.isInteger(estadoAnalisisId) || estadoAnalisisId <= 0) {
       throw new Error('estado_analisis_id debe ser un entero positivo')
     }
+  }
+
+  if (Object.prototype.hasOwnProperty.call(payload ?? {}, 'peso_muestra_g')) {
+    pesoMuestraG = parseNullableNumber(payload.peso_muestra_g, 'peso_muestra_g')
   }
 
   const tiposEnsayoPermitidos = new Map([
@@ -826,15 +903,29 @@ export const actualizarEnsayosAnalisisService = async (analisis_id, payload) => 
         }
       }
 
+      if (estadoAnalisisId === 2 && !ensayoTieneResultadosCompletos(tipoEnsayoNormalizado, detalleActualizado)) {
+        throw new Error(`todos los ensayos deben tener resultados para finalizar el analisis: ${tipoEnsayoNormalizado}`)
+      }
+
       const conformeCalculado = evaluarConformidadEnsayo(
         tipoEnsayoNormalizado,
         detalleActualizado,
         ensayo.conforme ?? null
       )
 
+      const camposEnsayo = {}
+
+      if (!Object.is(conformeCalculado, ensayo.conforme ?? null)) {
+        camposEnsayo.conforme = conformeCalculado
+      }
+
+      if (estadoAnalisisId === 2 && conformeCalculado !== null && conformeCalculado !== undefined) {
+        camposEnsayo.no_conformidad_abierta = conformeCalculado === false
+      }
+
       const ensayoActualizado = await actualizarEnsayoLaboratorioRepo(
         ensayoId,
-        Object.is(conformeCalculado, ensayo.conforme ?? null) ? {} : { conforme: conformeCalculado },
+        camposEnsayo,
         t
       )
 
@@ -862,10 +953,20 @@ export const actualizarEnsayosAnalisisService = async (analisis_id, payload) => 
       }
     }
 
+    const camposAnalisis = {}
+
     if (estadoAnalisisFinal !== undefined) {
+      camposAnalisis.estado_analisis_id = estadoAnalisisFinal
+    }
+
+    if (pesoMuestraG !== undefined) {
+      camposAnalisis.peso_muestra_g = pesoMuestraG
+    }
+
+    if (Object.keys(camposAnalisis).length) {
       analisisActualizado = await actualizarAnalisis(
         analisisId,
-        { estado_analisis_id: estadoAnalisisFinal },
+        camposAnalisis,
         t
       )
 
@@ -903,16 +1004,23 @@ export const actualizarEnsayosAnalisisService = async (analisis_id, payload) => 
     return {
       analisis_id: analisisId,
       estado_analisis_id: analisisActualizado?.estado_analisis_id ?? estadoAnalisisFinal ?? null,
+      peso_muestra_g: analisisActualizado?.peso_muestra_g ?? pesoMuestraG ?? null,
       ensayos: actualizaciones
     }
   })
 }
 
-export const aprobarAnalisisEnRevisionService = async (analisis_id, payload = {}) => {
+export const aprobarODesaprobarAnalisisService = async (analisis_id, payload = {}) => {
   const analisisId = Number(analisis_id)
 
   if (!Number.isInteger(analisisId) || analisisId <= 0) {
     throw new Error('analisis_id debe ser un entero positivo')
+  }
+
+  const aprobado = payload.aprobado
+
+  if (typeof aprobado !== 'boolean') {
+    throw new Error('aprobado debe ser booleano')
   }
 
   if (
@@ -935,15 +1043,15 @@ export const aprobarAnalisisEnRevisionService = async (analisis_id, payload = {}
     throw new Error('mensaje_gerencia debe ser texto')
   }
 
-  if (!Array.isArray(payload?.ensayos)) {
-    throw new Error('ensayos debe ser un arreglo')
-  }
-
   return await db.tx(async (t) => {
     const analisis = await obtenerAnalisisPorId(analisisId, t)
 
     if (!analisis) {
       throw new Error('analisis no encontrado')
+    }
+
+    if (Number(analisis.estado_analisis_id) !== 4) {
+      throw new Error('analisis no esta en revision')
     }
 
     const itemInventarioId = Number(analisis.item_inventario_id)
@@ -953,79 +1061,37 @@ export const aprobarAnalisisEnRevisionService = async (analisis_id, payload = {}
     }
 
     const ensayos = await listarEnsayosPorAnalisisRepo(analisisId, t)
-    const ensayosPorId = new Map(ensayos.map((ensayo) => [ensayo.ensayo_id, ensayo]))
-    const decisionesPorId = new Map()
-
-    for (const ensayoPayload of payload.ensayos) {
-      if (!ensayoPayload || typeof ensayoPayload !== 'object' || Array.isArray(ensayoPayload)) {
-        throw new Error('cada ensayo debe ser un objeto valido')
-      }
-
-      const ensayoId = Number(ensayoPayload.ensayo_id)
-
-      if (!Number.isInteger(ensayoId) || ensayoId <= 0) {
-        throw new Error('ensayo_id debe ser un entero positivo')
-      }
-
-      if (typeof ensayoPayload.aprobar_no_conformidad !== 'boolean') {
-        throw new Error('aprobar_no_conformidad debe ser booleano')
-      }
-
-      const ensayo = ensayosPorId.get(ensayoId)
-
-      if (!ensayo) {
-        throw new Error(`ensayo no encontrado para analisis: ${ensayoId}`)
-      }
-
-      if (ensayo.conforme !== false) {
-        throw new Error(`solo se pueden decidir ensayos no conformes: ${ensayoId}`)
-      }
-
-      decisionesPorId.set(ensayoId, ensayoPayload.aprobar_no_conformidad)
-    }
-
+    const ensayosConformes = ensayos.filter((ensayo) => ensayo.conforme === true)
+    const ensayosNoConformes = ensayos.filter((ensayo) => ensayo.conforme === false)
     const resultadosActuales = {}
-    const tiposReanalisis = []
+    const observacionesFinales = payload.observaciones.trim()
+    const mensajeGerencia = payload.mensaje_gerencia?.trim() || null
 
-    for (const ensayo of ensayos) {
-      if (ensayo.conforme === true) {
+    if (aprobado) {
+      for (const ensayo of ensayos) {
         Object.assign(resultadosActuales, extraerResultadosActualesDesdeEnsayo(ensayo))
-        await actualizarEnsayoLaboratorioRepo(
-          ensayo.ensayo_id,
-          { no_conformidad_abierta: false },
-          t
-        )
-        continue
-      }
 
-      if (ensayo.conforme === false) {
-        const aprobarNoConformidad = decisionesPorId.get(ensayo.ensayo_id)
-
-        if (aprobarNoConformidad === undefined) {
-          throw new Error(`falta decision para el ensayo no conforme: ${ensayo.ensayo_id}`)
-        }
-
-        if (aprobarNoConformidad) {
+        if (ensayo.conforme === false) {
           await actualizarEnsayoLaboratorioRepo(
             ensayo.ensayo_id,
             { no_conformidad_abierta: false },
             t
           )
-          Object.assign(resultadosActuales, extraerResultadosActualesDesdeEnsayo(ensayo))
-        } else {
-          await actualizarEnsayoLaboratorioRepo(
-            ensayo.ensayo_id,
-            { no_conformidad_abierta: true },
-            t
-          )
-          tiposReanalisis.push(ensayo.tipo_ensayo)
         }
       }
-    }
+    } else {
+      for (const ensayo of ensayosConformes) {
+        Object.assign(resultadosActuales, extraerResultadosActualesDesdeEnsayo(ensayo))
+      }
 
-    const observacionesFinales = payload.mensaje_gerencia && String(payload.mensaje_gerencia).trim() !== ''
-      ? `${payload.observaciones.trim()}\nMensaje a gerencia: ${payload.mensaje_gerencia.trim()}`
-      : payload.observaciones.trim()
+      for (const ensayo of ensayosNoConformes) {
+        await actualizarEnsayoLaboratorioRepo(
+          ensayo.ensayo_id,
+          { no_conformidad_abierta: true },
+          t
+        )
+      }
+    }
 
     const analisisActualizado = await actualizarAnalisis(
       analisisId,
@@ -1039,38 +1105,41 @@ export const aprobarAnalisisEnRevisionService = async (analisis_id, payload = {}
     await actualizarResultadosActualesPorItemInventario(itemInventarioId, resultadosActuales, t)
     await actualizarObservacionesPorItemInventario(itemInventarioId, observacionesFinales, t)
 
-    let solicitudCreada = null
+    let solicitudReanalisis = null
 
-    if (tiposReanalisis.length) {
-      solicitudCreada = await crearSolicitudAnalisisLaboratorioRepo(
-        {
-          item_inventario_id: itemInventarioId,
-          usuario_id: Number(analisis.usuario_id),
-          observacion_laboratorio: payload.observaciones.trim()
-        },
-        t
-      )
-
-      for (const tipoEnsayo of [...new Set(tiposReanalisis)]) {
-        await crearSolicitudParametroLaboratorioRepo(solicitudCreada.solicitud_id, tipoEnsayo, t)
-      }
-
-      await actualizarEstadoLotePorItemInventario(itemInventarioId, 2, t)
-    } else {
+    if (aprobado) {
       await actualizarEstadoLotePorItemInventario(itemInventarioId, 1, t)
+    } else {
+      await actualizarEstadoLotePorItemInventario(itemInventarioId, 3, t)
+
+      if (ensayosNoConformes.length) {
+        solicitudReanalisis = await crearSolicitudAnalisisLaboratorioRepo(
+          {
+            item_inventario_id: itemInventarioId,
+            usuario_id: Number(analisis.usuario_id),
+            observacion_laboratorio: observacionesFinales
+          },
+          t
+        )
+
+        for (const tipoEnsayo of [...new Set(ensayosNoConformes.map((ensayo) => ensayo.tipo_ensayo))]) {
+          await crearSolicitudParametroLaboratorioRepo(solicitudReanalisis.solicitud_id, tipoEnsayo, t)
+        }
+      }
     }
 
     return {
       analisis_id: analisisId,
+      aprobado,
       estado_analisis_id: analisisActualizado?.estado_analisis_id ?? 2,
-      solicitud_reanalisis: solicitudCreada,
-      ensayos: ensayos.map((ensayo) => ({
+      estado_lote_id: aprobado ? 1 : 3,
+      solicitud_reanalisis: solicitudReanalisis,
+      mensaje_gerencia_enviado: Boolean(mensajeGerencia),
+      mensaje_gerencia: mensajeGerencia,
+      ensayos_no_conformes: ensayosNoConformes.map((ensayo) => ({
         ensayo_id: ensayo.ensayo_id,
         tipo_ensayo: ensayo.tipo_ensayo,
-        conforme: ensayo.conforme,
-        no_conformidad_abierta: ensayosPorId.get(ensayo.ensayo_id)?.conforme === false
-          ? !decisionesPorId.get(ensayo.ensayo_id)
-          : false
+        no_conformidad_abierta: aprobado ? false : true
       }))
     }
   })

@@ -86,7 +86,11 @@ export const listarMuestrasPendientesLaboratorioRepo = async (filters = {}) => {
   const values = []
   const conditions = [
     `LOWER(ii.nombre_item) IN ('carmin', 'cochinilla', 'extracto')`,
-    `COALESCE(lc.estado_lote_id, lco.estado_lote_id, e.estado_lote_id) IN (2, 6, 3)`
+    `COALESCE(lc.estado_lote_id, lco.estado_lote_id, e.estado_lote_id) IN (2, 6, 3)`,
+    `(
+      COALESCE(lc.estado_lote_id, lco.estado_lote_id, e.estado_lote_id) <> 6
+      OR al_actual.estado_analisis_id IS DISTINCT FROM 4
+    )`
   ]
 
   if (filters.estado_lote_id) {
@@ -130,6 +134,8 @@ export const listarMuestrasPendientesLaboratorioRepo = async (filters = {}) => {
        ON ii.item_inventario_id = e.item_inventario_id
      LEFT JOIN lotes.estado_lote ee
        ON e.estado_lote_id = ee.estado_lote_id
+     LEFT JOIN laboratorio.analisis_laboratorio al_actual
+       ON al_actual.analisis_id = COALESCE(lc.analisis_actual_id, lco.analisis_actual_id)
      WHERE ${conditions.join(' AND ')}
      ORDER BY COALESCE(lc.modificado_en, lco.modificado_en, e.modificado_en) ${orderDirection},
               ii.item_inventario_id ${orderDirection}`,
@@ -147,8 +153,14 @@ export const contarMuestrasPendientesLaboratorioRepo = async () => {
        ON ii.item_inventario_id = lco.item_inventario_id
      LEFT JOIN lotes.extracto e
        ON ii.item_inventario_id = e.item_inventario_id
+     LEFT JOIN laboratorio.analisis_laboratorio al_actual
+       ON al_actual.analisis_id = COALESCE(lc.analisis_actual_id, lco.analisis_actual_id)
      WHERE LOWER(ii.nombre_item) IN ('carmin', 'cochinilla', 'extracto')
-       AND COALESCE(lc.estado_lote_id, lco.estado_lote_id, e.estado_lote_id) IN (2, 6, 3)`
+       AND COALESCE(lc.estado_lote_id, lco.estado_lote_id, e.estado_lote_id) IN (2, 6, 3)
+       AND (
+         COALESCE(lc.estado_lote_id, lco.estado_lote_id, e.estado_lote_id) <> 6
+         OR al_actual.estado_analisis_id IS DISTINCT FROM 4
+       )`
   )
 }
 
@@ -162,8 +174,11 @@ export const contarMuestrasEnAnalisisRepo = async () => {
        ON ii.item_inventario_id = lco.item_inventario_id
      LEFT JOIN lotes.extracto e
        ON ii.item_inventario_id = e.item_inventario_id
+     LEFT JOIN laboratorio.analisis_laboratorio al_actual
+       ON al_actual.analisis_id = COALESCE(lc.analisis_actual_id, lco.analisis_actual_id)
      WHERE LOWER(ii.nombre_item) IN ('carmin', 'cochinilla', 'extracto')
-       AND COALESCE(lc.estado_lote_id, lco.estado_lote_id, e.estado_lote_id) = 6`
+       AND COALESCE(lc.estado_lote_id, lco.estado_lote_id, e.estado_lote_id) = 6
+       AND al_actual.estado_analisis_id IS DISTINCT FROM 4`
   )
 }
 

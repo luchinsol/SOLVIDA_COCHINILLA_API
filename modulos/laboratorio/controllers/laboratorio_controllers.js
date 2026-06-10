@@ -4,12 +4,13 @@ import {
   obtenerAnalisisActivoPorItemInventarioService,
   obtenerAnalisisPorIdService,
   obtenerAnalisisNoConformesService,
+  obtenerAnalisisNoConformesFinalizadosService,
   contarMuestrasAnalizadasHoyService,
   contarNoConformidadesHoyService,
   crearAnalisisService,
   actualizarAnalisisService,
   actualizarEnsayosAnalisisService,
-  aprobarAnalisisEnRevisionService,
+  aprobarODesaprobarAnalisisService,
   eliminarAnalisisService
 } from '../services/laboratorio_services.js'
 
@@ -98,6 +99,15 @@ export const obtenerAnalisisNoConformesController = async (_req, res) => {
   }
 }
 
+export const obtenerAnalisisNoConformesFinalizadosController = async (_req, res) => {
+  try {
+    const analisis = await obtenerAnalisisNoConformesFinalizadosService()
+    res.json(analisis)
+  } catch (_error) {
+    res.status(500).json({ error: 'Error al obtener los analisis no conformes finalizados' })
+  }
+}
+
 export const crearAnalisisController = async (req, res) => {
   try {
     const analisisDatos = req.body
@@ -116,7 +126,7 @@ export const crearAnalisisController = async (req, res) => {
       error.message.includes('solicitud de analisis no corresponde') ||
       error.message.includes('solicitud de analisis ya fue atendida') ||
       error.message.includes('solicitud de analisis no tiene parametros') ||
-      error.message.includes('peso_muestra_g es obligatorio') ||
+      error.message.includes('peso_muestra_g no se recibe') ||
       error.message.includes('observaciones es obligatorio') ||
       error.message.includes('observaciones debe ser texto') ||
       error.message.includes('tipo de ensayo no permitido') ||
@@ -154,7 +164,10 @@ export const actualizarAnalisisController = async (req, res) => {
 
 export const actualizarEnsayosAnalisisController = async (req, res) => {
   try {
-    const resultado = await actualizarEnsayosAnalisisService(req.query.analisis_laboratorio_id, req.body)
+    const resultado = await actualizarEnsayosAnalisisService(
+      req.query.analisis_id ?? req.query.analisis_laboratorio_id,
+      req.body
+    )
     res.json(resultado)
   } catch (error) {
     if (
@@ -178,30 +191,25 @@ export const actualizarEnsayosAnalisisController = async (req, res) => {
   }
 }
 
-export const aprobarAnalisisEnRevisionController = async (req, res) => {
+export const aprobarODesaprobarAnalisisController = async (req, res) => {
   try {
-    const resultado = await aprobarAnalisisEnRevisionService(req.params.id, req.body)
+    const resultado = await aprobarODesaprobarAnalisisService(req.params.analisis_id, req.body)
     res.json(resultado)
   } catch (error) {
     if (
       error.message.includes('analisis_id debe ser') ||
+      error.message.includes('aprobado debe ser booleano') ||
       error.message.includes('observaciones es obligatorio') ||
       error.message.includes('observaciones debe ser texto') ||
       error.message.includes('mensaje_gerencia debe ser texto') ||
-      error.message.includes('ensayos debe ser un arreglo') ||
-      error.message.includes('cada ensayo debe ser un objeto valido') ||
-      error.message.includes('ensayo_id debe ser') ||
-      error.message.includes('aprobar_no_conformidad debe ser booleano') ||
       error.message.includes('analisis no encontrado') ||
-      error.message.includes('analisis no tiene item_inventario_id valido') ||
-      error.message.includes('ensayo no encontrado para analisis') ||
-      error.message.includes('solo se pueden decidir ensayos no conformes') ||
-      error.message.includes('falta decision para el ensayo no conforme')
+      error.message.includes('analisis no esta en revision') ||
+      error.message.includes('analisis no tiene item_inventario_id valido')
     ) {
       return res.status(400).json({ error: error.message })
     }
 
-    res.status(500).json({ error: 'Error al aprobar el analisis en revision' })
+    res.status(500).json({ error: 'Error al aprobar o desaprobar el analisis' })
   }
 }
 

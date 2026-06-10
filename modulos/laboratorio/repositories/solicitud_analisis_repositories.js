@@ -53,7 +53,11 @@ export const obtenerSolicitudAnalisisPendientePorItemInventarioRepo = async (ite
     SELECT
       sr.solicitud_id::int AS solicitud_id,
       sr.item_inventario_id::int AS item_inventario_id,
+      ii.nombre_item,
+      ii.codigo_item,
       sr.usuario_id::int AS usuario_id,
+      NULLIF(TRIM(CONCAT_WS(' ', u.nombres, u.apellidos)), '') AS nombre_usuario,
+      r.nombre AS rol_usuario,
       sr.observacion_laboratorio,
       sr.creado_en,
       sr.atendido,
@@ -68,12 +72,23 @@ export const obtenerSolicitudAnalisisPendientePorItemInventarioRepo = async (ite
         '[]'::json
       ) AS parametros
     FROM solicitud_reciente sr
+    LEFT JOIN seguridad.usuario u
+      ON u.id = sr.usuario_id
+    LEFT JOIN seguridad.rol r
+      ON r.rol_id = u.rol_id
+    LEFT JOIN inventario.item_inventario ii
+      ON ii.item_inventario_id = sr.item_inventario_id
     LEFT JOIN laboratorio.solicitud_parametro_laboratorio spl
       ON spl.solicitud_id = sr.solicitud_id
     GROUP BY
       sr.solicitud_id,
       sr.item_inventario_id,
+      ii.nombre_item,
+      ii.codigo_item,
       sr.usuario_id,
+      u.nombres,
+      u.apellidos,
+      r.nombre,
       sr.observacion_laboratorio,
       sr.creado_en,
       sr.atendido
