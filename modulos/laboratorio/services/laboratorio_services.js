@@ -168,6 +168,20 @@ const limpiarEnsayosAnalisis = (analisis) => {
   }
 }
 
+const limpiarAnalisisOSolicitudResponse = (analisis) => {
+  if (!analisis || typeof analisis !== 'object' || Array.isArray(analisis)) {
+    return analisis
+  }
+
+  const analisisLimpio = { ...analisis }
+  delete analisisLimpio.proceso_extraccion_id
+  delete analisisLimpio.creado_en
+  delete analisisLimpio.modificado_en
+  delete analisisLimpio.unidad_medida_masa
+
+  return analisisLimpio
+}
+
 const obtenerDetalleEnsayoPayload = (ensayoPayload, tipoEnsayoNormalizado) => {
   if (!ensayoPayload || typeof ensayoPayload !== 'object' || Array.isArray(ensayoPayload)) {
     return {}
@@ -246,7 +260,7 @@ export const obtenerAnalisisOSolicitudPorItemInventarioService = async (item_inv
   if (analisisActivo) {
     return {
       tipo: 'analisis',
-      data: limpiarEnsayosAnalisis(analisisActivo)
+      data: limpiarAnalisisOSolicitudResponse(limpiarEnsayosAnalisis(analisisActivo))
     }
   }
 
