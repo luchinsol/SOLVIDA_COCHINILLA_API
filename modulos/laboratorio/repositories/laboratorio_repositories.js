@@ -517,6 +517,36 @@ export const listarEnsayosPorAnalisisRepo = async (analisisId, t = db) => {
   return await t.any(query, [analisisId])
 }
 
+export const cerrarNoConformidadesAbiertasPorReanalisisRepo = async (
+  itemInventarioId,
+  analisisId,
+  tiposEnsayo,
+  t = db
+) => {
+  if (!Array.isArray(tiposEnsayo) || !tiposEnsayo.length) {
+    return []
+  }
+
+  return await t.any(
+    `UPDATE laboratorio.ensayo_laboratorio el
+     SET no_conformidad_abierta = false
+     FROM laboratorio.analisis_laboratorio al
+     WHERE el.analisis_id = al.analisis_id
+       AND al.item_inventario_id = $1
+       AND al.analisis_id <> $2
+       AND el.tipo_ensayo = ANY($3::text[])
+       AND el.conforme = false
+       AND el.no_conformidad_abierta = true
+     RETURNING
+       el.ensayo_id::int AS ensayo_id,
+       el.analisis_id::int AS analisis_id,
+       el.tipo_ensayo,
+       el.conforme,
+       el.no_conformidad_abierta`,
+    [itemInventarioId, analisisId, tiposEnsayo]
+  )
+}
+
 export const actualizarEnsayoLaboratorioRepo = async (ensayoId, campos, t = db) => {
   const allowedFields = ['conforme', 'no_conformidad_abierta']
   const setClauses = []
