@@ -182,6 +182,8 @@ export const actualizarEnsayosAnalisisController = async (req, res) => {
       error.message.includes('tipo_ensayo no permitido') ||
       error.message.includes('tipo_ensayo no coincide con ensayo_id') ||
       error.message.includes('ensayo no encontrado para analisis') ||
+      error.message.includes('observaciones debe ser texto') ||
+      error.message.includes('peso_ensayo_g debe ser mayor a 0') ||
       error.message.includes('debe ser un numero valido')
     ) {
       return res.status(400).json({ error: error.message })

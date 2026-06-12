@@ -9,6 +9,7 @@ import {
   actualizarEnsayoColorCielabRepo,
   actualizarEnsayoHumedadRepo,
   actualizarEnsayoLaboratorioRepo,
+  cerrarNoConformidadesAbiertasPorReanalisisRepo,
   actualizarResultadosActualesEnLoteRepo,
   actualizarObservacionesEnLoteRepo,
   actualizarModificadoEnAnalisisRepo,
@@ -738,6 +739,7 @@ export const actualizarEnsayosAnalisisService = async (analisis_id, payload) => 
 
   let estadoAnalisisId = undefined
   let pesoMuestraG = undefined
+  let observacionesAnalisis = undefined
 
   if (
     Object.prototype.hasOwnProperty.call(payload ?? {}, 'estado_analisis_id') ||
@@ -764,6 +766,18 @@ export const actualizarEnsayosAnalisisService = async (analisis_id, payload) => 
 
   if (Object.prototype.hasOwnProperty.call(payload ?? {}, 'peso_muestra_g')) {
     pesoMuestraG = parseNullableNumber(payload.peso_muestra_g, 'peso_muestra_g')
+  }
+
+  if (Object.prototype.hasOwnProperty.call(payload ?? {}, 'observaciones')) {
+    if (
+      payload.observaciones !== null &&
+      payload.observaciones !== undefined &&
+      typeof payload.observaciones !== 'string'
+    ) {
+      throw new Error('observaciones debe ser texto')
+    }
+
+    observacionesAnalisis = payload.observaciones ?? null
   }
 
   const tiposEnsayoPermitidos = new Map([
@@ -853,7 +867,18 @@ export const actualizarEnsayosAnalisisService = async (analisis_id, payload) => 
           detalle.absorbancia_nm = parseNullableNumber(detallePayload.absorbancia_nm, 'absorbancia_nm')
         }
 
-        if (Object.prototype.hasOwnProperty.call(detallePayload, 'resultado')) {
+        if (
+          detalle.peso_ensayo_g !== undefined &&
+          detalle.peso_ensayo_g !== null &&
+          detalle.absorbancia_nm !== undefined &&
+          detalle.absorbancia_nm !== null
+        ) {
+          if (detalle.peso_ensayo_g <= 0) {
+            throw new Error('peso_ensayo_g debe ser mayor a 0 para calcular concentracion de acido carminico')
+          }
+
+          detalle.resultado = (detalle.absorbancia_nm * 100) / (detalle.peso_ensayo_g * 13.9)
+        } else if (Object.prototype.hasOwnProperty.call(detallePayload, 'resultado')) {
           detalle.resultado = parseNullableNumber(detallePayload.resultado, 'resultado')
         }
 
@@ -963,6 +988,10 @@ export const actualizarEnsayosAnalisisService = async (analisis_id, payload) => 
       camposAnalisis.peso_muestra_g = pesoMuestraG
     }
 
+    if (observacionesAnalisis !== undefined) {
+      camposAnalisis.observaciones = observacionesAnalisis
+    }
+
     if (Object.keys(camposAnalisis).length) {
       analisisActualizado = await actualizarAnalisis(
         analisisId,
@@ -998,6 +1027,21 @@ export const actualizarEnsayosAnalisisService = async (analisis_id, payload) => 
 
       if (estadoAnalisisFinal === 2) {
         await actualizarResultadosActualesPorItemInventario(itemInventarioId, resultadosActuales, t)
+
+        const tiposEnsayoConformes = [
+          ...new Set(
+            actualizaciones
+              .filter((ensayo) => ensayo.conforme === true)
+              .map((ensayo) => ensayo.tipo_ensayo)
+          )
+        ]
+
+        await cerrarNoConformidadesAbiertasPorReanalisisRepo(
+          itemInventarioId,
+          analisisId,
+          tiposEnsayoConformes,
+          t
+        )
       }
     }
 
@@ -1005,6 +1049,7 @@ export const actualizarEnsayosAnalisisService = async (analisis_id, payload) => 
       analisis_id: analisisId,
       estado_analisis_id: analisisActualizado?.estado_analisis_id ?? estadoAnalisisFinal ?? null,
       peso_muestra_g: analisisActualizado?.peso_muestra_g ?? pesoMuestraG ?? null,
+      observaciones: analisisActualizado?.observaciones ?? observacionesAnalisis ?? null,
       ensayos: actualizaciones
     }
   })
@@ -1065,6 +1110,10 @@ export const aprobarODesaprobarAnalisisService = async (analisis_id, payload = {
     const ensayosNoConformes = ensayos.filter((ensayo) => ensayo.conforme === false)
     const resultadosActuales = {}
     const observacionesFinales = payload.observaciones.trim()
+    const tiposEnsayoNoConformes = [...new Set(ensayosNoConformes.map((ensayo) => ensayo.tipo_ensayo))]
+    const observacionesLote = aprobado
+      ? observacionesFinales
+      : `lote bloqueado por no conformidad en el ensayo ${tiposEnsayoNoConformes.join(', ')}, se pide analizar de nuevo`
     const mensajeGerencia = payload.mensaje_gerencia?.trim() || null
 
     if (aprobado) {
@@ -1103,7 +1152,7 @@ export const aprobarODesaprobarAnalisisService = async (analisis_id, payload = {
     )
 
     await actualizarResultadosActualesPorItemInventario(itemInventarioId, resultadosActuales, t)
-    await actualizarObservacionesPorItemInventario(itemInventarioId, observacionesFinales, t)
+    await actualizarObservacionesPorItemInventario(itemInventarioId, observacionesLote, t)
 
     let solicitudReanalisis = null
 
@@ -1122,7 +1171,7 @@ export const aprobarODesaprobarAnalisisService = async (analisis_id, payload = {
           t
         )
 
-        for (const tipoEnsayo of [...new Set(ensayosNoConformes.map((ensayo) => ensayo.tipo_ensayo))]) {
+        for (const tipoEnsayo of tiposEnsayoNoConformes) {
           await crearSolicitudParametroLaboratorioRepo(solicitudReanalisis.solicitud_id, tipoEnsayo, t)
         }
       }
@@ -1133,6 +1182,7 @@ export const aprobarODesaprobarAnalisisService = async (analisis_id, payload = {
       aprobado,
       estado_analisis_id: analisisActualizado?.estado_analisis_id ?? 2,
       estado_lote_id: aprobado ? 1 : 3,
+      observaciones_lote: observacionesLote,
       solicitud_reanalisis: solicitudReanalisis,
       mensaje_gerencia_enviado: Boolean(mensajeGerencia),
       mensaje_gerencia: mensajeGerencia,
