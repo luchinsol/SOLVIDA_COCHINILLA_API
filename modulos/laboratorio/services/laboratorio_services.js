@@ -1069,14 +1069,10 @@ export const aprobarODesaprobarAnalisisService = async (analisis_id, payload = {
   }
 
   if (
-    payload.observaciones === undefined ||
-    payload.observaciones === null ||
-    String(payload.observaciones).trim() === ''
+    payload.observaciones !== undefined &&
+    payload.observaciones !== null &&
+    typeof payload.observaciones !== 'string'
   ) {
-    throw new Error('observaciones es obligatorio')
-  }
-
-  if (typeof payload.observaciones !== 'string') {
     throw new Error('observaciones debe ser texto')
   }
 
@@ -1109,7 +1105,9 @@ export const aprobarODesaprobarAnalisisService = async (analisis_id, payload = {
     const ensayosConformes = ensayos.filter((ensayo) => ensayo.conforme === true)
     const ensayosNoConformes = ensayos.filter((ensayo) => ensayo.conforme === false)
     const resultadosActuales = {}
-    const observacionesFinales = payload.observaciones.trim()
+    const observacionesFinales = payload.observaciones?.trim()
+      || String(analisis.observaciones ?? '').trim()
+      || (aprobado ? 'Analisis aprobado' : 'Analisis no aprobado')
     const tiposEnsayoNoConformes = [...new Set(ensayosNoConformes.map((ensayo) => ensayo.tipo_ensayo))]
     const observacionesLote = aprobado
       ? observacionesFinales
