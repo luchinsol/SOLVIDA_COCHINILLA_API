@@ -201,7 +201,6 @@ export const aprobarODesaprobarAnalisisController = async (req, res) => {
     if (
       error.message.includes('analisis_id debe ser') ||
       error.message.includes('aprobado debe ser booleano') ||
-      error.message.includes('observaciones es obligatorio') ||
       error.message.includes('observaciones debe ser texto') ||
       error.message.includes('mensaje_gerencia debe ser texto') ||
       error.message.includes('analisis no encontrado') ||
