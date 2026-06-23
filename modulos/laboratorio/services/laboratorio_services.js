@@ -791,10 +791,17 @@ export const actualizarEnsayosAnalisisService = async (analisis_id, payload) => 
   ])
 
   return await db.tx(async (t) => {
+    const analisisExistente = await obtenerAnalisisPorId(analisisId, t)
+
+    if (!analisisExistente) {
+      throw new Error('analisis no encontrado')
+    }
+
     const actualizaciones = []
     let itemInventarioId = null
     let estadoAnalisisFinal = estadoAnalisisId
     const resultadosActuales = {}
+    let solicitudReanalisis = null
 
     for (const ensayoPayload of payload.ensayos) {
       if (!ensayoPayload || typeof ensayoPayload !== 'object' || Array.isArray(ensayoPayload)) {
@@ -1010,6 +1017,10 @@ export const actualizarEnsayosAnalisisService = async (analisis_id, payload) => 
       }
     }
 
+    if (itemInventarioId) {
+      await actualizarAnalisisActualPorItemInventario(itemInventarioId, analisisId, t)
+    }
+
     if (estadoAnalisisFinal !== undefined && itemInventarioId) {
       let nuevoEstadoLoteId = null
 
@@ -1042,6 +1053,36 @@ export const actualizarEnsayosAnalisisService = async (analisis_id, payload) => 
           tiposEnsayoConformes,
           t
         )
+      } else if (estadoAnalisisFinal === 3) {
+        const tiposEnsayoNoConformes = [
+          ...new Set(
+            actualizaciones
+              .filter((ensayo) => ensayo.conforme === false)
+              .map((ensayo) => ensayo.tipo_ensayo)
+          )
+        ]
+
+        if (tiposEnsayoNoConformes.length) {
+          solicitudReanalisis = await crearSolicitudAnalisisLaboratorioRepo(
+            {
+              item_inventario_id: itemInventarioId,
+              usuario_id: Number(analisisExistente.usuario_id),
+              observacion_laboratorio:
+                analisisActualizado?.observaciones ??
+                observacionesAnalisis ??
+                'Solicitud automatica por analisis no conforme'
+            },
+            t
+          )
+
+          for (const tipoEnsayo of tiposEnsayoNoConformes) {
+            await crearSolicitudParametroLaboratorioRepo(
+              solicitudReanalisis.solicitud_id,
+              tipoEnsayo,
+              t
+            )
+          }
+        }
       }
     }
 
@@ -1050,7 +1091,8 @@ export const actualizarEnsayosAnalisisService = async (analisis_id, payload) => 
       estado_analisis_id: analisisActualizado?.estado_analisis_id ?? estadoAnalisisFinal ?? null,
       peso_muestra_g: analisisActualizado?.peso_muestra_g ?? pesoMuestraG ?? null,
       observaciones: analisisActualizado?.observaciones ?? observacionesAnalisis ?? null,
-      ensayos: actualizaciones
+      ensayos: actualizaciones,
+      solicitud_reanalisis: solicitudReanalisis
     }
   })
 }
@@ -1151,6 +1193,7 @@ export const aprobarODesaprobarAnalisisService = async (analisis_id, payload = {
 
     await actualizarResultadosActualesPorItemInventario(itemInventarioId, resultadosActuales, t)
     await actualizarObservacionesPorItemInventario(itemInventarioId, observacionesLote, t)
+    await actualizarAnalisisActualPorItemInventario(itemInventarioId, analisisId, t)
 
     let solicitudReanalisis = null
 

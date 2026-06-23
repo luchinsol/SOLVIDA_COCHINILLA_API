@@ -42,7 +42,7 @@ import {
 // ejemplo simple de código para compra:
 // COCH-COMP-<proveedor_id>-<yyyymmdd>-<calidad>
 const generarCodigoLoteCompra = (data) => {
-  const fechaBase = new Date(data.fecha_compra)
+  const fechaBase = new Date(data.fecha_creacion ?? data.fecha_compra)
   const ahora = new Date()
 
   const fecha = fechaBase.toISOString().slice(0, 10).replace(/-/g, '')
@@ -125,8 +125,8 @@ export const crearLoteCochinillaPorCompraService = async (data) => {
     throw new Error('almacen_id es obligatorio')
   }
 
-  if (!data.fecha_compra) {
-    throw new Error('fecha_compra es obligatoria')
+  if (!data.fecha_creacion && !data.fecha_compra) {
+    throw new Error('fecha_creacion es obligatoria')
   }
 
   if (!data.stock_inicial || Number(data.stock_inicial) <= 0) {
@@ -140,6 +140,7 @@ export const crearLoteCochinillaPorCompraService = async (data) => {
   const stockInicial = Number(data.stock_inicial)
   const costoTotalInicial = Number(data.costo_total_inicial)
   const costoUnitario = costoTotalInicial / stockInicial
+  const fechaCreacion = data.fecha_creacion ?? data.fecha_compra
 
   const codigoLote = generarCodigoLoteCompra(data)
 
@@ -165,14 +166,15 @@ export const crearLoteCochinillaPorCompraService = async (data) => {
         creado_por: data.creado_por ?? null,
         codigo_lote: codigoLote,
         tipo_lote: 'comprado',
+        fecha_creacion: fechaCreacion,
         stock_inicial: stockInicial,
         stock_actual: 0,
-        estado_lote: 'por analizar',
+        estado_lote_id: 2,
         costo_total_inicial: costoTotalInicial,
         costo_total_actual: costoTotalInicial,
         costo_unitario: costoUnitario,
-        unidad_medida_stock: 'kg',
-        unidad_medida_dinero: 'UDS'
+        unidad_medida_stock: data.unidad_medida_stock ?? data.unidad_medida_cantidad ?? 'kg',
+        unidad_medida_dinero: data.unidad_medida_dinero ?? data.unidad_medida_moneda ?? 'USD'
       },
       t
     )

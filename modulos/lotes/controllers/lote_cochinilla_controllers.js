@@ -27,6 +27,7 @@ const normalizeLoteCochinillaError = (error) => {
     error.message === 'proveedor_id es obligatorio' ||
     error.message === 'almacen_id es obligatorio' ||
     error.message === 'fecha_compra es obligatoria' ||
+    error.message === 'fecha_creacion es obligatoria' ||
     error.message === 'stock_inicial debe ser mayor a 0' ||
     error.message === 'costo_total_inicial debe ser mayor a 0' ||
     error.message === 'stock_inicial no puede ser negativo' ||

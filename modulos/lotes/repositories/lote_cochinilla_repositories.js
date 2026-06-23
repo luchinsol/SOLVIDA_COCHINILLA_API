@@ -16,14 +16,13 @@ export const crearLoteCochinillaPorCompraRepo = async (data, t = db) => {
       creado_por,
       codigo_lote,
       tipo_lote,
-      fecha_compra,
       fecha_creacion,
       calidad_cochinilla,
       stock_actual,
       costo_unitario,
       concentracion_ac_actual,
       humedad_actual,
-      estado_lote,
+      estado_lote_id,
       observaciones
       ,
       creado_en,
@@ -35,7 +34,7 @@ export const crearLoteCochinillaPorCompraRepo = async (data, t = db) => {
       unidad_medida_stock,
       unidad_medida_dinero
     )
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, NOW(), NOW(), $17, $18, $19, $20, $21, $22)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, NOW(), NOW(), $16, $17, $18, $19, $20, $21)
     RETURNING *`,
     [
       data.item_inventario_id,
@@ -45,14 +44,13 @@ export const crearLoteCochinillaPorCompraRepo = async (data, t = db) => {
       data.creado_por ?? null,
       data.codigo_lote,
       'comprado',
-      data.fecha_compra,
       data.fecha_creacion ?? null,
       data.calidad_cochinilla ?? null,
       data.stock_actual,
       data.costo_unitario,
       data.concentracion_ac_actual ?? null,
       data.humedad_actual ?? null,
-      data.estado_lote ?? 'por analizar',
+      data.estado_lote_id ?? 2,
       data.observaciones ?? null,
       data.costo_total_inicial,
       data.costo_total_actual,
