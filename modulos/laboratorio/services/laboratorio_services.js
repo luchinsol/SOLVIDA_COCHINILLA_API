@@ -142,6 +142,18 @@ const evaluarConformidadEnsayo = (tipoEnsayo, detalleActualizado, conformeActual
 
 const tieneValorResultado = (valor) => valor !== null && valor !== undefined && valor !== ''
 
+const validarPesoPositivoParaFinalizar = (valor, fieldName) => {
+  if (valor === null || valor === undefined || valor === '') {
+    throw new Error(`${fieldName} debe ser mayor a 0 para finalizar el analisis`)
+  }
+
+  const numero = Number(valor)
+
+  if (!Number.isFinite(numero) || numero <= 0) {
+    throw new Error(`${fieldName} debe ser mayor a 0 para finalizar el analisis`)
+  }
+}
+
 const ensayoTieneResultadosCompletos = (tipoEnsayo, detalleActualizado) => {
   if (tipoEnsayo === 'humedad') {
     return tieneValorResultado(detalleActualizado?.resultado)
@@ -768,6 +780,10 @@ export const actualizarEnsayosAnalisisService = async (analisis_id, payload) => 
     pesoMuestraG = parseNullableNumber(payload.peso_muestra_g, 'peso_muestra_g')
   }
 
+  if (estadoAnalisisId === 2 && pesoMuestraG !== undefined) {
+    validarPesoPositivoParaFinalizar(pesoMuestraG, 'peso_muestra_g')
+  }
+
   if (Object.prototype.hasOwnProperty.call(payload ?? {}, 'observaciones')) {
     if (
       payload.observaciones !== null &&
@@ -858,6 +874,10 @@ export const actualizarEnsayosAnalisisService = async (analisis_id, payload) => 
           detalle.resultado = parseNullableNumber(detallePayload.resultado, 'resultado')
         }
 
+        if (estadoAnalisisId === 2 && Object.prototype.hasOwnProperty.call(detalle, 'peso_ensayo_g')) {
+          validarPesoPositivoParaFinalizar(detalle.peso_ensayo_g, 'peso_ensayo_g')
+        }
+
         detalleActualizado = await actualizarEnsayoHumedadRepo(ensayoId, detalle, t)
 
         if (detalleActualizado?.resultado !== undefined) {
@@ -880,13 +900,19 @@ export const actualizarEnsayosAnalisisService = async (analisis_id, payload) => 
           detalle.absorbancia_nm !== undefined &&
           detalle.absorbancia_nm !== null
         ) {
-          if (detalle.peso_ensayo_g <= 0) {
+          if (estadoAnalisisId === 2 && detalle.peso_ensayo_g <= 0) {
             throw new Error('peso_ensayo_g debe ser mayor a 0 para calcular concentracion de acido carminico')
           }
 
-          detalle.resultado = (detalle.absorbancia_nm * 100) / (detalle.peso_ensayo_g * 13.9)
+          if (detalle.peso_ensayo_g > 0) {
+            detalle.resultado = (detalle.absorbancia_nm * 100) / (detalle.peso_ensayo_g * 13.9)
+          }
         } else if (Object.prototype.hasOwnProperty.call(detallePayload, 'resultado')) {
           detalle.resultado = parseNullableNumber(detallePayload.resultado, 'resultado')
+        }
+
+        if (estadoAnalisisId === 2 && Object.prototype.hasOwnProperty.call(detalle, 'peso_ensayo_g')) {
+          validarPesoPositivoParaFinalizar(detalle.peso_ensayo_g, 'peso_ensayo_g')
         }
 
         detalleActualizado = await actualizarEnsayoAcidoCarminicoRepo(ensayoId, detalle, t)
@@ -918,6 +944,10 @@ export const actualizarEnsayosAnalisisService = async (analisis_id, payload) => 
           Object.prototype.hasOwnProperty.call(detallePayload, 'resultado_r')
         ) {
           detalle.resultado_b = parseNullableNumber(valorResultadoB, 'resultado_b')
+        }
+
+        if (estadoAnalisisId === 2 && Object.prototype.hasOwnProperty.call(detalle, 'peso_ensayo_g')) {
+          validarPesoPositivoParaFinalizar(detalle.peso_ensayo_g, 'peso_ensayo_g')
         }
 
         detalleActualizado = await actualizarEnsayoColorCielabRepo(ensayoId, detalle, t)
