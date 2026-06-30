@@ -6,3 +6,5 @@
 Este sistema tiene como objetivo, registrar el proceso de transformación de la cochinilla, y para ello se aplica las tecnologías de desarrollo Express JS y Vue JS.
 
 ### Gracias por ver
+
+Prueba Prueba Prueba
