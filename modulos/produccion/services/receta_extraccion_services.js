@@ -1,141 +1,221 @@
 import {
   crearRecetaExtraccionRepo,
-  listarRecetasExtraccionRepo,
   obtenerRecetaExtraccionPorIdRepo,
-  listarRecetasExtraccionVigentesRepo,
-  listarRecetasExtraccionNoVigentesRepo,
-  obtenerRecetasPorTipoCochinillaRepo,
-  obtenerRecetasPorTipoCarminRepo,
-  actualizarVigenciaRecetaExtraccionRepo,
-  actualizarObservacionesOperariosRecetaExtraccionRepo,
-  actualizarComentariosConclusionesRecetaExtraccionRepo,
-  eliminarRecetaExtraccionRepo
 } from '../repositories/receta_extraccion_repositories.js'
+
+const parseRequiredNumber = (value, fieldName) => {
+  if (value === undefined || value === null || value === '') {
+    throw new Error(`${fieldName} es obligatorio`)
+  }
+
+  const parsed = Number(value)
+
+  if (!Number.isFinite(parsed)) {
+    throw new Error(`${fieldName} debe ser un numero valido`)
+  }
+
+  return parsed
+}
+
+const parseOptionalNumber = (value, fieldName) => {
+  if (value === undefined || value === null || value === '') {
+    return null
+  }
+
+  const parsed = Number(value)
+
+  if (!Number.isFinite(parsed)) {
+    throw new Error(`${fieldName} debe ser un numero valido`)
+  }
+
+  return parsed
+}
+
+const parseRequiredInteger = (value, fieldName) => {
+  if (value === undefined || value === null || value === '') {
+    throw new Error(`${fieldName} es obligatorio`)
+  }
+
+  const parsed = Number(value)
+
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    throw new Error(`${fieldName} debe ser un entero positivo`)
+  }
+
+  return parsed
+}
+
+const parseOptionalInteger = (value, fieldName) => {
+  if (value === undefined || value === null || value === '') {
+    return null
+  }
+
+  const parsed = Number(value)
+
+  if (!Number.isInteger(parsed)) {
+    throw new Error(`${fieldName} debe ser un entero valido`)
+  }
+
+  return parsed
+}
+
+const padTwo = (value) => String(value).padStart(2, '0')
+
+const generarCodigoRecetaExtraccion = ({
+  tipo_cochinilla_id,
+  calidad_carmin_obtenido_id,
+  numero_extraccion,
+  version
+}) => {
+  return `REXT-TC${padTwo(tipo_cochinilla_id)}-CC${padTwo(calidad_carmin_obtenido_id)}-N${padTwo(numero_extraccion)}-V${version}`
+}
 
 /* ======================================================
    CREATE
 ====================================================== */
 export const crearRecetaExtraccionService = async (data) => {
-
-  // 🔴 VALIDACIONES IMPORTANTES
-  if (!data.nombre) {
-    throw new Error('El nombre es obligatorio')
+  if (!data.nombre || !String(data.nombre).trim()) {
+    throw new Error('nombre es obligatorio')
   }
 
-  if (!data.tipo_cochinilla_id) {
-    throw new Error('El tipo de cochinilla es obligatorio')
+  const ratioSolidoLiquido = parseOptionalNumber(
+    data.ratio_solido_liquido_ext_lit_por_kg,
+    'ratio_solido_liquido_ext_lit_por_kg'
+  )
+
+  const factorCarbSodioCompuestoInput = parseOptionalNumber(
+    data.factor_carb_sodio_compuesto ?? data.factor_carb_sodio_compuesto_g_por_concalitros,
+    'factor_carb_sodio_compuesto_g_por_concalitros'
+  )
+
+  const factorCarbSodioPorPuntosInput = parseOptionalNumber(
+    data.factor_carb_sodio_g_por_ptos_ac,
+    'factor_carb_sodio_g_por_ptos_ac'
+  )
+
+  if (
+    factorCarbSodioCompuestoInput !== null &&
+    factorCarbSodioPorPuntosInput !== null
+  ) {
+    throw new Error('No puedes enviar factor_carb_sodio_compuesto_g_por_concalitros y factor_carb_sodio_g_por_ptos_ac al mismo tiempo')
   }
 
-  if (!data.tipo_carmin_obtenido_id) {
-    throw new Error('El tipo de carmín obtenido es obligatorio')
+  if (
+    factorCarbSodioCompuestoInput === null &&
+    factorCarbSodioPorPuntosInput === null
+  ) {
+    throw new Error('Debes enviar factor_carb_sodio_compuesto_g_por_concalitros o factor_carb_sodio_g_por_ptos_ac')
   }
 
-  if (!data.ph_objetivo_buffer || !data.ph_objetivo_filtrado) {
-    throw new Error('Los pH objetivos son obligatorios')
+  if (
+    factorCarbSodioPorPuntosInput !== null &&
+    (ratioSolidoLiquido === null || ratioSolidoLiquido <= 0)
+  ) {
+    throw new Error('ratio_solido_liquido_ext_lit_por_kg debe ser mayor a 0 para calcular factor_carb_sodio_compuesto_g_por_concalitros')
   }
 
-  if (!data.temperatura_objetivo_gradoscentigrados) {
-    throw new Error('La temperatura es obligatoria')
+  let factorCarbSodioCompuesto = factorCarbSodioCompuestoInput
+  let factorCarbSodioPorPuntos = factorCarbSodioPorPuntosInput
+
+  if (factorCarbSodioCompuestoInput !== null) {
+    if (ratioSolidoLiquido !== null) {
+      factorCarbSodioPorPuntos = factorCarbSodioCompuestoInput * ratioSolidoLiquido
+    }
+  } else if (factorCarbSodioPorPuntosInput !== null) {
+    factorCarbSodioCompuesto = factorCarbSodioPorPuntosInput / ratioSolidoLiquido
   }
 
-  if (!data.tiempo_reaccion_min) {
-    throw new Error('El tiempo de reacción es obligatorio')
+  const tipoCochinillaId = parseRequiredInteger(data.tipo_cochinilla_id, 'tipo_cochinilla_id')
+  const calidadCarminObtenidoId = parseRequiredInteger(
+    data.calidad_carmin_obtenido_id,
+    'calidad_carmin_obtenido_id'
+  )
+  const numeroExtraccion = parseRequiredInteger(data.numero_extraccion, 'numero_extraccion')
+  const version = '1.0'
+
+  const payloadNormalizado = {
+    codigo: generarCodigoRecetaExtraccion({
+      tipo_cochinilla_id: tipoCochinillaId,
+      calidad_carmin_obtenido_id: calidadCarminObtenidoId,
+      numero_extraccion: numeroExtraccion,
+      version
+    }),
+    nombre: String(data.nombre).trim(),
+    version,
+    vigente: true,
+    ph_objetivo_buffer: parseRequiredNumber(data.ph_objetivo_buffer, 'ph_objetivo_buffer'),
+    ph_objetivo_filtrado: parseRequiredNumber(data.ph_objetivo_filtrado, 'ph_objetivo_filtrado'),
+    temperatura_de_formacion_buffer: parseOptionalNumber(
+      data.temperatura_de_formacion_buffer,
+      'temperatura_de_formacion_buffer'
+    ),
+    temperatura_de_agregar_cochinilla: parseOptionalNumber(
+      data.temperatura_de_agregar_cochinilla,
+      'temperatura_de_agregar_cochinilla'
+    ),
+    temperatura_objetivo_inicio_rxn_gradoscentigrados: parseRequiredNumber(
+      data.temperatura_objetivo_inicio_rxn_gradoscentigrados,
+      'temperatura_objetivo_inicio_rxn_gradoscentigrados'
+    ),
+    tiempo_reaccion_min: parseRequiredNumber(data.tiempo_reaccion_min, 'tiempo_reaccion_min'),
+    agitacion_rpm: parseRequiredNumber(data.agitacion_rpm, 'agitacion_rpm'),
+    factor_carb_sodio_compuesto: factorCarbSodioCompuesto,
+    observaciones_para_operarios:
+      data.observaciones_para_operarios === undefined ||
+      data.observaciones_para_operarios === null ||
+      String(data.observaciones_para_operarios).trim() === ''
+        ? null
+        : String(data.observaciones_para_operarios).trim(),
+    creado_por: parseOptionalInteger(data.creado_por, 'creado_por'),
+    creado_en: data.creado_en ?? new Date(),
+    factor_citrico_g_por_ptos_ac: parseRequiredNumber(
+      data.factor_citrico_g_por_ptos_ac,
+      'factor_citrico_g_por_ptos_ac'
+    ),
+    concentracion_extracto_objetivo_pts_ac_por_litros: parseRequiredNumber(
+      data.concentracion_extracto_objetivo_pts_ac_por_litros,
+      'concentracion_extracto_objetivo_pts_ac_por_litros'
+    ),
+    ratio_solido_liquido_ext_lit_por_kg: ratioSolidoLiquido,
+    comentarios_conclusiones:
+      data.comentarios_conclusiones === undefined ||
+      data.comentarios_conclusiones === null ||
+      String(data.comentarios_conclusiones).trim() === ''
+        ? null
+        : String(data.comentarios_conclusiones).trim(),
+    tipo_cochinilla_id: tipoCochinillaId,
+    calidad_carmin_obtenido_id: calidadCarminObtenidoId,
+    ph_objetivo_cochinilla: parseOptionalNumber(
+      data.ph_objetivo_cochinilla,
+      'ph_objetivo_cochinilla'
+    ),
+    factor_carb_sodio_g_por_ptos_ac: factorCarbSodioPorPuntos,
+    porcentaje_agua_extraccion: parseOptionalNumber(
+      data.porcentaje_agua_extraccion,
+      'porcentaje_agua_extraccion'
+    ),
+    rendimiento_extraccion_esperado: parseOptionalNumber(
+      data.rendimiento_extraccion_esperado,
+      'rendimiento_extraccion_esperado'
+    ),
+    numero_extraccion: numeroExtraccion
   }
 
-  if (!data.agitacion_rpm) {
-    throw new Error('La agitación es obligatoria')
-  }
-
-  if (!data.factor_carb_sodio_compuesto) {
-    throw new Error('El factor carb sodio es obligatorio')
-  }
-
-  if (!data.factor_citrico_kg_por_puntos_ac) {
-    throw new Error('El factor cítrico es obligatorio')
-  }
-
-  if (!data.concentracion_extracto_objetivo_pts_ac_por_litros) {
-    throw new Error('La concentración objetivo es obligatoria')
-  }
-
-  // 🧠 DEFAULTS INTELIGENTES
-  data.vigente = data.vigente ?? true
-  data.creado_en = new Date()
-
-  // 🚀 CREATE
-  return await crearRecetaExtraccionRepo(data)
-}
-
-
-
-//READS
-export const listarRecetasExtraccionService = async () => {
-  return await listarRecetasExtraccionRepo()
+  return await crearRecetaExtraccionRepo(payloadNormalizado)
 }
 
 export const obtenerRecetaExtraccionPorIdService = async (id) => {
-  const receta = await obtenerRecetaExtraccionPorIdRepo(id)
+  const recetaId = Number(id)
+
+  if (!Number.isInteger(recetaId) || recetaId <= 0) {
+    throw new Error('receta_extraccion_id debe ser un entero positivo')
+  }
+
+  const receta = await obtenerRecetaExtraccionPorIdRepo(recetaId)
 
   if (!receta) {
     throw new Error('Receta no encontrada')
   }
 
   return receta
-}
-
-export const listarRecetasExtraccionVigentesService = async () => {
-  return await listarRecetasExtraccionVigentesRepo()
-}
-
-export const listarRecetasExtraccionNoVigentesService = async () => {
-  return await listarRecetasExtraccionNoVigentesRepo()
-}
-
-/* ======================================================
-    READ: obtener recetas por tipo de cochinilla
-    ====================================================== */
-export const obtenerRecetasPorTipoCochinillaService = async (tipoCochinillaId) => {
-
-  if (!tipoCochinillaId) {
-    throw new Error('Debe enviar tipo_cochinilla_id')
-  }
-
-  return await obtenerRecetasPorTipoCochinillaRepo(tipoCochinillaId)
-}
-
-export const obtenerRecetasPorTipoCarminService = async (tipoCarminId) => {
-
-  if (!tipoCarminId) {
-    throw new Error('Debe enviar tipo_carmin_id')
-  }
-
-  return await obtenerRecetasPorTipoCarminRepo(tipoCarminId)
-}
-
-//UPDATES
-export const actualizarVigenciaRecetaExtraccionService = async (id, vigente) => {
-
-  if (vigente === undefined) {
-    throw new Error('Debe enviar el valor de vigente')
-  }
-
-  return await actualizarVigenciaRecetaExtraccionRepo(id, vigente)
-}
-
-export const actualizarObservacionesOperariosRecetaExtraccionService = async (id, observaciones) => {
-  return await actualizarObservacionesOperariosRecetaExtraccionRepo(id, observaciones)
-}
-
-export const actualizarComentariosConclusionesRecetaExtraccionService = async (id, comentarios) => {
-  return await actualizarComentariosConclusionesRecetaExtraccionRepo(id, comentarios)
-}
-
-//DELETES
-export const eliminarRecetaExtraccionService = async (id) => {
-
-  // 🧠 recomendación negocio: no borrar
-  throw new Error('No se recomienda eliminar recetas. Usar vigente = false')
-
-  // si igual quieres permitirlo:
-  // return await eliminarRecetaExtraccionRepo(id)
 }

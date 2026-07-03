@@ -7,50 +7,67 @@ export const crearRecetaExtraccionRepo = async (data) => {
   const result = await db.one(
     `INSERT INTO produccion.receta_extraccion
     (
+      codigo,
       nombre,
       version,
       vigente,
       ph_objetivo_buffer,
       ph_objetivo_filtrado,
-      temperatura_objetivo_gradoscentigrados,
+      temperatura_de_formacion_buffer,
+      temperatura_de_agregar_cochinilla,
+      temperatura_objetivo_inicio_rxn_gradoscentigrados,
       tiempo_reaccion_min,
       agitacion_rpm,
       factor_carb_sodio_compuesto,
       observaciones_para_operarios,
       creado_por,
       creado_en,
-      factor_citrico_kg_por_puntos_ac,
+      factor_citrico_g_por_ptos_ac,
       concentracion_extracto_objetivo_pts_ac_por_litros,
       ratio_solido_liquido_ext_lit_por_kg,
       comentarios_conclusiones,
       tipo_cochinilla_id,
-      tipo_carmin_obtenido_id
+      calidad_carmin_obtenido_id,
+      ph_objetivo_cochinilla,
+      factor_carb_sodio_g_por_ptos_ac,
+      porcentaje_agua_extraccion,
+      rendimiento_extraccion_esperado,
+      numero_extraccion
     )
     VALUES
     (
-      $1, $2, $3, $4, $5, $6, $7, $8, $9,
-      $10, $11, $12, $13, $14, $15, $16, $17, $18
+      $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
+      $11, $12, $13, $14, $15, $16, $17, $18, $19,
+      $20, $21, $22, $23, $24, $25, $26
     )
     RETURNING *`,
     [
+      data.codigo,
       data.nombre,
       data.version ?? null,
       data.vigente ?? true,
       data.ph_objetivo_buffer,
       data.ph_objetivo_filtrado,
-      data.temperatura_objetivo_gradoscentigrados,
+      data.temperatura_de_formacion_buffer ?? null,
+      data.temperatura_de_agregar_cochinilla ?? null,
+      data.temperatura_objetivo_inicio_rxn_gradoscentigrados,
       data.tiempo_reaccion_min,
       data.agitacion_rpm,
       data.factor_carb_sodio_compuesto,
       data.observaciones_para_operarios ?? null,
       data.creado_por ?? null,
       data.creado_en ?? null,
-      data.factor_citrico_kg_por_puntos_ac,
+      data.factor_citrico_g_por_ptos_ac,
       data.concentracion_extracto_objetivo_pts_ac_por_litros,
       data.ratio_solido_liquido_ext_lit_por_kg ?? null,
       data.comentarios_conclusiones ?? null,
       data.tipo_cochinilla_id,
-      data.tipo_carmin_obtenido_id
+      data.calidad_carmin_obtenido_id,
+      data.ph_objetivo_cochinilla ?? null,
+      data.factor_carb_sodio_g_por_ptos_ac ?? null,
+      data.porcentaje_agua_extraccion ?? null,
+      data.rendimiento_extraccion_esperado ?? null,
+      data.numero_extraccion ?? null
     ]
   )
 
@@ -82,16 +99,9 @@ export const listarRecetasExtraccionRepo = async () => {
 ====================================================== */
 export const obtenerRecetaExtraccionPorIdRepo = async (id) => {
   const result = await db.oneOrNone(
-    `SELECT
-       r.*,
-       tc.nombre AS tipo_cochinilla_nombre,
-       tcar.nombre AS tipo_carmin_nombre
-     FROM produccion.receta_extraccion r
-     LEFT JOIN lotes.tipo_cochinilla tc
-       ON r.tipo_cochinilla_id = tc.tipo_cochinilla_id
-     LEFT JOIN lotes.tipo_carmin tcar
-       ON r.tipo_carmin_obtenido_id = tcar.tipo_carmin_id
-     WHERE r.receta_extraccion_id = $1`,
+    `SELECT *
+     FROM produccion.receta_extraccion
+     WHERE receta_extraccion_id = $1`,
     [id]
   )
 
