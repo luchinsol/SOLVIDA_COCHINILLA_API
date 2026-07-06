@@ -1,5 +1,7 @@
 import {
+  actualizarCodigoRecetaExtraccionRepo,
   crearRecetaExtraccionRepo,
+  listarRecetasExtraccionRepo,
   obtenerRecetaExtraccionPorIdRepo,
 } from '../repositories/receta_extraccion_repositories.js'
 
@@ -59,15 +61,34 @@ const parseOptionalInteger = (value, fieldName) => {
   return parsed
 }
 
+const parseOptionalBoolean = (value, fieldName) => {
+  if (value === undefined || value === null || value === '') {
+    return null
+  }
+
+  if (typeof value === 'boolean') {
+    return value
+  }
+
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase()
+
+    if (normalized === 'true') return true
+    if (normalized === 'false') return false
+  }
+
+  throw new Error(`${fieldName} debe ser true o false`)
+}
+
 const padTwo = (value) => String(value).padStart(2, '0')
 
+const formatearVersionCodigo = (version) => String(version).replace(/\./g, '')
+
 const generarCodigoRecetaExtraccion = ({
-  tipo_cochinilla_id,
-  calidad_carmin_obtenido_id,
-  numero_extraccion,
+  receta_extraccion_id,
   version
 }) => {
-  return `REXT-TC${padTwo(tipo_cochinilla_id)}-CC${padTwo(calidad_carmin_obtenido_id)}-N${padTwo(numero_extraccion)}-V${version}`
+  return `RX-${receta_extraccion_id}-V${formatearVersionCodigo(version)}`
 }
 
 /* ======================================================
@@ -84,8 +105,8 @@ export const crearRecetaExtraccionService = async (data) => {
   )
 
   const factorCarbSodioCompuestoInput = parseOptionalNumber(
-    data.factor_carb_sodio_compuesto ?? data.factor_carb_sodio_compuesto_g_por_concalitros,
-    'factor_carb_sodio_compuesto_g_por_concalitros'
+    data.factor_carb_sodio_compuesto ?? data.factor_carb_sodio_compuesto_g_por_concaclitros,
+    'factor_carb_sodio_compuesto_g_por_concaclitros'
   )
 
   const factorCarbSodioPorPuntosInput = parseOptionalNumber(
@@ -97,31 +118,35 @@ export const crearRecetaExtraccionService = async (data) => {
     factorCarbSodioCompuestoInput !== null &&
     factorCarbSodioPorPuntosInput !== null
   ) {
-    throw new Error('No puedes enviar factor_carb_sodio_compuesto_g_por_concalitros y factor_carb_sodio_g_por_ptos_ac al mismo tiempo')
+    throw new Error('No puedes enviar factor_carb_sodio_compuesto_g_por_concaclitros y factor_carb_sodio_g_por_ptos_ac al mismo tiempo')
   }
 
   if (
     factorCarbSodioCompuestoInput === null &&
     factorCarbSodioPorPuntosInput === null
   ) {
-    throw new Error('Debes enviar factor_carb_sodio_compuesto_g_por_concalitros o factor_carb_sodio_g_por_ptos_ac')
+    throw new Error('Debes enviar factor_carb_sodio_compuesto_g_por_concaclitros o factor_carb_sodio_g_por_ptos_ac')
   }
 
   if (
     factorCarbSodioPorPuntosInput !== null &&
     (ratioSolidoLiquido === null || ratioSolidoLiquido <= 0)
   ) {
-    throw new Error('ratio_solido_liquido_ext_lit_por_kg debe ser mayor a 0 para calcular factor_carb_sodio_compuesto_g_por_concalitros')
+    throw new Error('ratio_solido_liquido_ext_lit_por_kg debe ser mayor a 0 para calcular factor_carb_sodio_compuesto_g_por_concaclitros')
   }
 
   let factorCarbSodioCompuesto = factorCarbSodioCompuestoInput
   let factorCarbSodioPorPuntos = factorCarbSodioPorPuntosInput
+  let metodoFactorCarbSodio = null
 
   if (factorCarbSodioCompuestoInput !== null) {
+    metodoFactorCarbSodio = 'compuesto'
+
     if (ratioSolidoLiquido !== null) {
       factorCarbSodioPorPuntos = factorCarbSodioCompuestoInput * ratioSolidoLiquido
     }
   } else if (factorCarbSodioPorPuntosInput !== null) {
+    metodoFactorCarbSodio = 'por_ptos_ac'
     factorCarbSodioCompuesto = factorCarbSodioPorPuntosInput / ratioSolidoLiquido
   }
 
@@ -134,12 +159,7 @@ export const crearRecetaExtraccionService = async (data) => {
   const version = '1.0'
 
   const payloadNormalizado = {
-    codigo: generarCodigoRecetaExtraccion({
-      tipo_cochinilla_id: tipoCochinillaId,
-      calidad_carmin_obtenido_id: calidadCarminObtenidoId,
-      numero_extraccion: numeroExtraccion,
-      version
-    }),
+    codigo: null,
     nombre: String(data.nombre).trim(),
     version,
     vigente: true,
@@ -190,6 +210,7 @@ export const crearRecetaExtraccionService = async (data) => {
       'ph_objetivo_cochinilla'
     ),
     factor_carb_sodio_g_por_ptos_ac: factorCarbSodioPorPuntos,
+    metodo_factor_carb_sodio: metodoFactorCarbSodio,
     porcentaje_agua_extraccion: parseOptionalNumber(
       data.porcentaje_agua_extraccion,
       'porcentaje_agua_extraccion'
@@ -201,7 +222,44 @@ export const crearRecetaExtraccionService = async (data) => {
     numero_extraccion: numeroExtraccion
   }
 
-  return await crearRecetaExtraccionRepo(payloadNormalizado)
+  const recetaCreada = await crearRecetaExtraccionRepo(payloadNormalizado)
+
+  const codigo = generarCodigoRecetaExtraccion({
+    receta_extraccion_id: recetaCreada.receta_extraccion_id,
+    version: recetaCreada.version ?? version
+  })
+
+  return await actualizarCodigoRecetaExtraccionRepo(recetaCreada.receta_extraccion_id, codigo)
+}
+
+export const listarRecetasExtraccionService = async (filters = {}) => {
+  const filtrosNormalizados = {
+    vigente: parseOptionalBoolean(filters.vigente, 'vigente'),
+    numero_extraccion: parseOptionalInteger(filters.numero_extraccion, 'numero_extraccion'),
+    tipo_cochinilla_id: parseOptionalInteger(filters.tipo_cochinilla_id, 'tipo_cochinilla_id'),
+    calidad_carmin_obtenido_id: parseOptionalInteger(
+      filters.calidad_carmin_obtenido_id,
+      'calidad_carmin_obtenido_id'
+    ),
+    ph_objetivo_cochinilla_min: parseOptionalNumber(
+      filters.ph_objetivo_cochinilla_min,
+      'ph_objetivo_cochinilla_min'
+    ),
+    ph_objetivo_cochinilla_max: parseOptionalNumber(
+      filters.ph_objetivo_cochinilla_max,
+      'ph_objetivo_cochinilla_max'
+    )
+  }
+
+  if (
+    filtrosNormalizados.ph_objetivo_cochinilla_min !== null &&
+    filtrosNormalizados.ph_objetivo_cochinilla_max !== null &&
+    filtrosNormalizados.ph_objetivo_cochinilla_min > filtrosNormalizados.ph_objetivo_cochinilla_max
+  ) {
+    throw new Error('ph_objetivo_cochinilla_min no puede ser mayor que ph_objetivo_cochinilla_max')
+  }
+
+  return await listarRecetasExtraccionRepo(filtrosNormalizados)
 }
 
 export const obtenerRecetaExtraccionPorIdService = async (id) => {
