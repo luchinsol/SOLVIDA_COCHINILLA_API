@@ -1,4 +1,5 @@
 import {
+  actualizarVigenciaRecetaExtraccionService,
   crearRecetaExtraccionService,
   listarRecetasExtraccionService,
   obtenerRecetaExtraccionPorIdService
@@ -19,6 +20,17 @@ export const crearRecetaExtraccion = async (req, res) => {
 export const listarRecetasExtraccion = async (req, res) => {
   try {
     const data = await listarRecetasExtraccionService(req.query)
+    res.json(data)
+  } catch (error) {
+    res.status(400).json({ error: error.message })
+  }
+}
+
+export const actualizarVigenciaRecetaExtraccion = async (req, res) => {
+  try {
+    const { id } = req.params
+    const { vigente } = req.body
+    const data = await actualizarVigenciaRecetaExtraccionService(id, vigente)
     res.json(data)
   } catch (error) {
     res.status(400).json({ error: error.message })
