@@ -2,6 +2,7 @@ import {
   crearLoteCochinillaPorCompraService,
   crearLoteCochinillaPorMezclaService,
   listarLotesCochinillaService,
+  listarLotesCochinillaDisponiblesService,
   obtenerLoteCochinillaPorIdService,
   obtenerResumenLotesCochinillaService,
   actualizarAnalisisLoteCochinillaService,
@@ -28,6 +29,9 @@ const normalizeLoteCochinillaError = (error) => {
     error.message === 'almacen_id es obligatorio' ||
     error.message === 'fecha_compra es obligatoria' ||
     error.message === 'fecha_creacion es obligatoria' ||
+    error.message === 'concentracion_ac_actual_min debe ser numerico' ||
+    error.message === 'concentracion_ac_actual_max debe ser numerico' ||
+    error.message === 'concentracion_ac_actual_min no puede ser mayor que concentracion_ac_actual_max' ||
     error.message === 'stock_inicial debe ser mayor a 0' ||
     error.message === 'costo_total_inicial debe ser mayor a 0' ||
     error.message === 'stock_inicial no puede ser negativo' ||
@@ -95,6 +99,27 @@ export const listarLotesCochinilla = async (req, res) => {
       tipo_lote,
       proveedor_id,
       estado_lote
+    })
+    res.json(data)
+  } catch (error) {
+    handleControllerError(res, normalizeLoteCochinillaError(error))
+  }
+}
+
+export const listarLotesCochinillaDisponibles = async (req, res) => {
+  try {
+    const {
+      calidad_cochinilla,
+      almacen_nombre,
+      concentracion_ac_actual_min,
+      concentracion_ac_actual_max
+    } = req.query
+
+    const data = await listarLotesCochinillaDisponiblesService({
+      calidad_cochinilla,
+      almacen_nombre,
+      concentracion_ac_actual_min,
+      concentracion_ac_actual_max
     })
     res.json(data)
   } catch (error) {

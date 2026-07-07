@@ -176,6 +176,54 @@ export const listarLotesCochinillaRepo = async (filters = {}) => {
   return result
 }
 
+export const listarLotesCochinillaDisponiblesRepo = async (filters = {}) => {
+  const conditions = ['lc.estado_lote_id = 1']
+  const values = []
+
+  if (filters.calidad_cochinilla !== undefined) {
+    values.push(filters.calidad_cochinilla)
+    conditions.push(`LOWER(lc.calidad_cochinilla) = LOWER($${values.length})`)
+  }
+
+  if (filters.almacen_nombre !== undefined) {
+    values.push(filters.almacen_nombre)
+    conditions.push(`LOWER(a.nombre) = LOWER($${values.length})`)
+  }
+
+  if (filters.concentracion_ac_actual_min !== undefined) {
+    values.push(filters.concentracion_ac_actual_min)
+    conditions.push(`lc.concentracion_ac_actual >= $${values.length}`)
+  }
+
+  if (filters.concentracion_ac_actual_max !== undefined) {
+    values.push(filters.concentracion_ac_actual_max)
+    conditions.push(`lc.concentracion_ac_actual <= $${values.length}`)
+  }
+
+  const whereClause = `WHERE ${conditions.join(' AND ')}`
+
+  return await db.any(
+    `SELECT
+       lc.proveedor_id,
+       lc.tipo_lote,
+       lc.calidad_cochinilla,
+       lc.stock_actual,
+       lc.concentracion_ac_actual,
+       lc.humedad_actual,
+       a.nombre AS almacen_nombre,
+       lc.item_inventario_id,
+       ii.codigo_item
+     FROM lotes.lote_cochinilla lc
+     LEFT JOIN inventario.item_inventario ii
+       ON lc.item_inventario_id = ii.item_inventario_id
+     LEFT JOIN inventario.almacen a
+       ON lc.almacen_id = a.almacen_id
+     ${whereClause}
+     ORDER BY lc.lote_cochinilla_id DESC`,
+    values
+  )
+}
+
 /* ======================================================
    READ: obtener lote de cochinilla por id
 ====================================================== */
