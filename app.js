@@ -21,6 +21,7 @@ import estadoLoteRoutes from './modulos/lotes/routes/estado_lote_routes.js'
 
 //Rutas de producción
 import procesoMezcladoRoutes from './modulos/produccion/routes/proceso_mezclado_routes.js'
+import procesoExtraccionRoutes from './modulos/produccion/routes/proceso_extraccion_routes.js'
 import recetaExtraccionRoutes from './modulos/produccion/routes/receta_extraccion_routes.js'
 
 
@@ -66,6 +67,7 @@ app.use('/api/rol-permisos', rolPermisoRoutes)
 app.use('/api/lotes-carmin', loteCarminRoutes)
 app.use('/api/composicion-carmin', composicionCarminRoutes)
 app.use('/api/proceso-mezclado', procesoMezcladoRoutes)
+app.use('/api/proceso-extraccion', procesoExtraccionRoutes)
 app.use('/api/lote-insumos', insumoRoutes)
 app.use('/api/movimientos-almacen', movimientoAlmacenRoutes)
 app.use('/api/motivos-movimiento', motivoMovimientoRoutes)

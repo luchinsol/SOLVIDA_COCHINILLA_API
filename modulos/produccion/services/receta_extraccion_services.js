@@ -1,4 +1,5 @@
 import {
+  actualizarVigenciaRecetaExtraccionRepo,
   actualizarCodigoRecetaExtraccionRepo,
   crearRecetaExtraccionRepo,
   listarRecetasExtraccionRepo,
@@ -260,6 +261,31 @@ export const listarRecetasExtraccionService = async (filters = {}) => {
   }
 
   return await listarRecetasExtraccionRepo(filtrosNormalizados)
+}
+
+export const actualizarVigenciaRecetaExtraccionService = async (id, vigente) => {
+  const recetaId = Number(id)
+
+  if (!Number.isInteger(recetaId) || recetaId <= 0) {
+    throw new Error('receta_extraccion_id debe ser un entero positivo')
+  }
+
+  const vigenteNormalizado = parseOptionalBoolean(vigente, 'vigente')
+
+  if (vigenteNormalizado === null) {
+    throw new Error('vigente es obligatorio')
+  }
+
+  const recetaActualizada = await actualizarVigenciaRecetaExtraccionRepo(
+    recetaId,
+    vigenteNormalizado
+  )
+
+  if (!recetaActualizada) {
+    throw new Error('Receta no encontrada')
+  }
+
+  return recetaActualizada
 }
 
 export const obtenerRecetaExtraccionPorIdService = async (id) => {

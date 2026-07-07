@@ -10,7 +10,9 @@ import {
 
 import {
   obtenerComposicionesPorLoteResultanteRepo,
-  eliminarComposicionLoteCochinillaRepo
+  eliminarComposicionLoteCochinillaRepo,
+  crearComposicionLoteCochinillaRepo,
+  actualizarPorcentajesPorLoteResultanteRepo
 } from '../repositories/composicion_lote_cochinilla_repositories.js'
 
 import {
@@ -213,17 +215,87 @@ export const crearLoteCochinillaPorMezclaService = async (data) => {
     throw new Error('almacen_id es obligatorio')
   }
 
-  if (data.stock_inicial != null && Number(data.stock_inicial) < 0) {
-    throw new Error('stock_inicial no puede ser negativo')
+  if (!Array.isArray(data.componentes) || data.componentes.length === 0) {
+    throw new Error('componentes es obligatorio y debe tener al menos un lote componente')
   }
-
-  const stockInicial = Number(data.stock_inicial ?? 0)
-  const costoTotalInicial = Number(data.costo_total_inicial ?? 0)
-  const costoUnitario = stockInicial > 0 ? costoTotalInicial / stockInicial : 0
 
   const codigoLote = generarCodigoLoteMezcla(data)
 
   return await db.tx(async (t) => {
+    let stockInicial = 0
+    let costoTotalInicial = 0
+    let sumaConcentracionPonderada = 0
+    let sumaHumedadPonderada = 0
+    let tieneHumedadCompleta = true
+
+    const componentesValidados = []
+
+    for (const componente of data.componentes) {
+      if (!componente?.lote_componente_id) {
+        throw new Error('Cada componente debe incluir lote_componente_id')
+      }
+
+      if (componente.peso_utilizado_kg == null || Number(componente.peso_utilizado_kg) <= 0) {
+        throw new Error('Cada componente debe incluir peso_utilizado_kg mayor a 0')
+      }
+
+      const loteComponente = await obtenerLoteCochinillaPorIdRepo(
+        componente.lote_componente_id,
+        t
+      )
+
+      if (!loteComponente) {
+        throw new Error(`Lote componente ${componente.lote_componente_id} no encontrado`)
+      }
+
+      const pesoUtilizado = Number(componente.peso_utilizado_kg)
+      const stockActualComponente = Number(loteComponente.stock_actual ?? 0)
+
+      if (pesoUtilizado > stockActualComponente) {
+        throw new Error(
+          `El lote componente ${componente.lote_componente_id} no tiene stock suficiente`
+        )
+      }
+
+      if (
+        loteComponente.concentracion_ac_actual == null ||
+        Number.isNaN(Number(loteComponente.concentracion_ac_actual))
+      ) {
+        throw new Error(
+          `El lote componente ${componente.lote_componente_id} no tiene concentracion_ac_actual valida`
+        )
+      }
+
+      const concentracionActual = Number(loteComponente.concentracion_ac_actual)
+      const humedadActual =
+        loteComponente.humedad_actual == null || Number.isNaN(Number(loteComponente.humedad_actual))
+          ? null
+          : Number(loteComponente.humedad_actual)
+      const costoUnitarioComponente = Number(loteComponente.costo_unitario ?? 0)
+
+      stockInicial += pesoUtilizado
+      costoTotalInicial += pesoUtilizado * costoUnitarioComponente
+      sumaConcentracionPonderada += pesoUtilizado * concentracionActual
+
+      if (humedadActual === null) {
+        tieneHumedadCompleta = false
+      } else {
+        sumaHumedadPonderada += pesoUtilizado * humedadActual
+      }
+
+      componentesValidados.push({
+        lote_componente_id: Number(componente.lote_componente_id),
+        item_inventario_id: Number(loteComponente.item_inventario_id),
+        peso_utilizado_kg: pesoUtilizado,
+        observaciones: componente.observaciones ?? null
+      })
+    }
+
+    const costoUnitario = stockInicial > 0 ? costoTotalInicial / stockInicial : 0
+    const concentracionActual = stockInicial > 0 ? sumaConcentracionPonderada / stockInicial : null
+    const humedadActual =
+      stockInicial > 0 && tieneHumedadCompleta ? sumaHumedadPonderada / stockInicial : null
+
     const itemInventarioCreado = await crearItemInventarioRepo(
       {
         nombre_item: 'Cochinilla',
@@ -244,17 +316,78 @@ export const crearLoteCochinillaPorMezclaService = async (data) => {
         item_inventario_id: itemInventario.item_inventario_id,
         creado_por: data.creado_por ?? null,
         stock_inicial: stockInicial,
-        stock_actual: data.stock_actual ?? stockInicial,
+        stock_actual: 0,
         costo_total_inicial: costoTotalInicial,
-        costo_total_actual: data.costo_total_actual ?? costoTotalInicial,
+        costo_total_actual: costoTotalInicial,
         costo_unitario: costoUnitario,
+        concentracion_ac_actual: concentracionActual,
+        humedad_actual: humedadActual,
         codigo_lote: codigoLote,
         tipo_lote: 'preparado',
-        estado_lote: 'por analizar',
+        estado_lote_id: 2,
         fecha_creacion: data.fecha_creacion ?? new Date()
       },
       t
     )
+
+    for (const componente of componentesValidados) {
+      await crearComposicionLoteCochinillaRepo(
+        {
+          lote_resultante_id: loteCreado.lote_cochinilla_id,
+          lote_componente_id: componente.lote_componente_id,
+          peso_utilizado_kg: componente.peso_utilizado_kg,
+          porcentaje_participacion: null,
+          observaciones: componente.observaciones
+        },
+        t
+      )
+
+      await procesarMovimientoAlmacenService(
+        {
+          usuario_id: data.creado_por ?? null,
+          item_inventario_id: componente.item_inventario_id,
+          tipo_movimientos_almacen_id: 2,
+          motivo_movimiento: 'mezcla',
+          cantidad: componente.peso_utilizado_kg,
+          observaciones:
+            componente.observaciones ??
+            `Salida por mezcla hacia lote ${codigoLote}`,
+          almacen_origen_id: null,
+          almacen_destino_id: null
+        },
+        t
+      )
+
+      const loteComponente = await obtenerLoteCochinillaPorIdRepo(
+        componente.lote_componente_id,
+        t
+      )
+
+      const nuevoStockActual = Number(loteComponente.stock_actual ?? 0)
+      const nuevoEstadoLoteId = nuevoStockActual === 0 ? 4 : 1
+
+      await actualizarEstadoLoteCochinillaRepo(
+        componente.lote_componente_id,
+        nuevoEstadoLoteId,
+        t
+      )
+    }
+
+    await procesarMovimientoAlmacenService(
+      {
+        usuario_id: data.creado_por ?? null,
+        item_inventario_id: itemInventario.item_inventario_id,
+        tipo_movimientos_almacen_id: 1,
+        motivo_movimiento: 'mezcla',
+        cantidad: stockInicial,
+        observaciones: `Ingreso inicial por mezcla de lote_cochinilla ${codigoLote}`,
+        almacen_origen_id: null,
+        almacen_destino_id: data.almacen_id
+      },
+      t
+    )
+
+    await actualizarPorcentajesPorLoteResultanteRepo(loteCreado.lote_cochinilla_id, t)
 
     await crearSolicitudAnalisisInicialCochinilla(
       {
@@ -265,7 +398,7 @@ export const crearLoteCochinillaPorMezclaService = async (data) => {
       t
     )
 
-    return loteCreado
+    return await obtenerLoteCochinillaPorIdRepo(loteCreado.lote_cochinilla_id, t)
   })
 }
 /* ======================================================

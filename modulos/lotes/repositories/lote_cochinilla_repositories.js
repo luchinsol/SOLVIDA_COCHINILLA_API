@@ -75,21 +75,18 @@ export const crearLoteCochinillaPorMezclaRepo = async (data, t = db) => {
     (
       item_inventario_id,
       almacen_id,
-      proveedor_id,
       analisis_actual_id,
       creado_por,
       codigo_lote,
       tipo_lote,
-      fecha_compra,
       fecha_creacion,
       calidad_cochinilla,
       stock_actual,
       costo_unitario,
       concentracion_ac_actual,
       humedad_actual,
-      estado_lote,
-      observaciones
-      ,
+      estado_lote_id,
+      observaciones,
       creado_en,
       modificado_en,
       costo_total_inicial,
@@ -99,24 +96,22 @@ export const crearLoteCochinillaPorMezclaRepo = async (data, t = db) => {
       unidad_medida_stock,
       unidad_medida_dinero
     )
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, NOW(), NOW(), $17, $18, $19, $20, $21, $22)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW(), NOW(), $15, $16, $17, $18, $19, $20)
     RETURNING *`,
     [
       data.item_inventario_id,
       data.almacen_id,
-      null,
       data.analisis_actual_id ?? null,
       data.creado_por ?? null,
       data.codigo_lote,
       'preparado',
-      null,
       data.fecha_creacion ?? new Date(),
       data.calidad_cochinilla ?? null,
       data.stock_actual ?? 0,
       data.costo_unitario ?? 0,
       data.concentracion_ac_actual ?? null,
       data.humedad_actual ?? null,
-      data.estado_lote ?? 'por analizar',
+      data.estado_lote_id ?? 2,
       data.observaciones ?? null,
       data.costo_total_inicial ?? 0,
       data.costo_total_actual ?? 0,
@@ -184,8 +179,8 @@ export const listarLotesCochinillaRepo = async (filters = {}) => {
 /* ======================================================
    READ: obtener lote de cochinilla por id
 ====================================================== */
-export const obtenerLoteCochinillaPorIdRepo = async (id) => {
-  const result = await db.oneOrNone(
+export const obtenerLoteCochinillaPorIdRepo = async (id, t = db) => {
+  const result = await t.oneOrNone(
     `SELECT
        lc.*,
        p.nombre_razon_social AS proveedor_nombre,
