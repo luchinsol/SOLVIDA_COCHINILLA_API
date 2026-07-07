@@ -19,6 +19,7 @@ import {
   crearLoteCochinillaPorCompraRepo,
   crearLoteCochinillaPorMezclaRepo,
   listarLotesCochinillaRepo,
+  listarLotesCochinillaDisponiblesRepo,
   obtenerLoteCochinillaPorIdRepo,
   obtenerResumenLotesCochinillaRepo,
   actualizarAnalisisLoteCochinillaRepo,
@@ -440,6 +441,56 @@ export const listarLotesCochinillaService = async (filters = {}) => {
   }
 
   return await listarLotesCochinillaRepo(parsedFilters)
+}
+
+export const listarLotesCochinillaDisponiblesService = async (filters = {}) => {
+  const parsedFilters = {}
+
+  if (filters.calidad_cochinilla !== undefined && filters.calidad_cochinilla !== '') {
+    parsedFilters.calidad_cochinilla = String(filters.calidad_cochinilla).trim()
+  }
+
+  if (filters.almacen_nombre !== undefined && filters.almacen_nombre !== '') {
+    parsedFilters.almacen_nombre = String(filters.almacen_nombre).trim()
+  }
+
+  if (
+    filters.concentracion_ac_actual_min !== undefined &&
+    filters.concentracion_ac_actual_min !== ''
+  ) {
+    const min = Number(filters.concentracion_ac_actual_min)
+
+    if (Number.isNaN(min)) {
+      throw new Error('concentracion_ac_actual_min debe ser numerico')
+    }
+
+    parsedFilters.concentracion_ac_actual_min = min
+  }
+
+  if (
+    filters.concentracion_ac_actual_max !== undefined &&
+    filters.concentracion_ac_actual_max !== ''
+  ) {
+    const max = Number(filters.concentracion_ac_actual_max)
+
+    if (Number.isNaN(max)) {
+      throw new Error('concentracion_ac_actual_max debe ser numerico')
+    }
+
+    parsedFilters.concentracion_ac_actual_max = max
+  }
+
+  if (
+    parsedFilters.concentracion_ac_actual_min !== undefined &&
+    parsedFilters.concentracion_ac_actual_max !== undefined &&
+    parsedFilters.concentracion_ac_actual_min > parsedFilters.concentracion_ac_actual_max
+  ) {
+    throw new Error(
+      'concentracion_ac_actual_min no puede ser mayor que concentracion_ac_actual_max'
+    )
+  }
+
+  return await listarLotesCochinillaDisponiblesRepo(parsedFilters)
 }
 
 export const obtenerLoteCochinillaPorIdService = async (id) => {
