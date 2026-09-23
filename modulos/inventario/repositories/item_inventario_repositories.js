@@ -3,8 +3,12 @@ import db from '../../../config/database.js'
 export const listarItemsInventarioRepo = async (filters = {}) => {
   const values = []
   const conditions = [
-    `LOWER(COALESCE(li.estado_lote, lc.estado_lote, lco.estado_lote, e.estado_lote, '')) NOT IN ('agotado', 'por analizar')`
+    `LOWER(COALESCE(eli.nombre, elc.nombre, elco.nombre, ee.nombre, '')) NOT IN ('agotado', 'por analizar')`
   ]
+
+  if (!filters.incluir_agotados) {
+    conditions.push('sia.stock_actual > 0')
+  }
 
   if (filters.nombre_item) {
     values.push(filters.nombre_item)
@@ -30,6 +34,11 @@ export const listarItemsInventarioRepo = async (filters = {}) => {
     conditions.push(`LOWER(a.nombre) = LOWER($${values.length})`)
   }
 
+  if (filters.almacen_id) {
+    values.push(filters.almacen_id)
+    conditions.push(`sia.almacen_id = $${values.length}`)
+  }
+
   if (filters.codigo) {
     values.push(filters.codigo)
     conditions.push(`LOWER(ii.codigo_item) = LOWER($${values.length})`)
@@ -44,9 +53,11 @@ export const listarItemsInventarioRepo = async (filters = {}) => {
        ii.*,
        COALESCE(li.proveedor_id, lco.proveedor_id) AS proveedor_id,
        COALESCE(pi.nombre_razon_social, pc.nombre_razon_social) AS proveedor_nombre,
-       COALESCE(li.almacen_id, lc.almacen_id, lco.almacen_id, e.almacen_id) AS almacen_id,
+       sia.almacen_id::int AS almacen_id,
        a.nombre AS almacen_nombre,
-       COALESCE(li.stock_actual, lc.stock_actual, lco.stock_actual, e.stock_actual) AS stock_actual,
+       sia.stock_actual::double precision AS stock_actual,
+       COALESCE(stock_total.stock_total, 0)::double precision AS stock_total,
+       COALESCE(stock_total.cantidad_almacenes, 0)::int AS cantidad_almacenes,
        COALESCE(
          li.unidad_medida_cantidad,
          lc.unidad_medida_stock,
@@ -58,26 +69,44 @@ export const listarItemsInventarioRepo = async (filters = {}) => {
          lc.tipo_lote,
          lco.tipo_lote,
          e.tipo_extracto
-       ) AS tipo
+       ) AS tipo,
+       COALESCE(eli.nombre, elc.nombre, elco.nombre, ee.nombre) AS estado_lote
      FROM inventario.item_inventario ii
+     INNER JOIN inventario.stock_item_almacen sia
+       ON ii.item_inventario_id = sia.item_inventario_id
+     LEFT JOIN LATERAL (
+       SELECT
+         SUM(sia_total.stock_actual) AS stock_total,
+         COUNT(*) FILTER (WHERE sia_total.stock_actual > 0) AS cantidad_almacenes
+       FROM inventario.stock_item_almacen sia_total
+       WHERE sia_total.item_inventario_id = ii.item_inventario_id
+     ) stock_total ON TRUE
      LEFT JOIN inventario.lote_insumo li
        ON ii.item_inventario_id = li.item_inventario_id
+     LEFT JOIN lotes.estado_lote eli
+       ON li.estado_lote_id = eli.estado_lote_id
      LEFT JOIN inventario.tipo_insumos ti
        ON li.tipo_insumo_id = ti.tipo_insumo_id
      LEFT JOIN inventario.proveedor pi
        ON li.proveedor_id = pi.proveedor_id
      LEFT JOIN lotes.lote_carmin lc
        ON ii.item_inventario_id = lc.item_inventario_id
+     LEFT JOIN lotes.estado_lote elc
+       ON lc.estado_lote_id = elc.estado_lote_id
      LEFT JOIN lotes.lote_cochinilla lco
        ON ii.item_inventario_id = lco.item_inventario_id
+     LEFT JOIN lotes.estado_lote elco
+       ON lco.estado_lote_id = elco.estado_lote_id
      LEFT JOIN inventario.proveedor pc
        ON lco.proveedor_id = pc.proveedor_id
      LEFT JOIN lotes.extracto e
        ON ii.item_inventario_id = e.item_inventario_id
-     LEFT JOIN inventario.almacen a
-       ON COALESCE(li.almacen_id, lc.almacen_id, lco.almacen_id, e.almacen_id) = a.almacen_id
+     LEFT JOIN lotes.estado_lote ee
+       ON e.estado_lote_id = ee.estado_lote_id
+     INNER JOIN inventario.almacen a
+       ON sia.almacen_id = a.almacen_id
      ${whereClause}
-     ORDER BY ii.item_inventario_id ASC`,
+     ORDER BY ii.item_inventario_id ASC, sia.almacen_id ASC`,
     values
   )
 }

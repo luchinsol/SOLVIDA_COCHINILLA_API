@@ -13,7 +13,9 @@ const normalizeItemInventarioError = (error) => {
   if (
     error.message === 'nombre_item es obligatorio' ||
     error.message === 'codigo_item es obligatorio' ||
-    error.message === 'nombre_item no es válido'
+    error.message === 'nombre_item no es válido' ||
+    error.message === 'almacen_id debe ser un entero positivo' ||
+    error.message === 'incluir_agotados debe ser true o false'
   ) {
     error.name = 'ValidationError'
   }
@@ -45,6 +47,8 @@ export const listarItemsInventario = async (req, res) => {
       proveedor_nombre,
       tipo,
       almacen_nombre,
+      almacen_id,
+      incluir_agotados,
       codigo
     } = req.query
 
@@ -53,6 +57,8 @@ export const listarItemsInventario = async (req, res) => {
       proveedor_nombre,
       tipo,
       almacen_nombre,
+      almacen_id,
+      incluir_agotados,
       codigo
     })
     res.json(data)

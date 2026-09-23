@@ -18,6 +18,7 @@ const normalizeLoteInsumoError = (error) => {
   if (
     error.message === 'id debe ser un entero positivo' ||
     error.message === 'almacen_id debe ser un entero positivo' ||
+    error.message === 'incluir_agotados debe ser true o false' ||
     error.message === 'proveedor_id debe ser un entero positivo' ||
     error.message === 'tipo_insumo_id debe ser un entero positivo' ||
     error.message === 'almacen_id es obligatorio' ||
@@ -61,11 +62,12 @@ export const getInsumoPdfController = async (req, res) => {
 
 export const getInsumosController = async (req, res) => {
   try {
-    const { almacen_id, proveedor_id, tipo_insumo_id } = req.query;
+    const { almacen_id, proveedor_id, tipo_insumo_id, incluir_agotados } = req.query;
     const insumos = await getInsumosService({
       almacen_id,
       proveedor_id,
-      tipo_insumo_id
+      tipo_insumo_id,
+      incluir_agotados
     }, req.userPermissions);
     res.json(insumos);
   } catch (error) {

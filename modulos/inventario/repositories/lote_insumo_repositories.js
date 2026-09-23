@@ -25,9 +25,13 @@ export const getInsumos = async (filters = {}) => {
   const conditions = [];
   const values = [];
 
+  if (!filters.incluir_agotados) {
+    conditions.push('sia.stock_actual > 0');
+  }
+
   if (filters.almacen_id) {
     values.push(filters.almacen_id);
-    conditions.push(`li.almacen_id = $${values.length}`);
+    conditions.push(`sia.almacen_id = $${values.length}`);
   }
 
   if (filters.proveedor_id) {
@@ -44,21 +48,39 @@ export const getInsumos = async (filters = {}) => {
   const query = `
     SELECT
       li.*,
+      sia.almacen_id::int AS almacen_id,
+      sia.stock_actual::double precision AS stock_actual,
+      COALESCE(stock_total.stock_total, 0)::double precision AS stock_total,
+      COALESCE(stock_total.cantidad_almacenes, 0)::int AS cantidad_almacenes,
+      (sia.stock_actual * COALESCE(li.costo_unitario, 0))::double precision
+        AS costo_total_actual,
       ii.codigo_item,
       p.nombre_razon_social AS proveedor_nombre,
       a.nombre AS almacen_nombre,
-      ti.nombre AS tipo_insumo_nombre
+      ti.nombre AS tipo_insumo_nombre,
+      el.nombre AS estado_lote
     FROM inventario.lote_insumo li
+    INNER JOIN inventario.stock_item_almacen sia
+      ON li.item_inventario_id = sia.item_inventario_id
+    LEFT JOIN LATERAL (
+      SELECT
+        SUM(sia_total.stock_actual) AS stock_total,
+        COUNT(*) FILTER (WHERE sia_total.stock_actual > 0) AS cantidad_almacenes
+      FROM inventario.stock_item_almacen sia_total
+      WHERE sia_total.item_inventario_id = li.item_inventario_id
+    ) stock_total ON TRUE
     LEFT JOIN inventario.item_inventario ii
       ON li.item_inventario_id = ii.item_inventario_id
     LEFT JOIN inventario.proveedor p
       ON li.proveedor_id = p.proveedor_id
-    LEFT JOIN inventario.almacen a
-      ON li.almacen_id = a.almacen_id
+    INNER JOIN inventario.almacen a
+      ON sia.almacen_id = a.almacen_id
     LEFT JOIN inventario.tipo_insumos ti
       ON li.tipo_insumo_id = ti.tipo_insumo_id
+    LEFT JOIN lotes.estado_lote el
+      ON li.estado_lote_id = el.estado_lote_id
     ${whereClause}
-    ORDER BY li.lote_insumo_id ASC
+    ORDER BY li.lote_insumo_id ASC, sia.almacen_id ASC
   `;
   const rows = await db.query(query, values);
   return rows;

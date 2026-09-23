@@ -28,6 +28,8 @@ const CAMPOS_NO_VALORADOS = [
   'nombre',
   'concentracion',
   'stock_actual',
+  'stock_total',
+  'cantidad_almacenes',
   'stock_inicial',
   'tipo_insumo_id',
   'estado_lote',
@@ -121,6 +123,16 @@ export const getInsumosService = async (filters = {}, userPermissions = []) => {
     }
 
     parsedFilters.tipo_insumo_id = tipoInsumoId;
+  }
+
+  if (filters.incluir_agotados !== undefined && filters.incluir_agotados !== '') {
+    const incluirAgotados = String(filters.incluir_agotados).trim().toLowerCase();
+
+    if (!['true', 'false'].includes(incluirAgotados)) {
+      throw new Error('incluir_agotados debe ser true o false');
+    }
+
+    parsedFilters.incluir_agotados = incluirAgotados === 'true';
   }
 
   const insumos = await getInsumos(parsedFilters);

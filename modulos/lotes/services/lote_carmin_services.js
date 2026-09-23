@@ -383,8 +383,30 @@ export const bloquearLoteService = async (id) => {
    📖 READS
 ====================================================== */
 
-export const listarLotesService = async () => {
-  return await listarLotesCarminRepo()
+export const listarLotesService = async (filters = {}) => {
+  const parsedFilters = {}
+
+  if (filters.almacen_id !== undefined && filters.almacen_id !== '') {
+    const almacenId = Number(filters.almacen_id)
+
+    if (!Number.isInteger(almacenId) || almacenId <= 0) {
+      throw new Error('almacen_id debe ser un entero positivo')
+    }
+
+    parsedFilters.almacen_id = almacenId
+  }
+
+  if (filters.incluir_agotados !== undefined && filters.incluir_agotados !== '') {
+    const incluirAgotados = String(filters.incluir_agotados).trim().toLowerCase()
+
+    if (incluirAgotados !== 'true' && incluirAgotados !== 'false') {
+      throw new Error('incluir_agotados debe ser true o false')
+    }
+
+    parsedFilters.incluir_agotados = incluirAgotados === 'true'
+  }
+
+  return await listarLotesCarminRepo(parsedFilters)
 }
 
 export const obtenerLotePorIdService = async (id) => {
@@ -397,6 +419,16 @@ export const obtenerResumenLotesCarminService = async () => {
 
 export const buscarLotesConFiltrosService = async (filtros) => {
   const parsedFiltros = { ...filtros }
+
+  if (parsedFiltros.incluir_agotados != null && parsedFiltros.incluir_agotados !== '') {
+    const incluirAgotados = String(parsedFiltros.incluir_agotados).trim().toLowerCase()
+
+    if (incluirAgotados !== 'true' && incluirAgotados !== 'false') {
+      throw new Error('incluir_agotados debe ser true o false')
+    }
+
+    parsedFiltros.incluir_agotados = incluirAgotados === 'true'
+  }
 
   const numericFields = [
     'concentracion_min',
