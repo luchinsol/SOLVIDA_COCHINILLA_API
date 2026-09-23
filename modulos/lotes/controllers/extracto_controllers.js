@@ -12,6 +12,7 @@ const normalizeExtractoError = (error) => {
     error.message === 'id debe ser un entero positivo' ||
     error.message === 'almacen_id es obligatorio' ||
     error.message === 'almacen_id debe ser un entero positivo' ||
+    error.message === 'incluir_agotados debe ser true o false' ||
     error.message === 'proceso_filtrado_id es obligatorio' ||
     error.message === 'proceso_filtrado_id debe ser un entero positivo' ||
     error.message === 'nombre_extracto es obligatorio' ||
@@ -49,13 +50,20 @@ export const crearExtracto = async (req, res) => {
 
 export const listarExtractos = async (req, res) => {
   try {
-    const { tipo_extracto, estado_lote, almacen_id, proceso_filtrado_id } = req.query
+    const {
+      tipo_extracto,
+      estado_lote,
+      almacen_id,
+      proceso_filtrado_id,
+      incluir_agotados
+    } = req.query
 
     const data = await listarExtractosService({
       tipo_extracto,
       estado_lote,
       almacen_id,
-      proceso_filtrado_id
+      proceso_filtrado_id,
+      incluir_agotados
     })
 
     res.json(data)

@@ -168,6 +168,16 @@ export const listarExtractosService = async (filters = {}) => {
     parsedFilters.proceso_filtrado_id = procesoFiltradoId
   }
 
+  if (filters.incluir_agotados !== undefined && filters.incluir_agotados !== '') {
+    const incluirAgotados = String(filters.incluir_agotados).trim().toLowerCase()
+
+    if (incluirAgotados !== 'true' && incluirAgotados !== 'false') {
+      throw new Error('incluir_agotados debe ser true o false')
+    }
+
+    parsedFilters.incluir_agotados = incluirAgotados === 'true'
+  }
+
   return await listarExtractosRepo(parsedFilters)
 }
 

@@ -131,9 +131,13 @@ export const listarLotesCochinillaRepo = async (filters = {}) => {
   const conditions = []
   const values = []
 
+  if (!filters.incluir_agotados) {
+    conditions.push('sia.stock_actual > 0')
+  }
+
   if (filters.almacen_id !== undefined) {
     values.push(filters.almacen_id)
-    conditions.push(`lc.almacen_id = $${values.length}`)
+    conditions.push(`sia.almacen_id = $${values.length}`)
   }
 
   if (filters.proveedor_id !== undefined) {
@@ -153,7 +157,7 @@ export const listarLotesCochinillaRepo = async (filters = {}) => {
 
   if (filters.estado_lote !== undefined) {
     values.push(filters.estado_lote)
-    conditions.push(`LOWER(lc.estado_lote) = LOWER($${values.length})`)
+    conditions.push(`LOWER(el.nombre) = LOWER($${values.length})`)
   }
 
   const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''
@@ -161,15 +165,33 @@ export const listarLotesCochinillaRepo = async (filters = {}) => {
   const result = await db.any(
     `SELECT
        lc.*,
+       sia.almacen_id::int AS almacen_id,
+       sia.stock_actual::double precision AS stock_actual,
+       COALESCE(stock_total.stock_total, 0)::double precision AS stock_total,
+       COALESCE(stock_total.cantidad_almacenes, 0)::int AS cantidad_almacenes,
+       (sia.stock_actual * COALESCE(lc.costo_unitario, 0))::double precision
+         AS costo_total_actual,
        p.nombre_razon_social AS proveedor_nombre,
-       a.nombre AS almacen_nombre
+       a.nombre AS almacen_nombre,
+       el.nombre AS estado_lote
      FROM lotes.lote_cochinilla lc
+     INNER JOIN inventario.stock_item_almacen sia
+       ON lc.item_inventario_id = sia.item_inventario_id
+     LEFT JOIN LATERAL (
+       SELECT
+         SUM(sia_total.stock_actual) AS stock_total,
+         COUNT(*) FILTER (WHERE sia_total.stock_actual > 0) AS cantidad_almacenes
+       FROM inventario.stock_item_almacen sia_total
+       WHERE sia_total.item_inventario_id = lc.item_inventario_id
+     ) stock_total ON TRUE
      LEFT JOIN inventario.proveedor p
        ON lc.proveedor_id = p.proveedor_id
-     LEFT JOIN inventario.almacen a
-       ON lc.almacen_id = a.almacen_id
+     INNER JOIN inventario.almacen a
+       ON sia.almacen_id = a.almacen_id
+     LEFT JOIN lotes.estado_lote el
+       ON lc.estado_lote_id = el.estado_lote_id
      ${whereClause}
-     ORDER BY lc.lote_cochinilla_id DESC`,
+     ORDER BY lc.lote_cochinilla_id DESC, sia.almacen_id ASC`,
     values
   )
 
@@ -177,7 +199,7 @@ export const listarLotesCochinillaRepo = async (filters = {}) => {
 }
 
 export const listarLotesCochinillaDisponiblesRepo = async (filters = {}) => {
-  const conditions = ['lc.estado_lote_id = 1']
+  const conditions = ['lc.estado_lote_id = 1', 'sia.stock_actual > 0']
   const values = []
 
   if (filters.calidad_cochinilla !== undefined) {
@@ -185,9 +207,9 @@ export const listarLotesCochinillaDisponiblesRepo = async (filters = {}) => {
     conditions.push(`LOWER(lc.calidad_cochinilla) = LOWER($${values.length})`)
   }
 
-  if (filters.almacen_nombre !== undefined) {
-    values.push(filters.almacen_nombre)
-    conditions.push(`LOWER(a.nombre) = LOWER($${values.length})`)
+  if (filters.almacen_id !== undefined) {
+    values.push(filters.almacen_id)
+    conditions.push(`sia.almacen_id = $${values.length}`)
   }
 
   if (filters.concentracion_ac_actual_min !== undefined) {
@@ -207,19 +229,31 @@ export const listarLotesCochinillaDisponiblesRepo = async (filters = {}) => {
        lc.proveedor_id,
        lc.tipo_lote,
        lc.calidad_cochinilla,
-       lc.stock_actual,
+       sia.stock_actual::double precision AS stock_actual,
+       COALESCE(stock_total.stock_total, 0)::double precision AS stock_total,
+       COALESCE(stock_total.cantidad_almacenes, 0)::int AS cantidad_almacenes,
        lc.concentracion_ac_actual,
        lc.humedad_actual,
+       sia.almacen_id::int AS almacen_id,
        a.nombre AS almacen_nombre,
        lc.item_inventario_id,
        ii.codigo_item
      FROM lotes.lote_cochinilla lc
+     INNER JOIN inventario.stock_item_almacen sia
+       ON lc.item_inventario_id = sia.item_inventario_id
+     LEFT JOIN LATERAL (
+       SELECT
+         SUM(sia_total.stock_actual) AS stock_total,
+         COUNT(*) FILTER (WHERE sia_total.stock_actual > 0) AS cantidad_almacenes
+       FROM inventario.stock_item_almacen sia_total
+       WHERE sia_total.item_inventario_id = lc.item_inventario_id
+     ) stock_total ON TRUE
      LEFT JOIN inventario.item_inventario ii
        ON lc.item_inventario_id = ii.item_inventario_id
-     LEFT JOIN inventario.almacen a
-       ON lc.almacen_id = a.almacen_id
+     INNER JOIN inventario.almacen a
+       ON sia.almacen_id = a.almacen_id
      ${whereClause}
-     ORDER BY lc.lote_cochinilla_id DESC`,
+     ORDER BY lc.lote_cochinilla_id DESC, sia.almacen_id ASC`,
     values
   )
 }

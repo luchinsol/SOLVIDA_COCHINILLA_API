@@ -440,6 +440,16 @@ export const listarLotesCochinillaService = async (filters = {}) => {
     parsedFilters.estado_lote = filters.estado_lote.trim()
   }
 
+  if (filters.incluir_agotados !== undefined && filters.incluir_agotados !== '') {
+    const incluirAgotados = String(filters.incluir_agotados).trim().toLowerCase()
+
+    if (incluirAgotados !== 'true' && incluirAgotados !== 'false') {
+      throw new Error('incluir_agotados debe ser true o false')
+    }
+
+    parsedFilters.incluir_agotados = incluirAgotados === 'true'
+  }
+
   return await listarLotesCochinillaRepo(parsedFilters)
 }
 
@@ -450,8 +460,14 @@ export const listarLotesCochinillaDisponiblesService = async (filters = {}) => {
     parsedFilters.calidad_cochinilla = String(filters.calidad_cochinilla).trim()
   }
 
-  if (filters.almacen_nombre !== undefined && filters.almacen_nombre !== '') {
-    parsedFilters.almacen_nombre = String(filters.almacen_nombre).trim()
+  if (filters.almacen_id !== undefined && filters.almacen_id !== '') {
+    const almacenId = Number(filters.almacen_id)
+
+    if (!Number.isInteger(almacenId) || almacenId <= 0) {
+      throw new Error('almacen_id debe ser un entero positivo')
+    }
+
+    parsedFilters.almacen_id = almacenId
   }
 
   if (

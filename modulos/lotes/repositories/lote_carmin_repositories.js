@@ -4,12 +4,53 @@ const loteCarminSelect = `
   SELECT
     lc.*,
     a.nombre AS almacen_nombre,
+    el.nombre AS estado_lote,
     pl.nombre_proceso AS proceso_laqueo_nombre,
     pm.nombre_proceso AS proceso_molienda_nombre,
     pz.nombre_proceso AS proceso_mezclado_nombre
   FROM lotes.lote_carmin lc
   LEFT JOIN inventario.almacen a
     ON lc.almacen_id = a.almacen_id
+  LEFT JOIN lotes.estado_lote el
+    ON lc.estado_lote_id = el.estado_lote_id
+  LEFT JOIN produccion.proceso_laqueo pl
+    ON lc.proceso_laqueo_id = pl.proceso_laqueo_id
+  LEFT JOIN produccion.proceso_molienda pm
+    ON lc.proceso_molienda_id = pm.proceso_molienda_id
+  LEFT JOIN produccion.proceso_mezclado pz
+    ON lc.proceso_mezclado_id = pz.proceso_mezclado_id
+`
+
+const loteCarminPosicionSelect = `
+  SELECT
+    lc.*,
+    lc.nombre_lote AS codigo_lote,
+    sia.almacen_id::int AS almacen_id,
+    sia.stock_actual::double precision AS stock_actual,
+    sia.stock_actual::double precision AS masa_total_kg,
+    COALESCE(stock_total.stock_total, 0)::double precision AS stock_total,
+    COALESCE(stock_total.cantidad_almacenes, 0)::int AS cantidad_almacenes,
+    (sia.stock_actual * COALESCE(lc.costo_unitario, 0))::double precision
+      AS costo_total_actual,
+    a.nombre AS almacen_nombre,
+    el.nombre AS estado_lote,
+    pl.nombre_proceso AS proceso_laqueo_nombre,
+    pm.nombre_proceso AS proceso_molienda_nombre,
+    pz.nombre_proceso AS proceso_mezclado_nombre
+  FROM lotes.lote_carmin lc
+  INNER JOIN inventario.stock_item_almacen sia
+    ON lc.item_inventario_id = sia.item_inventario_id
+  LEFT JOIN LATERAL (
+    SELECT
+      SUM(sia_total.stock_actual) AS stock_total,
+      COUNT(*) FILTER (WHERE sia_total.stock_actual > 0) AS cantidad_almacenes
+    FROM inventario.stock_item_almacen sia_total
+    WHERE sia_total.item_inventario_id = lc.item_inventario_id
+  ) stock_total ON TRUE
+  INNER JOIN inventario.almacen a
+    ON sia.almacen_id = a.almacen_id
+  LEFT JOIN lotes.estado_lote el
+    ON lc.estado_lote_id = el.estado_lote_id
   LEFT JOIN produccion.proceso_laqueo pl
     ON lc.proceso_laqueo_id = pl.proceso_laqueo_id
   LEFT JOIN produccion.proceso_molienda pm
@@ -184,10 +225,25 @@ export const crearLoteCarminDesdeMezcladoRepo = async (data, t = db) => {
 }
 
 // READ: listar todos los lotes de carmín
-export const listarLotesCarminRepo = async () => {
+export const listarLotesCarminRepo = async (filters = {}) => {
+  const conditions = []
+  const values = []
+
+  if (!filters.incluir_agotados) {
+    conditions.push('sia.stock_actual > 0')
+  }
+
+  if (filters.almacen_id !== undefined) {
+    values.push(filters.almacen_id)
+    conditions.push(`sia.almacen_id = $${values.length}`)
+  }
+
+  const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''
   const result = await db.any(
-    `${loteCarminSelect}
-     ORDER BY lc.lote_carmin_id DESC`
+    `${loteCarminPosicionSelect}
+     ${whereClause}
+     ORDER BY lc.lote_carmin_id DESC, sia.almacen_id ASC`,
+    values
   )
   return result
 }
@@ -206,23 +262,33 @@ export const obtenerLoteCarminPorIdRepo = async (id) => {
 export const obtenerResumenLotesCarminRepo = async () => {
   return await db.one(
     `SELECT
-       COALESCE(SUM(lc.stock_actual), 0) AS stock_actual,
-       NULL::numeric AS costo_total,
+       COALESCE(SUM(sia.stock_actual), 0) AS stock_actual,
+       COALESCE(SUM(sia.stock_actual * COALESCE(lc.costo_unitario, 0)), 0) AS costo_total,
        MAX(lc.unidad_medida_stock) AS unidad_medida_cantidad,
-       NULL::text AS unidad_medida_moneda,
-       NULL::numeric AS costo_unitario
-     FROM lotes.lote_carmin lc`
+       'USD'::text AS unidad_medida_moneda,
+       CASE
+         WHEN COALESCE(SUM(sia.stock_actual), 0) = 0 THEN 0
+         ELSE COALESCE(SUM(sia.stock_actual * COALESCE(lc.costo_unitario, 0)), 0)
+              / SUM(sia.stock_actual)
+       END AS costo_unitario
+     FROM lotes.lote_carmin lc
+     INNER JOIN inventario.stock_item_almacen sia
+       ON lc.item_inventario_id = sia.item_inventario_id`
   )
 }
 
 export const buscarLotesCarminConFiltrosRepo = async (filtros) => {
   let query = `
-    ${loteCarminSelect}
+    ${loteCarminPosicionSelect}
     WHERE 1 = 1
   `
 
   const values = []
   let index = 1
+
+  if (!filtros.incluir_agotados) {
+    query += ' AND sia.stock_actual > 0'
+  }
 
   if (filtros.tipo_lote?.trim()) {
     query += ` AND lc.tipo_lote = $${index}`
@@ -237,13 +303,13 @@ export const buscarLotesCarminConFiltrosRepo = async (filtros) => {
   }
 
   if (filtros.estado_lote?.trim()) {
-    query += ` AND lc.estado_lote = $${index}`
+    query += ` AND LOWER(el.nombre) = LOWER($${index})`
     values.push(filtros.estado_lote.trim())
     index++
   }
 
   if (filtros.almacen_id != null) {
-    query += ` AND lc.almacen_id = $${index}`
+    query += ` AND sia.almacen_id = $${index}`
     values.push(filtros.almacen_id)
     index++
   }
@@ -279,13 +345,19 @@ export const buscarLotesCarminConFiltrosRepo = async (filtros) => {
   }
 
   if (filtros.stock_actual_min != null) {
-    query += ` AND lc.stock_actual >= $${index}`
+    const stockColumn = filtros.almacen_id != null
+      ? 'sia.stock_actual'
+      : 'stock_total.stock_total'
+    query += ` AND ${stockColumn} >= $${index}`
     values.push(filtros.stock_actual_min)
     index++
   }
 
   if (filtros.stock_actual_max != null) {
-    query += ` AND lc.stock_actual <= $${index}`
+    const stockColumn = filtros.almacen_id != null
+      ? 'sia.stock_actual'
+      : 'stock_total.stock_total'
+    query += ` AND ${stockColumn} <= $${index}`
     values.push(filtros.stock_actual_max)
     index++
   }
@@ -338,7 +410,7 @@ export const buscarLotesCarminConFiltrosRepo = async (filtros) => {
     index++
   }
 
-  query += ` ORDER BY lc.lote_carmin_id DESC`
+  query += ` ORDER BY lc.lote_carmin_id DESC, sia.almacen_id ASC`
 
   const result = await db.any(query, values)
   return result
@@ -347,9 +419,10 @@ export const buscarLotesCarminConFiltrosRepo = async (filtros) => {
 // READ: listar lotes de carmín sin análisis de laboratorio
 export const listarLotesCarminSinAnalisisRepo = async () => {
   const result = await db.any(
-    `${loteCarminSelect}
+    `${loteCarminPosicionSelect}
      WHERE lc.analisis_actual_id IS NULL
-     ORDER BY lc.lote_carmin_id DESC`
+       AND sia.stock_actual > 0
+     ORDER BY lc.lote_carmin_id DESC, sia.almacen_id ASC`
   )
   return result
 }
@@ -357,9 +430,10 @@ export const listarLotesCarminSinAnalisisRepo = async () => {
 // READ: obtener lotes por proceso de laqueo
 export const obtenerLotesCarminPorProcesoLaqueoRepo = async (procesoLaqueoId) => {
   const result = await db.any(
-    `${loteCarminSelect}
+    `${loteCarminPosicionSelect}
      WHERE lc.proceso_laqueo_id = $1
-     ORDER BY lc.lote_carmin_id DESC`,
+       AND sia.stock_actual > 0
+     ORDER BY lc.lote_carmin_id DESC, sia.almacen_id ASC`,
     [procesoLaqueoId]
   )
   return result
@@ -368,9 +442,10 @@ export const obtenerLotesCarminPorProcesoLaqueoRepo = async (procesoLaqueoId) =>
 // READ: obtener lotes por proceso de molienda
 export const obtenerLotesCarminPorProcesoMoliendaRepo = async (procesoMoliendaId) => {
   const result = await db.any(
-    `${loteCarminSelect}
+    `${loteCarminPosicionSelect}
      WHERE lc.proceso_molienda_id = $1
-     ORDER BY lc.lote_carmin_id DESC`,
+       AND sia.stock_actual > 0
+     ORDER BY lc.lote_carmin_id DESC, sia.almacen_id ASC`,
     [procesoMoliendaId]
   )
   return result
@@ -379,9 +454,10 @@ export const obtenerLotesCarminPorProcesoMoliendaRepo = async (procesoMoliendaId
 // READ: obtener lotes por proceso de mezclado
 export const obtenerLotesCarminPorProcesoMezcladoRepo = async (procesoMezcladoId) => {
   const result = await db.any(
-    `${loteCarminSelect}
+    `${loteCarminPosicionSelect}
      WHERE lc.proceso_mezclado_id = $1
-     ORDER BY lc.lote_carmin_id DESC`,
+       AND sia.stock_actual > 0
+     ORDER BY lc.lote_carmin_id DESC, sia.almacen_id ASC`,
     [procesoMezcladoId]
   )
   return result

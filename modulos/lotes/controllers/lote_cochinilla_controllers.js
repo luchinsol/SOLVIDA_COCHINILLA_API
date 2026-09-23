@@ -25,6 +25,7 @@ const normalizeLoteCochinillaError = (error) => {
     error.message === 'id debe ser un entero positivo' ||
     error.message === 'almacen_id debe ser un entero positivo' ||
     error.message === 'proveedor_id debe ser un entero positivo' ||
+    error.message === 'incluir_agotados debe ser true o false' ||
     error.message === 'proveedor_id es obligatorio' ||
     error.message === 'almacen_id es obligatorio' ||
     error.message === 'fecha_compra es obligatoria' ||
@@ -90,7 +91,8 @@ export const listarLotesCochinilla = async (req, res) => {
       calidad_cochinilla,
       tipo_lote,
       proveedor_id,
-      estado_lote
+      estado_lote,
+      incluir_agotados
     } = req.query
 
     const data = await listarLotesCochinillaService({
@@ -98,7 +100,8 @@ export const listarLotesCochinilla = async (req, res) => {
       calidad_cochinilla,
       tipo_lote,
       proveedor_id,
-      estado_lote
+      estado_lote,
+      incluir_agotados
     })
     res.json(data)
   } catch (error) {
@@ -110,14 +113,14 @@ export const listarLotesCochinillaDisponibles = async (req, res) => {
   try {
     const {
       calidad_cochinilla,
-      almacen_nombre,
+      almacen_id,
       concentracion_ac_actual_min,
       concentracion_ac_actual_max
     } = req.query
 
     const data = await listarLotesCochinillaDisponiblesService({
       calidad_cochinilla,
-      almacen_nombre,
+      almacen_id,
       concentracion_ac_actual_min,
       concentracion_ac_actual_max
     })

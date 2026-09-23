@@ -31,6 +31,7 @@ import almacenRoutes from './modulos/inventario/routes/almacen_route.js'
 import movimientoAlmacenRoutes from './modulos/inventario/routes/movimiento_almacen_route.js'
 import motivoMovimientoRoutes from './modulos/inventario/routes/motivo_movimiento_routes.js'
 import itemInventarioRoutes from './modulos/inventario/routes/item_inventario_routes.js'
+import stockItemAlmacenRoutes from './modulos/inventario/routes/stock_item_almacen_routes.js'
 import proveedorRoutes from './modulos/inventario/routes/proveedor_route.js'
 import tipoInsumoRoutes from './modulos/inventario/routes/tipo_insumo_routes.js'
 import tiposMovimientosAlmacenRoutes from './modulos/inventario/routes/tipo_movimientos_almacen_routes.js'
@@ -73,6 +74,7 @@ app.use('/api/movimientos-almacen', movimientoAlmacenRoutes)
 app.use('/api/motivos-movimiento', motivoMovimientoRoutes)
 app.use('/api/tipos-movimientos-almacen', tiposMovimientosAlmacenRoutes)
 app.use('/api/item-inventario', itemInventarioRoutes)
+app.use('/api/stock-almacenes', stockItemAlmacenRoutes)
 app.use('/api/proveedores', proveedorRoutes)
 app.use('/api/laboratorio', laboratorioRoutes)
 app.use('/api/solicitudes-analisis', solicitudAnalisisRoutes)

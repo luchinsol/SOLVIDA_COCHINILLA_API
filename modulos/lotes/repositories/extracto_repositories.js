@@ -46,6 +46,10 @@ export const listarExtractosRepo = async (filters = {}) => {
   const conditions = []
   const values = []
 
+  if (!filters.incluir_agotados) {
+    conditions.push('sia.stock_actual > 0')
+  }
+
   if (filters.tipo_extracto !== undefined) {
     values.push(filters.tipo_extracto)
     conditions.push(`LOWER(e.tipo_extracto) = LOWER($${values.length})`)
@@ -53,12 +57,12 @@ export const listarExtractosRepo = async (filters = {}) => {
 
   if (filters.estado_lote !== undefined) {
     values.push(filters.estado_lote)
-    conditions.push(`LOWER(e.estado_lote) = LOWER($${values.length})`)
+    conditions.push(`LOWER(el.nombre) = LOWER($${values.length})`)
   }
 
   if (filters.almacen_id !== undefined) {
     values.push(filters.almacen_id)
-    conditions.push(`e.almacen_id = $${values.length}`)
+    conditions.push(`sia.almacen_id = $${values.length}`)
   }
 
   if (filters.proceso_filtrado_id !== undefined) {
@@ -71,15 +75,34 @@ export const listarExtractosRepo = async (filters = {}) => {
   return await db.any(
     `SELECT
        e.*,
+       sia.almacen_id::int AS almacen_id,
+       sia.stock_actual::double precision AS stock_actual,
+       COALESCE(stock_total.stock_total, 0)::double precision AS stock_total,
+       COALESCE(stock_total.cantidad_almacenes, 0)::int AS cantidad_almacenes,
+       (sia.stock_actual * COALESCE(e.costo_unitario, 0))::double precision
+         AS costo_total_actual,
+       e.costo_unitario::double precision AS costo_por_unidad,
        a.nombre AS almacen_nombre,
+       el.nombre AS estado_lote,
        pf.codigo_proceso AS proceso_filtrado_codigo
      FROM lotes.extracto e
-     LEFT JOIN inventario.almacen a
-       ON e.almacen_id = a.almacen_id
+     INNER JOIN inventario.stock_item_almacen sia
+       ON e.item_inventario_id = sia.item_inventario_id
+     LEFT JOIN LATERAL (
+       SELECT
+         SUM(sia_total.stock_actual) AS stock_total,
+         COUNT(*) FILTER (WHERE sia_total.stock_actual > 0) AS cantidad_almacenes
+       FROM inventario.stock_item_almacen sia_total
+       WHERE sia_total.item_inventario_id = e.item_inventario_id
+     ) stock_total ON TRUE
+     INNER JOIN inventario.almacen a
+       ON sia.almacen_id = a.almacen_id
+     LEFT JOIN lotes.estado_lote el
+       ON e.estado_lote_id = el.estado_lote_id
      LEFT JOIN produccion.proceso_filtrado pf
        ON e.proceso_filtrado_id = pf.proceso_filtrado_id
      ${whereClause}
-     ORDER BY e.extracto_id DESC`,
+     ORDER BY e.extracto_id DESC, sia.almacen_id ASC`,
     values
   )
 }
@@ -96,15 +119,18 @@ export const obtenerExtractoPorIdRepo = async (id) => {
 export const obtenerResumenExtractosRepo = async () => {
   return await db.one(
     `SELECT
-       COALESCE(SUM(e.stock_actual), 0) AS stock_actual,
-       COALESCE(SUM(e.costo_total_actual), 0) AS costo_total,
+       COALESCE(SUM(sia.stock_actual), 0) AS stock_actual,
+       COALESCE(SUM(sia.stock_actual * COALESCE(e.costo_unitario, 0)), 0) AS costo_total,
        MAX(e.unidad_medida_stock) AS unidad_medida_cantidad,
        MAX(e.unidad_medida_dinero) AS unidad_medida_moneda,
        CASE
-         WHEN COALESCE(SUM(e.stock_actual), 0) = 0 THEN 0
-         ELSE COALESCE(SUM(e.costo_total_actual), 0) / SUM(e.stock_actual)
+         WHEN COALESCE(SUM(sia.stock_actual), 0) = 0 THEN 0
+         ELSE COALESCE(SUM(sia.stock_actual * COALESCE(e.costo_unitario, 0)), 0)
+              / SUM(sia.stock_actual)
        END AS costo_unitario
-     FROM lotes.extracto e`
+     FROM lotes.extracto e
+     INNER JOIN inventario.stock_item_almacen sia
+       ON e.item_inventario_id = sia.item_inventario_id`
   )
 }
 
