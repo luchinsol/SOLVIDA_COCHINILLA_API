@@ -96,7 +96,7 @@ export const getResumenInsumosPorTipoController = async (req, res) => {
 };
 
 export const createInsumoController = async (req, res) => {
-  const insumoDatos = req.body;
+  const insumoDatos = { ...req.body, creado_por: req.user.id };
   try {
     const nuevoInsumo = await createInsumoService(insumoDatos);
     res.status(201).json(nuevoInsumo);
@@ -121,7 +121,8 @@ export const actualizarStockActualInsumoController = async (req, res) => {
   const { stock_actual } = req.body;
   try {
     const loteActualizado = await actualizarStockActualInsumoService(id, stock_actual, {
-      usuario_id: req.body.usuario_id,
+      usuario_id: req.user.id,
+      almacen_id: req.body.almacen_id,
       motivo_movimiento: req.body.motivo_movimiento,
       observaciones: req.body.observaciones
     });

@@ -3,9 +3,7 @@ import {
   getMovimientosAlmacenController,
   createMovimientoAlmacenController,
   createAjusteMovimientoAlmacenController,
-  createTrasladoMovimientoAlmacenController,
-  updateMovimientoAlmacenController,
-  deleteMovimientoAlmacenController
+  createTrasladoMovimientoAlmacenController
 } from '../controllers/movimiento_almacen_controllers.js'
 import { requirePermission } from '../../../middlewares/authmiddleware.js'
 
@@ -31,7 +29,4 @@ movimientoAlmacenRoutes.post(
   requirePermission(PERMISOS_MOVIMIENTO_ALMACEN.crear),
   createTrasladoMovimientoAlmacenController
 )
-movimientoAlmacenRoutes.put('/:id', updateMovimientoAlmacenController)
-movimientoAlmacenRoutes.delete('/:id', deleteMovimientoAlmacenController)
-
 export default movimientoAlmacenRoutes

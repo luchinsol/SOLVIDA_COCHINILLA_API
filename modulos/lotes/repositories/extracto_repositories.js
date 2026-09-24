@@ -15,7 +15,7 @@ export const crearExtractoRepo = async (data, t = db) => {
        costo_total_inicial,
        costo_total_actual,
        costo_unitario,
-       estado_lote,
+       estado_lote_id,
        observaciones,
        creado_en,
        modificado_en,
@@ -35,7 +35,7 @@ export const crearExtractoRepo = async (data, t = db) => {
       data.costo_total_inicial ?? 0,
       data.costo_total_actual ?? data.costo_total_inicial ?? 0,
       data.costo_unitario ?? 0,
-      data.estado_lote,
+      data.estado_lote_id,
       data.observaciones ?? null,
       data.unidad_medida_dinero
     ]
@@ -107,8 +107,8 @@ export const listarExtractosRepo = async (filters = {}) => {
   )
 }
 
-export const obtenerExtractoPorIdRepo = async (id) => {
-  return await db.oneOrNone(
+export const obtenerExtractoPorIdRepo = async (id, t = db) => {
+  return await t.oneOrNone(
     `SELECT *
      FROM lotes.extracto
      WHERE extracto_id = $1`,

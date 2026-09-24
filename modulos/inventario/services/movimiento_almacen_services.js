@@ -5,9 +5,14 @@ import {
   deleteMovimientoAlmacen,
   obtenerTipoMovimientoAlmacenPorId,
   obtenerLotesPorItemInventarioId,
-  actualizarSaldoLotePorMovimiento,
   actualizarStockInicialLotePorAjuste
 } from '../repositories/movimiento_almacen_repositories.js'
+import {
+  actualizarStockPosicionRepo,
+  asegurarPosicionStockRepo,
+  bloquearPosicionesStockItemRepo,
+  sincronizarStockTotalLoteRepo
+} from '../repositories/stock_item_almacen_repositories.js'
 import db from '../../../config/database.js'
 
 const parsePositiveInteger = (value, fieldName, required = true) => {
@@ -169,6 +174,7 @@ const normalizarAjusteMovimientoDatos = (movimientoDatos) => {
       movimientoDatos.item_inventario_id,
       'item_inventario_id'
     ),
+    almacen_id: parsePositiveInteger(movimientoDatos.almacen_id, 'almacen_id', false),
     motivo_movimiento: movimientoDatos.motivo_movimiento.trim(),
     fecha_hora: movimientoDatos.fecha_hora ?? new Date(),
     stock_actual_corregido:
@@ -197,15 +203,27 @@ const normalizarTrasladoMovimientoDatos = (movimientoDatos) => {
     'almacen_destino_id'
   )
 
+  const almacenOrigenId = parsePositiveInteger(
+    movimientoDatos.almacen_origen_id,
+    'almacen_origen_id',
+    false
+  )
+
+  if (almacenOrigenId != null && almacenDestinoId === almacenOrigenId) {
+    throw new Error('almacen_destino_id no puede ser igual a almacen_origen_id')
+  }
+
   return {
     usuario_id: parsePositiveInteger(movimientoDatos.usuario_id, 'usuario_id', false),
     item_inventario_id: parsePositiveInteger(
       movimientoDatos.item_inventario_id,
       'item_inventario_id'
     ),
+    cantidad: parseCantidad(movimientoDatos.cantidad),
     motivo_movimiento: movimientoDatos.motivo_movimiento.trim(),
     fecha_hora: movimientoDatos.fecha_hora ?? new Date(),
     observaciones: movimientoDatos.observaciones ?? null,
+    almacen_origen_id: almacenOrigenId,
     almacen_destino_id: almacenDestinoId
   }
 }
@@ -216,6 +234,46 @@ const normalizarTextoClave = (value) =>
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
+
+const obtenerLoteUnico = async (itemInventarioId, t) => {
+  const lotes = await obtenerLotesPorItemInventarioId(itemInventarioId, t)
+
+  if (lotes.length === 0) {
+    throw new Error('No se encontro un lote asociado al item_inventario_id')
+  }
+
+  if (lotes.length > 1) {
+    throw new Error('El item_inventario_id esta asociado a mas de un lote')
+  }
+
+  return lotes[0]
+}
+
+const resolverPosicionOrigen = (posiciones, almacenOrigenId) => {
+  if (almacenOrigenId != null) {
+    const posicion = posiciones.find(
+      (item) => Number(item.almacen_id) === Number(almacenOrigenId)
+    )
+
+    if (!posicion) {
+      throw new Error('No existe una posicion de stock para el almacen_origen_id')
+    }
+
+    return posicion
+  }
+
+  const posicionesConStock = posiciones.filter((item) => Number(item.stock_actual) > 0)
+
+  if (posicionesConStock.length === 0) {
+    throw new Error('El item no tiene stock disponible en ningun almacen')
+  }
+
+  if (posicionesConStock.length > 1) {
+    throw new Error('almacen_origen_id es obligatorio cuando el item esta en varios almacenes')
+  }
+
+  return posicionesConStock[0]
+}
 
 export const getMovimientosAlmacenService = async (filters = {}) => {
   const parsedFilters = {}
@@ -268,69 +326,90 @@ export const procesarMovimientoAlmacenService = async (movimientoDatos, t = db) 
       throw new Error('tipo_movimientos_almacen_id no encontrado')
     }
 
-    const lotes = await obtenerLotesPorItemInventarioId(
+    const lote = await obtenerLoteUnico(movimientoNormalizado.item_inventario_id, tx)
+    const delta = parseDelta(tipoMovimiento.delta)
+    if (delta !== 1 && delta !== -1) {
+      throw new Error('El tipo de movimiento no corresponde a una entrada o salida')
+    }
+
+    const esEntrada = delta === 1
+
+    if (esEntrada && movimientoNormalizado.almacen_destino_id == null) {
+      throw new Error('almacen_destino_id es obligatorio para una entrada')
+    }
+
+    if (esEntrada) {
+      await asegurarPosicionStockRepo(
+        movimientoNormalizado.item_inventario_id,
+        movimientoNormalizado.almacen_destino_id,
+        tx
+      )
+    }
+
+    const posiciones = await bloquearPosicionesStockItemRepo(
       movimientoNormalizado.item_inventario_id,
       tx
     )
 
-    if (lotes.length === 0) {
-      throw new Error('No se encontro un lote asociado al item_inventario_id')
-    }
+    let almacenOrigenId = null
+    let almacenDestinoId = null
+    let saldoOrigen = null
+    let saldoDestino = null
+    let cantidadConSigno
 
-    if (lotes.length > 1) {
-      throw new Error('El item_inventario_id esta asociado a mas de un lote')
-    }
+    if (esEntrada) {
+      almacenDestinoId = movimientoNormalizado.almacen_destino_id
+      const posicionDestino = posiciones.find(
+        (item) => Number(item.almacen_id) === Number(almacenDestinoId)
+      )
+      const nuevoStockDestino =
+        Number(posicionDestino?.stock_actual ?? 0) + movimientoNormalizado.cantidad
 
-    const lote = lotes[0]
-    const delta = parseDelta(tipoMovimiento.delta)
-    const stockActual = Number(lote.stock_actual ?? 0)
-    const cantidadConSigno = movimientoNormalizado.cantidad * delta
-    const nuevoStockActual = stockActual + cantidadConSigno
+      await actualizarStockPosicionRepo(
+        movimientoNormalizado.item_inventario_id,
+        almacenDestinoId,
+        nuevoStockDestino,
+        tx
+      )
+      cantidadConSigno = movimientoNormalizado.cantidad
+      saldoDestino = nuevoStockDestino
+    } else {
+      const posicionOrigen = resolverPosicionOrigen(
+        posiciones,
+        movimientoNormalizado.almacen_origen_id
+      )
+      almacenOrigenId = Number(posicionOrigen.almacen_id)
+      const stockOrigen = Number(posicionOrigen.stock_actual)
 
-    if (nuevoStockActual < 0) {
-      throw new Error('El movimiento deja el stock_actual en negativo')
-    }
-
-    const almacenActual = lote.almacen_id == null ? null : Number(lote.almacen_id)
-
-    if (
-      movimientoNormalizado.almacen_origen_id != null &&
-      almacenActual != null &&
-      movimientoNormalizado.almacen_origen_id !== almacenActual
-    ) {
-      throw new Error('almacen_origen_id no coincide con el almacen actual del lote')
-    }
-
-    let movimientoFinal = {
-      ...movimientoNormalizado
-    }
-
-    if (movimientoNormalizado.tipo_movimientos_almacen_id === 2) {
-      if (almacenActual == null) {
-        throw new Error('El lote no tiene almacen actual para registrar una salida')
+      if (movimientoNormalizado.cantidad > stockOrigen) {
+        throw new Error('La cantidad supera el stock disponible en el almacen de origen')
       }
 
-      movimientoFinal = {
-        ...movimientoFinal,
-        almacen_origen_id: almacenActual,
-        almacen_destino_id: null
-      }
+      const nuevoStockOrigen = stockOrigen - movimientoNormalizado.cantidad
+      await actualizarStockPosicionRepo(
+        movimientoNormalizado.item_inventario_id,
+        almacenOrigenId,
+        nuevoStockOrigen,
+        tx
+      )
+      cantidadConSigno = -movimientoNormalizado.cantidad
+      saldoOrigen = nuevoStockOrigen
     }
 
-    const nuevoAlmacenId = movimientoFinal.almacen_destino_id ?? almacenActual
-
-    const loteActualizado = await actualizarSaldoLotePorMovimiento(
-      lote,
-      nuevoStockActual,
-      nuevoAlmacenId,
+    const stockSincronizado = await sincronizarStockTotalLoteRepo(
+      movimientoNormalizado.item_inventario_id,
       tx
     )
 
     const movimientoCreado = await createMovimientoAlmacen(
       {
-        ...movimientoFinal,
+        ...movimientoNormalizado,
         cantidad: cantidadConSigno,
-        saldo: nuevoStockActual
+        saldo: esEntrada ? saldoDestino : saldoOrigen,
+        saldo_origen: saldoOrigen,
+        saldo_destino: saldoDestino,
+        almacen_origen_id: almacenOrigenId,
+        almacen_destino_id: almacenDestinoId
       },
       tx
     )
@@ -338,8 +417,7 @@ export const procesarMovimientoAlmacenService = async (movimientoDatos, t = db) 
     return {
       ...movimientoCreado,
       lote_tabla: lote.lote_tabla,
-      stock_actual_resultante: loteActualizado.stock_actual,
-      almacen_id_resultante: loteActualizado.almacen_id
+      stock_total_resultante: stockSincronizado.stock_total
     }
   })
 }
@@ -358,31 +436,34 @@ export const createAjusteMovimientoAlmacenService = async (movimientoDatos, t = 
       throw new Error('tipo_movimientos_almacen_id no encontrado')
     }
 
-    const lotes = await obtenerLotesPorItemInventarioId(
+    const lote = await obtenerLoteUnico(movimientoNormalizado.item_inventario_id, tx)
+    const motivoNormalizado = normalizarTextoClave(movimientoNormalizado.motivo_movimiento)
+
+    if (
+      motivoNormalizado === 'regularizacion por conteo fisico' &&
+      movimientoNormalizado.almacen_id != null
+    ) {
+      await asegurarPosicionStockRepo(
+        movimientoNormalizado.item_inventario_id,
+        movimientoNormalizado.almacen_id,
+        tx
+      )
+    }
+
+    const posiciones = await bloquearPosicionesStockItemRepo(
       movimientoNormalizado.item_inventario_id,
       tx
     )
-
-    if (lotes.length === 0) {
-      throw new Error('No se encontro un lote asociado al item_inventario_id')
-    }
-
-    if (lotes.length > 1) {
-      throw new Error('El item_inventario_id esta asociado a mas de un lote')
-    }
-
-    const lote = lotes[0]
-    const almacenActual = lote.almacen_id == null ? null : Number(lote.almacen_id)
-
-    if (almacenActual == null) {
-      throw new Error('El lote no tiene almacen actual para registrar un ajuste')
-    }
-
-    const stockActualAnterior = Number(lote.stock_actual ?? 0)
+    const posicionAjustada = resolverPosicionOrigen(posiciones, movimientoNormalizado.almacen_id)
+    const almacenAjustadoId = Number(posicionAjustada.almacen_id)
+    const stockPosicionAnterior = Number(posicionAjustada.stock_actual)
+    const stockTotalAnterior = posiciones.reduce(
+      (total, posicion) => total + Number(posicion.stock_actual),
+      0
+    )
     const stockInicialActual = Number(lote.stock_inicial ?? 0)
-    const motivoNormalizado = normalizarTextoClave(movimientoNormalizado.motivo_movimiento)
     let cantidad = 0
-    let saldo = stockActualAnterior
+    let saldo = stockPosicionAnterior
     let loteActualizado
 
     if (motivoNormalizado === 'regularizacion por conteo fisico') {
@@ -390,19 +471,25 @@ export const createAjusteMovimientoAlmacenService = async (movimientoDatos, t = 
         throw new Error('stock_actual_corregido es obligatorio')
       }
 
-      if (movimientoNormalizado.stock_actual_corregido > stockInicialActual) {
+      const stockTotalResultante =
+        stockTotalAnterior - stockPosicionAnterior + movimientoNormalizado.stock_actual_corregido
+
+      if (stockTotalResultante > stockInicialActual) {
         throw new Error('stock_actual_corregido no puede ser mayor que stock_inicial')
       }
 
-      cantidad = movimientoNormalizado.stock_actual_corregido - stockActualAnterior
+      cantidad = movimientoNormalizado.stock_actual_corregido - stockPosicionAnterior
       saldo = movimientoNormalizado.stock_actual_corregido
 
-      loteActualizado = await actualizarSaldoLotePorMovimiento(
-        lote,
+      await actualizarStockPosicionRepo(
+        movimientoNormalizado.item_inventario_id,
+        almacenAjustadoId,
         movimientoNormalizado.stock_actual_corregido,
-        almacenActual,
         tx
       )
+
+      await sincronizarStockTotalLoteRepo(movimientoNormalizado.item_inventario_id, tx)
+      loteActualizado = await obtenerLoteUnico(movimientoNormalizado.item_inventario_id, tx)
     } else if (motivoNormalizado === 'error de registro de stock inicial') {
       const nuevoStockInicial =
         movimientoNormalizado.stock_inicial_corregido ??
@@ -412,17 +499,15 @@ export const createAjusteMovimientoAlmacenService = async (movimientoDatos, t = 
         throw new Error('stock_inicial_corregido es obligatorio')
       }
 
-      if (nuevoStockInicial < stockActualAnterior) {
+      if (nuevoStockInicial < stockTotalAnterior) {
         throw new Error('stock_inicial_corregido no puede ser menor que stock_actual')
       }
 
       cantidad = 0
-      saldo = stockActualAnterior
-      loteActualizado = await actualizarStockInicialLotePorAjuste(
-        lote,
-        nuevoStockInicial,
-        tx
-      )
+      saldo = stockPosicionAnterior
+      await actualizarStockInicialLotePorAjuste(lote, nuevoStockInicial, tx)
+      await sincronizarStockTotalLoteRepo(movimientoNormalizado.item_inventario_id, tx)
+      loteActualizado = await obtenerLoteUnico(movimientoNormalizado.item_inventario_id, tx)
     } else {
       throw new Error('motivo_movimiento no es valido para ajuste')
     }
@@ -435,9 +520,11 @@ export const createAjusteMovimientoAlmacenService = async (movimientoDatos, t = 
         fecha_hora: movimientoNormalizado.fecha_hora,
         cantidad,
         saldo,
+        saldo_origen: saldo,
+        saldo_destino: saldo,
         observaciones: movimientoNormalizado.observaciones,
-        almacen_origen_id: almacenActual,
-        almacen_destino_id: almacenActual,
+        almacen_origen_id: almacenAjustadoId,
+        almacen_destino_id: almacenAjustadoId,
         tipo_movimientos_almacen_id: Number(tipoMovimiento.tipo_mov_id ?? 3)
       },
       tx
@@ -447,10 +534,10 @@ export const createAjusteMovimientoAlmacenService = async (movimientoDatos, t = 
       ...movimientoCreado,
       lote_tabla: lote.lote_tabla,
       stock_inicial_anterior: stockInicialActual,
-      stock_actual_anterior: stockActualAnterior,
+      stock_actual_anterior: stockPosicionAnterior,
       stock_inicial_resultante: loteActualizado.stock_inicial,
       stock_actual_resultante: loteActualizado.stock_actual,
-      almacen_id_resultante: loteActualizado.almacen_id
+      almacen_id: almacenAjustadoId
     }
   })
 }
@@ -465,36 +552,56 @@ export const createTrasladoMovimientoAlmacenService = async (movimientoDatos, t 
       throw new Error('tipo_movimientos_almacen_id no encontrado')
     }
 
-    const lotes = await obtenerLotesPorItemInventarioId(
+    const lote = await obtenerLoteUnico(movimientoNormalizado.item_inventario_id, tx)
+
+    await asegurarPosicionStockRepo(
       movimientoNormalizado.item_inventario_id,
+      movimientoNormalizado.almacen_destino_id,
       tx
     )
 
-    if (lotes.length === 0) {
-      throw new Error('No se encontro un lote asociado al item_inventario_id')
+    const posiciones = await bloquearPosicionesStockItemRepo(
+      movimientoNormalizado.item_inventario_id,
+      tx
+    )
+    const posicionOrigen = resolverPosicionOrigen(
+      posiciones,
+      movimientoNormalizado.almacen_origen_id
+    )
+    const almacenOrigenId = Number(posicionOrigen.almacen_id)
+
+    if (movimientoNormalizado.almacen_destino_id === almacenOrigenId) {
+      throw new Error('almacen_destino_id no puede ser igual a almacen_origen_id')
     }
 
-    if (lotes.length > 1) {
-      throw new Error('El item_inventario_id esta asociado a mas de un lote')
+    const posicionDestino = posiciones.find(
+      (posicion) =>
+        Number(posicion.almacen_id) === Number(movimientoNormalizado.almacen_destino_id)
+    )
+    const stockOrigen = Number(posicionOrigen.stock_actual)
+    const stockDestino = Number(posicionDestino?.stock_actual ?? 0)
+
+    if (movimientoNormalizado.cantidad > stockOrigen) {
+      throw new Error('La cantidad supera el stock disponible en el almacen de origen')
     }
 
-    const lote = lotes[0]
-    const almacenActual = lote.almacen_id == null ? null : Number(lote.almacen_id)
+    const saldoOrigen = stockOrigen - movimientoNormalizado.cantidad
+    const saldoDestino = stockDestino + movimientoNormalizado.cantidad
 
-    if (almacenActual == null) {
-      throw new Error('El lote no tiene almacen actual para registrar un traslado')
-    }
-
-    if (movimientoNormalizado.almacen_destino_id === almacenActual) {
-      throw new Error('almacen_destino_id no puede ser igual al almacen actual del lote')
-    }
-
-    const stockActual = Number(lote.stock_actual ?? 0)
-
-    const loteActualizado = await actualizarSaldoLotePorMovimiento(
-      lote,
-      stockActual,
+    await actualizarStockPosicionRepo(
+      movimientoNormalizado.item_inventario_id,
+      almacenOrigenId,
+      saldoOrigen,
+      tx
+    )
+    await actualizarStockPosicionRepo(
+      movimientoNormalizado.item_inventario_id,
       movimientoNormalizado.almacen_destino_id,
+      saldoDestino,
+      tx
+    )
+    const stockSincronizado = await sincronizarStockTotalLoteRepo(
+      movimientoNormalizado.item_inventario_id,
       tx
     )
 
@@ -504,10 +611,12 @@ export const createTrasladoMovimientoAlmacenService = async (movimientoDatos, t 
         item_inventario_id: movimientoNormalizado.item_inventario_id,
         motivo_movimiento: movimientoNormalizado.motivo_movimiento,
         fecha_hora: movimientoNormalizado.fecha_hora,
-        cantidad: stockActual,
-        saldo: stockActual,
+        cantidad: movimientoNormalizado.cantidad,
+        saldo: saldoOrigen,
+        saldo_origen: saldoOrigen,
+        saldo_destino: saldoDestino,
         observaciones: movimientoNormalizado.observaciones,
-        almacen_origen_id: almacenActual,
+        almacen_origen_id: almacenOrigenId,
         almacen_destino_id: movimientoNormalizado.almacen_destino_id,
         tipo_movimientos_almacen_id: Number(tipoMovimiento.tipo_mov_id ?? 4)
       },
@@ -517,8 +626,9 @@ export const createTrasladoMovimientoAlmacenService = async (movimientoDatos, t 
     return {
       ...movimientoCreado,
       lote_tabla: lote.lote_tabla,
-      stock_actual_resultante: loteActualizado.stock_actual,
-      almacen_id_resultante: loteActualizado.almacen_id
+      stock_total_resultante: stockSincronizado.stock_total,
+      stock_origen_resultante: saldoOrigen,
+      stock_destino_resultante: saldoDestino
     }
   })
 }

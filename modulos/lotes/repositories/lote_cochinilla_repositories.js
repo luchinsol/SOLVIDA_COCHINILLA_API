@@ -2,7 +2,7 @@ import db from '../../../config/database.js'
 
 /* ======================================================
    CREATE: lote de cochinilla por compra
-   proveedor_id y fecha_compra sí aplican
+   proveedor_id y fecha_creacion sí aplican
    tipo_lote = 'comprado'
 ====================================================== */
 export const crearLoteCochinillaPorCompraRepo = async (data, t = db) => {
@@ -66,7 +66,7 @@ export const crearLoteCochinillaPorCompraRepo = async (data, t = db) => {
 
 /* ======================================================
    CREATE: lote de cochinilla por mezcla / preparado
-   no requiere proveedor_id ni fecha_compra
+   no requiere proveedor_id
    tipo_lote = 'preparado'
 ====================================================== */
 export const crearLoteCochinillaPorMezclaRepo = async (data, t = db) => {
@@ -173,7 +173,11 @@ export const listarLotesCochinillaRepo = async (filters = {}) => {
          AS costo_total_actual,
        p.nombre_razon_social AS proveedor_nombre,
        a.nombre AS almacen_nombre,
-       el.nombre AS estado_lote
+       el.nombre AS estado_lote,
+       COALESCE(
+         NULLIF(TRIM(CONCAT_WS(' ', u.nombres, u.apellidos)), ''),
+         u.nickname
+       ) AS creado_por_nombre
      FROM lotes.lote_cochinilla lc
      INNER JOIN inventario.stock_item_almacen sia
        ON lc.item_inventario_id = sia.item_inventario_id
@@ -190,6 +194,8 @@ export const listarLotesCochinillaRepo = async (filters = {}) => {
        ON sia.almacen_id = a.almacen_id
      LEFT JOIN lotes.estado_lote el
        ON lc.estado_lote_id = el.estado_lote_id
+     LEFT JOIN seguridad.usuario u
+       ON lc.creado_por = u.id
      ${whereClause}
      ORDER BY lc.lote_cochinilla_id DESC, sia.almacen_id ASC`,
     values
@@ -266,12 +272,18 @@ export const obtenerLoteCochinillaPorIdRepo = async (id, t = db) => {
     `SELECT
        lc.*,
        p.nombre_razon_social AS proveedor_nombre,
-       a.nombre AS almacen_nombre
+       a.nombre AS almacen_nombre,
+       COALESCE(
+         NULLIF(TRIM(CONCAT_WS(' ', u.nombres, u.apellidos)), ''),
+         u.nickname
+       ) AS creado_por_nombre
      FROM lotes.lote_cochinilla lc
      LEFT JOIN inventario.proveedor p
        ON lc.proveedor_id = p.proveedor_id
      LEFT JOIN inventario.almacen a
        ON lc.almacen_id = a.almacen_id
+     LEFT JOIN seguridad.usuario u
+       ON lc.creado_por = u.id
      WHERE lc.lote_cochinilla_id = $1`,
     [id]
   )

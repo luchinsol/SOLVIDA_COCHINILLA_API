@@ -24,7 +24,7 @@ import {
 // crear lote desde laqueo
 export const crearLoteDesdeLaqueo = async (req, res) => {
   try {
-    const data = await crearLoteDesdeLaqueoService(req.body)
+    const data = await crearLoteDesdeLaqueoService({ ...req.body, creado_por: req.user.id })
     res.status(201).json(data)
   } catch (error) {
     res.status(400).json({ error: error.message })
@@ -34,7 +34,7 @@ export const crearLoteDesdeLaqueo = async (req, res) => {
 // crear lote desde molienda
 export const crearLoteDesdeMolienda = async (req, res) => {
   try {
-    const data = await crearLoteDesdeMoliendaService(req.body)
+    const data = await crearLoteDesdeMoliendaService({ ...req.body, creado_por: req.user.id })
     res.status(201).json(data)
   } catch (error) {
     res.status(400).json({ error: error.message })
@@ -44,7 +44,7 @@ export const crearLoteDesdeMolienda = async (req, res) => {
 // crear lote desde mezclado
 export const crearLoteDesdeMezclado = async (req, res) => {
   try {
-    const data = await crearLoteDesdeMezcladoService(req.body)
+    const data = await crearLoteDesdeMezcladoService({ ...req.body, creado_por: req.user.id })
     res.status(201).json(data)
   } catch (error) {
     res.status(400).json({ error: error.message })
@@ -94,7 +94,8 @@ export const actualizarStockActualLoteCarmin = async (req, res) => {
     const { id } = req.params
     const { stock_actual } = req.body
     const data = await actualizarStockActualLoteCarminService(id, stock_actual, {
-      usuario_id: req.body.usuario_id,
+      usuario_id: req.user.id,
+      almacen_id: req.body.almacen_id,
       motivo_movimiento: req.body.motivo_movimiento,
       observaciones: req.body.observaciones
     })
