@@ -41,7 +41,7 @@ const normalizeExtractoError = (error) => {
 
 export const crearExtracto = async (req, res) => {
   try {
-    const data = await crearExtractoService(req.body)
+    const data = await crearExtractoService({ ...req.body, creado_por: req.user.id })
     res.status(201).json(data)
   } catch (error) {
     handleControllerError(res, normalizeExtractoError(error))
@@ -98,7 +98,8 @@ export const actualizarStockActualExtracto = async (req, res) => {
     const { stock_actual } = req.body
 
     const data = await actualizarStockActualExtractoService(id, stock_actual, {
-      usuario_id: req.body.usuario_id,
+      usuario_id: req.user.id,
+      almacen_id: req.body.almacen_id,
       motivo_movimiento: req.body.motivo_movimiento,
       observaciones: req.body.observaciones
     })

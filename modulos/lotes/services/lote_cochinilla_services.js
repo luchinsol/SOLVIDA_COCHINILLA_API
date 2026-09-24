@@ -45,7 +45,7 @@ import {
 // ejemplo simple de código para compra:
 // COCH-COMP-<proveedor_id>-<yyyymmdd>-<calidad>
 const generarCodigoLoteCompra = (data) => {
-  const fechaBase = new Date(data.fecha_creacion ?? data.fecha_compra)
+  const fechaBase = new Date(data.fecha_creacion)
   const ahora = new Date()
 
   const fecha = fechaBase.toISOString().slice(0, 10).replace(/-/g, '')
@@ -128,7 +128,7 @@ export const crearLoteCochinillaPorCompraService = async (data) => {
     throw new Error('almacen_id es obligatorio')
   }
 
-  if (!data.fecha_creacion && !data.fecha_compra) {
+  if (!data.fecha_creacion) {
     throw new Error('fecha_creacion es obligatoria')
   }
 
@@ -143,7 +143,7 @@ export const crearLoteCochinillaPorCompraService = async (data) => {
   const stockInicial = Number(data.stock_inicial)
   const costoTotalInicial = Number(data.costo_total_inicial)
   const costoUnitario = costoTotalInicial / stockInicial
-  const fechaCreacion = data.fecha_creacion ?? data.fecha_compra
+  const fechaCreacion = data.fecha_creacion
 
   const codigoLote = generarCodigoLoteCompra(data)
 
@@ -603,6 +603,7 @@ export const actualizarStockActualLoteCochinillaService = async (id, data) => {
   await createAjusteMovimientoAlmacenService({
     usuario_id: data.usuario_id ?? null,
     item_inventario_id: lote.item_inventario_id,
+    almacen_id: data.almacen_id ?? null,
     motivo_movimiento: data.motivo_movimiento ?? 'regularizacion por conteo fisico',
     stock_actual_corregido: nuevoStockActual,
     observaciones: data.observaciones ?? 'Ajuste de stock desde lote_cochinilla'

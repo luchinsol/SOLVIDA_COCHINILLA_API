@@ -51,6 +51,7 @@ export const listarItemsInventarioRepo = async (filters = {}) => {
   return await db.any(
     `SELECT
        ii.*,
+       COALESCE(li.nombre, lc.nombre_lote, lco.codigo_lote, e.nombre_extracto) AS nombre_lote,
        COALESCE(li.proveedor_id, lco.proveedor_id) AS proveedor_id,
        COALESCE(pi.nombre_razon_social, pc.nombre_razon_social) AS proveedor_nombre,
        sia.almacen_id::int AS almacen_id,

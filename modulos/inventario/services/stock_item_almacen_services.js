@@ -4,8 +4,11 @@ import {
   listarStockPorItemRepo,
   obtenerAlmacenStockRepo,
   obtenerItemStockRepo,
+  obtenerResumenStockRepo,
   obtenerStockTotalItemRepo
 } from '../repositories/stock_item_almacen_repositories.js'
+
+const CATEGORIAS_STOCK = new Set(['insumos', 'cochinilla', 'carmin', 'extracto'])
 
 const parsePositiveInteger = (value, fieldName) => {
   const parsed = Number(value)
@@ -29,6 +32,31 @@ const parseIncluirAgotados = (value) => {
   }
 
   return parsed === 'true'
+}
+
+export const obtenerResumenStockService = async (filters = {}) => {
+  const categoria = String(filters.categoria || '').trim().toLowerCase()
+
+  if (!CATEGORIAS_STOCK.has(categoria)) {
+    throw new Error('categoria debe ser insumos, cochinilla, carmin o extracto')
+  }
+
+  const almacenId =
+    filters.almacen_id === undefined || filters.almacen_id === ''
+      ? null
+      : parsePositiveInteger(filters.almacen_id, 'almacen_id')
+
+  const tipoInsumoId =
+    filters.tipo_insumo_id === undefined || filters.tipo_insumo_id === ''
+      ? null
+      : parsePositiveInteger(filters.tipo_insumo_id, 'tipo_insumo_id')
+
+  const tipoLote =
+    filters.tipo_lote === undefined || filters.tipo_lote === ''
+      ? null
+      : String(filters.tipo_lote).trim().toLowerCase()
+
+  return await obtenerResumenStockRepo(categoria, almacenId, tipoInsumoId, tipoLote)
 }
 
 export const obtenerStockPorItemService = async (itemId, filters = {}) => {

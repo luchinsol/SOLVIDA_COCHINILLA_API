@@ -344,12 +344,14 @@ export const createMovimientoAlmacen = async (movimientoDatos, t = db) => {
        fecha_hora,
        cantidad,
        saldo,
+       saldo_origen,
+       saldo_destino,
        observaciones,
        almacen_origen_id,
        almacen_destino_id,
        tipo_movimientos_almacen_id
      )
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
      RETURNING *`,
     [
       movimientoDatos.usuario_id ?? null,
@@ -358,6 +360,8 @@ export const createMovimientoAlmacen = async (movimientoDatos, t = db) => {
       movimientoDatos.fecha_hora,
       movimientoDatos.cantidad,
       movimientoDatos.saldo,
+      movimientoDatos.saldo_origen ?? null,
+      movimientoDatos.saldo_destino ?? null,
       movimientoDatos.observaciones ?? null,
       movimientoDatos.almacen_origen_id,
       movimientoDatos.almacen_destino_id ?? null,

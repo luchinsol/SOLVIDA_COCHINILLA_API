@@ -35,17 +35,18 @@ const normalizeMovimientoAlmacenError = (error) => {
     error.message === 'stock_actual_corregido no puede ser mayor que stock_inicial' ||
     error.message === 'stock_inicial_corregido no puede ser menor que stock_actual' ||
     error.message === 'motivo_movimiento no es valido para ajuste' ||
-    error.message === 'almacen_destino_id no puede ser igual al almacen actual del lote' ||
     error.message === 'almacen_origen_id debe ser un entero positivo' ||
     error.message === 'almacen_destino_id debe ser un entero positivo' ||
     error.message === 'almacen_destino_id no puede ser igual a almacen_origen_id' ||
     error.message === 'delta del tipo de movimiento no es valido' ||
-    error.message === 'El movimiento deja el stock_actual en negativo' ||
-    error.message === 'almacen_origen_id no coincide con el almacen actual del lote' ||
+    error.message === 'El tipo de movimiento no corresponde a una entrada o salida' ||
+    error.message === 'almacen_destino_id es obligatorio para una entrada' ||
+    error.message === 'No existe una posicion de stock para el almacen_origen_id' ||
+    error.message === 'El item no tiene stock disponible en ningun almacen' ||
+    error.message === 'almacen_origen_id es obligatorio cuando el item esta en varios almacenes' ||
+    error.message === 'La cantidad supera el stock disponible en el almacen de origen' ||
     error.message === 'El item_inventario_id esta asociado a mas de un lote' ||
-    error.message === 'El lote no tiene almacen actual para registrar una salida' ||
-    error.message === 'El lote no tiene almacen actual para registrar un ajuste' ||
-    error.message === 'El lote no tiene almacen actual para registrar un traslado'
+    error.message === 'almacen_id debe ser un entero positivo'
   ) {
     error.name = 'ValidationError'
   }
@@ -79,7 +80,10 @@ export const getMovimientosAlmacenController = async (req, res) => {
 
 export const createMovimientoAlmacenController = async (req, res) => {
   try {
-    const nuevoMovimiento = await createMovimientoAlmacenService(req.body)
+    const nuevoMovimiento = await createMovimientoAlmacenService({
+      ...req.body,
+      usuario_id: req.user.id
+    })
     res.status(201).json(nuevoMovimiento)
   } catch (error) {
     handleControllerError(res, normalizeMovimientoAlmacenError(error))
@@ -88,7 +92,10 @@ export const createMovimientoAlmacenController = async (req, res) => {
 
 export const createAjusteMovimientoAlmacenController = async (req, res) => {
   try {
-    const nuevoMovimiento = await createAjusteMovimientoAlmacenService(req.body)
+    const nuevoMovimiento = await createAjusteMovimientoAlmacenService({
+      ...req.body,
+      usuario_id: req.user.id
+    })
     res.status(201).json(nuevoMovimiento)
   } catch (error) {
     handleControllerError(res, normalizeMovimientoAlmacenError(error))
@@ -97,7 +104,10 @@ export const createAjusteMovimientoAlmacenController = async (req, res) => {
 
 export const createTrasladoMovimientoAlmacenController = async (req, res) => {
   try {
-    const nuevoMovimiento = await createTrasladoMovimientoAlmacenService(req.body)
+    const nuevoMovimiento = await createTrasladoMovimientoAlmacenService({
+      ...req.body,
+      usuario_id: req.user.id
+    })
     res.status(201).json(nuevoMovimiento)
   } catch (error) {
     handleControllerError(res, normalizeMovimientoAlmacenError(error))

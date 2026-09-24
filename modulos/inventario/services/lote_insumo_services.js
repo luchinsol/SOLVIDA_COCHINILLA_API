@@ -32,7 +32,9 @@ const CAMPOS_NO_VALORADOS = [
   'cantidad_almacenes',
   'stock_inicial',
   'tipo_insumo_id',
+  'estado_lote_id',
   'estado_lote',
+  'creado_en',
   'unidad_medida_cantidad',
   'unidad_medida_concentracion',
   'codigo_item',
@@ -277,6 +279,7 @@ export const createInsumoService = async (insumoDatos) => {
 
     await procesarMovimientoAlmacenService(
       {
+        usuario_id: insumoDatos.creado_por ?? null,
         item_inventario_id: itemInventario.item_inventario_id,
         tipo_movimientos_almacen_id: 1,
         motivo_movimiento: 'compra',
@@ -343,6 +346,7 @@ export const actualizarStockActualInsumoService = async (id, stock_actual, optio
   await createAjusteMovimientoAlmacenService({
     usuario_id: options.usuario_id ?? null,
     item_inventario_id: loteActual.item_inventario_id,
+    almacen_id: options.almacen_id ?? null,
     motivo_movimiento: options.motivo_movimiento ?? 'regularizacion por conteo fisico',
     stock_actual_corregido: nuevoStockActual,
     observaciones: options.observaciones ?? 'Ajuste de stock desde lote_insumo'

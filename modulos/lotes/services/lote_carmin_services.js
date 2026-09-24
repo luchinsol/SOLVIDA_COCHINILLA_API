@@ -19,7 +19,10 @@ import {
   actualizarCodigoItemInventarioRepo,
   crearItemInventarioRepo
 } from '../../inventario/repositories/item_inventario_repositories.js'
-import { createAjusteMovimientoAlmacenService } from '../../inventario/services/movimiento_almacen_services.js'
+import {
+  createAjusteMovimientoAlmacenService,
+  procesarMovimientoAlmacenService
+} from '../../inventario/services/movimiento_almacen_services.js'
 import {
   crearSolicitudAnalisisLaboratorioRepo,
   crearSolicitudParametroLaboratorioRepo
@@ -154,12 +157,12 @@ const crearSolicitudAnalisisInicialCarmin = async (
 /* ======================================================
    🧪 CREATE: LAQUEO (NO MOLIDO)
 ====================================================== */
-export const crearLoteDesdeLaqueoService = async (data) => {
+export const crearLoteDesdeLaqueoService = async (data, dbContext = db) => {
   validarAlmacenId(data)
   validarStockInicial(data)
   validarCostoTotalInicial(data)
 
-  return await db.tx(async (t) => {
+  return await dbContext.tx(async (t) => {
     const itemInventarioCreado = await crearItemInventarioRepo(
       {
         nombre_item: 'Carmin',
@@ -178,8 +181,23 @@ export const crearLoteDesdeLaqueoService = async (data) => {
       ...normalizarDatosCosto(normalizarDatosStock(data)),
       item_inventario_id: itemInventario.item_inventario_id,
       nombre_lote: null,
-      estado_lote: 'por_moler'
+      stock_actual: 0,
+      costo_total_actual: 0,
+      estado_lote_id: 5
     }, t)
+
+    await procesarMovimientoAlmacenService(
+      {
+        usuario_id: data.creado_por ?? null,
+        item_inventario_id: itemInventario.item_inventario_id,
+        tipo_movimientos_almacen_id: 1,
+        motivo_movimiento: 'laqueo',
+        cantidad: Number(data.stock_inicial),
+        observaciones: 'Ingreso inicial por proceso de laqueo',
+        almacen_destino_id: data.almacen_id
+      },
+      t
+    )
 
     await crearSolicitudAnalisisInicialCarmin(
       {
@@ -190,20 +208,20 @@ export const crearLoteDesdeLaqueoService = async (data) => {
       t
     )
 
-    return loteCreado
+    return await obtenerLoteCarminPorIdRepo(loteCreado.lote_carmin_id, t)
   })
 }
 
 /* ======================================================
    ⚙️ CREATE: MOLIENDA
 ====================================================== */
-export const crearLoteDesdeMoliendaService = async (data) => {
+export const crearLoteDesdeMoliendaService = async (data, dbContext = db) => {
   validarAlmacenId(data)
   validarStockInicial(data)
   validarCostoTotalInicial(data)
   validarProcesoMoliendaId(data)
 
-  return await db.tx(async (t) => {
+  return await dbContext.tx(async (t) => {
     const itemInventarioCreado = await crearItemInventarioRepo(
       {
         nombre_item: 'Carmin',
@@ -224,8 +242,23 @@ export const crearLoteDesdeMoliendaService = async (data) => {
       nombre_lote: null,
       tipo_lote: data.tipo_lote ?? 'principal',
       observaciones: data.observaciones ?? null,
-      estado_lote: 'por_analizar'
+      stock_actual: 0,
+      costo_total_actual: 0,
+      estado_lote_id: 2
     }, t)
+
+    await procesarMovimientoAlmacenService(
+      {
+        usuario_id: data.creado_por ?? null,
+        item_inventario_id: itemInventario.item_inventario_id,
+        tipo_movimientos_almacen_id: 1,
+        motivo_movimiento: 'molienda',
+        cantidad: Number(data.stock_inicial),
+        observaciones: 'Ingreso inicial por proceso de molienda',
+        almacen_destino_id: data.almacen_id
+      },
+      t
+    )
 
     await crearSolicitudAnalisisInicialCarmin(
       {
@@ -236,20 +269,20 @@ export const crearLoteDesdeMoliendaService = async (data) => {
       t
     )
 
-    return loteCreado
+    return await obtenerLoteCarminPorIdRepo(loteCreado.lote_carmin_id, t)
   })
 }
 
 /* ======================================================
    🔄 CREATE: MEZCLADO (BLEND)
 ====================================================== */
-export const crearLoteDesdeMezcladoService = async (data) => {
+export const crearLoteDesdeMezcladoService = async (data, dbContext = db) => {
   validarAlmacenId(data)
   validarStockInicial(data)
   validarCostoTotalInicial(data)
   validarProcesoMezcladoId(data)
 
-  return await db.tx(async (t) => {
+  return await dbContext.tx(async (t) => {
     const itemInventarioCreado = await crearItemInventarioRepo(
       {
         nombre_item: 'Carmin',
@@ -270,8 +303,23 @@ export const crearLoteDesdeMezcladoService = async (data) => {
       nombre_lote: null,
       tipo_lote: data.tipo_lote ?? 'principal',
       observaciones: data.observaciones ?? null,
-      estado_lote: 'por_analizar'
+      stock_actual: 0,
+      costo_total_actual: 0,
+      estado_lote_id: 2
     }, t)
+
+    await procesarMovimientoAlmacenService(
+      {
+        usuario_id: data.creado_por ?? null,
+        item_inventario_id: itemInventario.item_inventario_id,
+        tipo_movimientos_almacen_id: 1,
+        motivo_movimiento: 'mezcla',
+        cantidad: Number(data.stock_inicial),
+        observaciones: 'Ingreso inicial por proceso de mezclado',
+        almacen_destino_id: data.almacen_id
+      },
+      t
+    )
 
     await crearSolicitudAnalisisInicialCarmin(
       {
@@ -282,7 +330,7 @@ export const crearLoteDesdeMezcladoService = async (data) => {
       t
     )
 
-    return loteCreado
+    return await obtenerLoteCarminPorIdRepo(loteCreado.lote_carmin_id, t)
   })
 }
 
@@ -364,6 +412,7 @@ export const actualizarStockActualLoteCarminService = async (id, stockActual, op
   await createAjusteMovimientoAlmacenService({
     usuario_id: options.usuario_id ?? null,
     item_inventario_id: lote.item_inventario_id,
+    almacen_id: options.almacen_id ?? null,
     motivo_movimiento: options.motivo_movimiento ?? 'regularizacion por conteo fisico',
     stock_actual_corregido: nuevoStockActual,
     observaciones: options.observaciones ?? 'Ajuste de stock desde lote_carmin'

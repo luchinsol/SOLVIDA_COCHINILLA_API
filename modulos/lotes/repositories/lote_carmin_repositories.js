@@ -84,7 +84,7 @@ export const crearLoteCarminDesdeLaqueoRepo = async (data, t = db) => {
       modificado_en,
       unidad_medida_stock,
       calidad_lote,
-      estado_lote
+      estado_lote_id
     )
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, NOW(), NOW(), $17, $18, $19)
     RETURNING *`,
@@ -107,7 +107,7 @@ export const crearLoteCarminDesdeLaqueoRepo = async (data, t = db) => {
       data.observaciones ?? null,
       data.unidad_medida_stock ?? 'kg',
       data.calidad_lote ?? null,
-      data.estado_lote ?? 'por_moler'
+      data.estado_lote_id
     ]
   )
 
@@ -139,7 +139,7 @@ export const crearLoteCarminDesdeMoliendaRepo = async (data, t = db) => {
       modificado_en,
       unidad_medida_stock,
       calidad_lote,
-      estado_lote
+      estado_lote_id
     )
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, NOW(), NOW(), $17, $18, $19)
     RETURNING *`,
@@ -162,7 +162,7 @@ export const crearLoteCarminDesdeMoliendaRepo = async (data, t = db) => {
       data.observaciones ?? null,
       data.unidad_medida_stock ?? 'kg',
       data.calidad_lote ?? null,
-      data.estado_lote ?? 'por_analizar'
+      data.estado_lote_id
     ]
   )
 
@@ -194,7 +194,7 @@ export const crearLoteCarminDesdeMezcladoRepo = async (data, t = db) => {
       modificado_en,
       unidad_medida_stock,
       calidad_lote,
-      estado_lote
+      estado_lote_id
     )
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, NOW(), NOW(), $17, $18, $19)
     RETURNING *`,
@@ -217,7 +217,7 @@ export const crearLoteCarminDesdeMezcladoRepo = async (data, t = db) => {
       data.observaciones ?? null,
       data.unidad_medida_stock ?? 'kg',
       data.calidad_lote ?? null,
-      data.estado_lote ?? 'por_analizar'
+      data.estado_lote_id
     ]
   )
 
@@ -249,8 +249,8 @@ export const listarLotesCarminRepo = async (filters = {}) => {
 }
 
 // READ: obtener lote de carmín por id
-export const obtenerLoteCarminPorIdRepo = async (id) => {
-  const result = await db.oneOrNone(
+export const obtenerLoteCarminPorIdRepo = async (id, t = db) => {
+  const result = await t.oneOrNone(
     `${loteCarminSelect}
      WHERE lc.lote_carmin_id = $1`,
     [id]

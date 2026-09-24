@@ -10,7 +10,10 @@ import {
   actualizarCodigoItemInventarioRepo,
   crearItemInventarioRepo
 } from '../../inventario/repositories/item_inventario_repositories.js'
-import { createAjusteMovimientoAlmacenService } from '../../inventario/services/movimiento_almacen_services.js'
+import {
+  createAjusteMovimientoAlmacenService,
+  procesarMovimientoAlmacenService
+} from '../../inventario/services/movimiento_almacen_services.js'
 import {
   crearSolicitudAnalisisLaboratorioRepo,
   crearSolicitudParametroLaboratorioRepo
@@ -38,7 +41,7 @@ const crearSolicitudAnalisisInicialExtracto = async (
   return solicitud
 }
 
-export const crearExtractoService = async (data) => {
+export const crearExtractoService = async (data, dbContext = db) => {
   if (data.almacen_id == null || data.almacen_id === '') {
     throw new Error('almacen_id es obligatorio')
   }
@@ -92,7 +95,7 @@ export const crearExtractoService = async (data) => {
 
   const costoUnitario = stockInicial > 0 ? costoTotalInicial / stockInicial : 0
 
-  return await db.tx(async (t) => {
+  return await dbContext.tx(async (t) => {
     const itemInventarioCreado = await crearItemInventarioRepo(
       {
         nombre_item: 'Extracto',
@@ -114,15 +117,28 @@ export const crearExtractoService = async (data) => {
       nombre_extracto: data.nombre_extracto.trim(),
       tipo_extracto: data.tipo_extracto.trim(),
       stock_inicial: stockInicial,
-      stock_actual: stockInicial,
+      stock_actual: 0,
       costo_total_inicial: costoTotalInicial,
-      costo_total_actual: costoTotalInicial,
+      costo_total_actual: 0,
       costo_unitario: costoUnitario,
-      estado_lote: 'disponible',
+      estado_lote_id: 2,
       observaciones: data.observaciones ?? null,
       unidad_medida_stock: data.unidad_medida_stock ?? 'kg',
       unidad_medida_dinero: 'USD'
     }, t)
+
+    await procesarMovimientoAlmacenService(
+      {
+        usuario_id: data.creado_por ?? null,
+        item_inventario_id: itemInventario.item_inventario_id,
+        tipo_movimientos_almacen_id: 1,
+        motivo_movimiento: 'filtrado',
+        cantidad: stockInicial,
+        observaciones: 'Ingreso inicial por proceso de filtrado',
+        almacen_destino_id: almacenId
+      },
+      t
+    )
 
     await crearSolicitudAnalisisInicialExtracto(
       {
@@ -133,7 +149,7 @@ export const crearExtractoService = async (data) => {
       t
     )
 
-    return extractoCreado
+    return await obtenerExtractoPorIdRepo(extractoCreado.extracto_id, t)
   })
 }
 
@@ -247,6 +263,7 @@ export const actualizarStockActualExtractoService = async (id, stockActual, opti
   await createAjusteMovimientoAlmacenService({
     usuario_id: options.usuario_id ?? null,
     item_inventario_id: extracto.item_inventario_id,
+    almacen_id: options.almacen_id ?? null,
     motivo_movimiento: options.motivo_movimiento ?? 'regularizacion por conteo fisico',
     stock_actual_corregido: nuevoStockActual,
     observaciones: options.observaciones ?? 'Ajuste de stock desde extracto'

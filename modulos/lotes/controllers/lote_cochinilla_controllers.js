@@ -28,7 +28,6 @@ const normalizeLoteCochinillaError = (error) => {
     error.message === 'incluir_agotados debe ser true o false' ||
     error.message === 'proveedor_id es obligatorio' ||
     error.message === 'almacen_id es obligatorio' ||
-    error.message === 'fecha_compra es obligatoria' ||
     error.message === 'fecha_creacion es obligatoria' ||
     error.message === 'concentracion_ac_actual_min debe ser numerico' ||
     error.message === 'concentracion_ac_actual_max debe ser numerico' ||
@@ -64,7 +63,10 @@ const normalizeLoteCochinillaError = (error) => {
 // crear lote de cochinilla por compra
 export const crearLoteCochinillaPorCompra = async (req, res) => {
   try {
-    const data = await crearLoteCochinillaPorCompraService(req.body)
+    const data = await crearLoteCochinillaPorCompraService({
+      ...req.body,
+      creado_por: req.user.id
+    })
     res.status(201).json(data)
   } catch (error) {
     handleControllerError(res, normalizeLoteCochinillaError(error))
@@ -74,7 +76,10 @@ export const crearLoteCochinillaPorCompra = async (req, res) => {
 // crear lote de cochinilla por mezcla
 export const crearLoteCochinillaPorMezcla = async (req, res) => {
   try {
-    const data = await crearLoteCochinillaPorMezclaService(req.body)
+    const data = await crearLoteCochinillaPorMezclaService({
+      ...req.body,
+      creado_por: req.user.id
+    })
     res.status(201).json(data)
   } catch (error) {
     handleControllerError(res, normalizeLoteCochinillaError(error))
@@ -175,7 +180,10 @@ export const actualizarEstadoLoteCochinilla = async (req, res) => {
 export const actualizarStockActualLoteCochinilla = async (req, res) => {
   try {
     const { id } = req.params
-    const data = await actualizarStockActualLoteCochinillaService(id, req.body)
+    const data = await actualizarStockActualLoteCochinillaService(id, {
+      ...req.body,
+      usuario_id: req.user.id
+    })
     res.json(data)
   } catch (error) {
     handleControllerError(res, normalizeLoteCochinillaError(error))
