@@ -17,6 +17,7 @@ export const crearLoteCochinillaPorCompraRepo = async (data, t = db) => {
       codigo_lote,
       tipo_lote,
       fecha_creacion,
+      tipo_cochinilla_id,
       calidad_cochinilla,
       stock_actual,
       costo_unitario,
@@ -34,7 +35,7 @@ export const crearLoteCochinillaPorCompraRepo = async (data, t = db) => {
       unidad_medida_stock,
       unidad_medida_dinero
     )
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, NOW(), NOW(), $16, $17, $18, $19, $20, $21)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, NOW(), NOW(), $17, $18, $19, $20, $21, $22)
     RETURNING *`,
     [
       data.item_inventario_id,
@@ -45,6 +46,7 @@ export const crearLoteCochinillaPorCompraRepo = async (data, t = db) => {
       data.codigo_lote,
       'comprado',
       data.fecha_creacion ?? null,
+      data.tipo_cochinilla_id,
       data.calidad_cochinilla ?? null,
       data.stock_actual,
       data.costo_unitario,
@@ -174,6 +176,7 @@ export const listarLotesCochinillaRepo = async (filters = {}) => {
        p.nombre_razon_social AS proveedor_nombre,
        a.nombre AS almacen_nombre,
        el.nombre AS estado_lote,
+       tc.nombre AS calidad_cochinilla,
        COALESCE(
          NULLIF(TRIM(CONCAT_WS(' ', u.nombres, u.apellidos)), ''),
          u.nickname
@@ -194,6 +197,8 @@ export const listarLotesCochinillaRepo = async (filters = {}) => {
        ON sia.almacen_id = a.almacen_id
      LEFT JOIN lotes.estado_lote el
        ON lc.estado_lote_id = el.estado_lote_id
+     LEFT JOIN lotes.tipo_cochinilla tc
+       ON lc.tipo_cochinilla_id = tc.tipo_cochinilla_id
      LEFT JOIN seguridad.usuario u
        ON lc.creado_por = u.id
      ${whereClause}
@@ -234,7 +239,7 @@ export const listarLotesCochinillaDisponiblesRepo = async (filters = {}) => {
     `SELECT
        lc.proveedor_id,
        lc.tipo_lote,
-       lc.calidad_cochinilla,
+       COALESCE(tc.nombre, lc.calidad_cochinilla) AS calidad_cochinilla,
        sia.stock_actual::double precision AS stock_actual,
        COALESCE(stock_total.stock_total, 0)::double precision AS stock_total,
        COALESCE(stock_total.cantidad_almacenes, 0)::int AS cantidad_almacenes,
@@ -256,6 +261,8 @@ export const listarLotesCochinillaDisponiblesRepo = async (filters = {}) => {
      ) stock_total ON TRUE
      LEFT JOIN inventario.item_inventario ii
        ON lc.item_inventario_id = ii.item_inventario_id
+     LEFT JOIN lotes.tipo_cochinilla tc
+       ON lc.tipo_cochinilla_id = tc.tipo_cochinilla_id
      INNER JOIN inventario.almacen a
        ON sia.almacen_id = a.almacen_id
      ${whereClause}
@@ -273,6 +280,7 @@ export const obtenerLoteCochinillaPorIdRepo = async (id, t = db) => {
        lc.*,
        p.nombre_razon_social AS proveedor_nombre,
        a.nombre AS almacen_nombre,
+       COALESCE(tc.nombre, lc.calidad_cochinilla) AS calidad_cochinilla,
        COALESCE(
          NULLIF(TRIM(CONCAT_WS(' ', u.nombres, u.apellidos)), ''),
          u.nickname
@@ -282,6 +290,8 @@ export const obtenerLoteCochinillaPorIdRepo = async (id, t = db) => {
        ON lc.proveedor_id = p.proveedor_id
      LEFT JOIN inventario.almacen a
        ON lc.almacen_id = a.almacen_id
+     LEFT JOIN lotes.tipo_cochinilla tc
+       ON lc.tipo_cochinilla_id = tc.tipo_cochinilla_id
      LEFT JOIN seguridad.usuario u
        ON lc.creado_por = u.id
      WHERE lc.lote_cochinilla_id = $1`,

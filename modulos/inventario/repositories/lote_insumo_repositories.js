@@ -80,7 +80,7 @@ export const getInsumos = async (filters = {}) => {
     LEFT JOIN lotes.estado_lote el
       ON li.estado_lote_id = el.estado_lote_id
     ${whereClause}
-    ORDER BY li.lote_insumo_id ASC, sia.almacen_id ASC
+    ORDER BY li.modificado_en DESC NULLS LAST, li.lote_insumo_id DESC, sia.almacen_id ASC
   `;
   const rows = await db.query(query, values);
   return rows;

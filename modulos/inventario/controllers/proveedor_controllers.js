@@ -16,6 +16,9 @@ const normalizeProveedorError = (error) => {
     if (
         error.message === 'nombre_razon_social es obligatorio' ||
         error.message === 'nombre_item_provee es obligatorio' ||
+        error.message === 'telefono debe tener exactamente 9 digitos' ||
+        error.message === 'ruc debe tener exactamente 11 digitos' ||
+        error.message === 'correo debe tener un formato valido' ||
         error.message === 'Debe enviar el valor de activo' ||
         error.message === 'Debe enviar el nombre_item_provee'
     ) {
