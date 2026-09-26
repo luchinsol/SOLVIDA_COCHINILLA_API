@@ -19,26 +19,37 @@ export const obtenerProveedoresService = async (nombreItemProvee) => {
 };
 
 export const crearProveedorService = async (proveedorDatos) => {
-    if (!proveedorDatos.nombre_razon_social) {
+    const nombreRazonSocial = String(proveedorDatos.nombre_razon_social ?? '').trim();
+    const telefono = proveedorDatos.telefono == null ? '' : String(proveedorDatos.telefono).trim();
+    const correo = proveedorDatos.correo == null ? '' : String(proveedorDatos.correo).trim();
+    const direccion = proveedorDatos.direccion == null ? '' : String(proveedorDatos.direccion).trim();
+    const ruc = proveedorDatos.ruc == null ? '' : String(proveedorDatos.ruc).trim();
+
+    if (!nombreRazonSocial) {
         const error = new Error('nombre_razon_social es obligatorio');
         error.statusCode = 400;
         throw error;
     }
 
-    if (!proveedorDatos.nombre_item_provee) {
-        const error = new Error('nombre_item_provee es obligatorio');
-        error.statusCode = 400;
-        throw error;
+    if (telefono && !/^\d{9}$/.test(telefono)) {
+        throw new Error('telefono debe tener exactamente 9 digitos');
+    }
+
+    if (ruc && !/^\d{11}$/.test(ruc)) {
+        throw new Error('ruc debe tener exactamente 11 digitos');
+    }
+
+    if (correo && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) {
+        throw new Error('correo debe tener un formato valido');
     }
 
     const payload = {
-        nombre_razon_social: proveedorDatos.nombre_razon_social,
-        nombre_item_provee: proveedorDatos.nombre_item_provee,
-        telefono: proveedorDatos.telefono ?? null,
-        correo: proveedorDatos.correo ?? null,
-        direccion: proveedorDatos.direccion ?? null,
-        activo: proveedorDatos.activo ?? true,
-        ruc: proveedorDatos.ruc ?? null
+        nombre_razon_social: nombreRazonSocial,
+        telefono: telefono || null,
+        correo: correo || null,
+        direccion: direccion || null,
+        activo: true,
+        ruc: ruc || null
     };
 
     return await createProveedor(payload);

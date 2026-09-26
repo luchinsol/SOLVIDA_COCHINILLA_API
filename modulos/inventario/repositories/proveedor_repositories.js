@@ -24,7 +24,7 @@ export const createProveedor = async (proveedorDatos) => {
         RETURNING *`,
         [
             proveedorDatos.nombre_razon_social,
-            proveedorDatos.nombre_item_provee,
+            null,
             proveedorDatos.telefono,
             proveedorDatos.correo,
             proveedorDatos.direccion,

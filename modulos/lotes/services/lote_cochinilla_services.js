@@ -34,6 +34,7 @@ import {
   crearSolicitudAnalisisLaboratorioRepo,
   crearSolicitudParametroLaboratorioRepo
 } from '../../laboratorio/repositories/solicitud_analisis_repositories.js'
+import { obtenerTipoCochinillaPorIdRepo } from '../repositories/tipo_cochinilla_repositories.js'
 
 
 
@@ -132,6 +133,11 @@ export const crearLoteCochinillaPorCompraService = async (data) => {
     throw new Error('fecha_creacion es obligatoria')
   }
 
+  const tipoCochinillaId = Number(data.tipo_cochinilla_id)
+  if (!Number.isInteger(tipoCochinillaId) || tipoCochinillaId <= 0) {
+    throw new Error('tipo_cochinilla_id debe ser un entero positivo')
+  }
+
   if (!data.stock_inicial || Number(data.stock_inicial) <= 0) {
     throw new Error('stock_inicial debe ser mayor a 0')
   }
@@ -145,9 +151,20 @@ export const crearLoteCochinillaPorCompraService = async (data) => {
   const costoUnitario = costoTotalInicial / stockInicial
   const fechaCreacion = data.fecha_creacion
 
-  const codigoLote = generarCodigoLoteCompra(data)
-
   return await db.tx(async (t) => {
+    const tipoCochinilla = await obtenerTipoCochinillaPorIdRepo(tipoCochinillaId, t)
+
+    if (!tipoCochinilla || !tipoCochinilla.activo) {
+      throw new Error('tipo_cochinilla_id no corresponde a un tipo activo')
+    }
+
+    const datosCanonicos = {
+      ...data,
+      tipo_cochinilla_id: tipoCochinillaId,
+      calidad_cochinilla: tipoCochinilla.nombre
+    }
+    const codigoLote = generarCodigoLoteCompra(datosCanonicos)
+
     const itemInventarioCreado = await crearItemInventarioRepo(
       {
         nombre_item: 'Cochinilla',
@@ -164,7 +181,7 @@ export const crearLoteCochinillaPorCompraService = async (data) => {
 
     const loteCreado = await crearLoteCochinillaPorCompraRepo(
       {
-        ...data,
+        ...datosCanonicos,
         item_inventario_id: itemInventario.item_inventario_id,
         creado_por: data.creado_por ?? null,
         codigo_lote: codigoLote,

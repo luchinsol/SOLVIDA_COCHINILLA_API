@@ -41,7 +41,7 @@ export const actualizarControladoTipoInsumoService = async (id, controlado) => {
 };
 
 export const crearTipoInsumoService = async (data) => {
-  const { nombre, controlado, descripcion, vigente } = data;
+  const { nombre, controlado, descripcion } = data;
 
   // 🔴 validaciones
   if (!nombre) {
@@ -56,8 +56,7 @@ export const crearTipoInsumoService = async (data) => {
   const tipoInsumoData = {
     nombre,
     controlado,
-    descripcion: descripcion || null,
-    vigente: vigente ?? true
+    descripcion: descripcion || null
   };
 
   // 🟢 llamar repository

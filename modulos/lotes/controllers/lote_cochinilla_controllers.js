@@ -29,6 +29,8 @@ const normalizeLoteCochinillaError = (error) => {
     error.message === 'proveedor_id es obligatorio' ||
     error.message === 'almacen_id es obligatorio' ||
     error.message === 'fecha_creacion es obligatoria' ||
+    error.message === 'tipo_cochinilla_id debe ser un entero positivo' ||
+    error.message === 'tipo_cochinilla_id no corresponde a un tipo activo' ||
     error.message === 'concentracion_ac_actual_min debe ser numerico' ||
     error.message === 'concentracion_ac_actual_max debe ser numerico' ||
     error.message === 'concentracion_ac_actual_min no puede ser mayor que concentracion_ac_actual_max' ||

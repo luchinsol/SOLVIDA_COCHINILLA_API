@@ -20,12 +20,11 @@ export const actualizarControladoTipoInsumoRepo = async (id, controlado) => {
 //create tipo_insumo
 export const createTipoInsumo = async (tipoInsumoDatos) => {
   const query =
-    "INSERT INTO inventario.tipo_insumos (nombre, controlado, descripcion, vigente) VALUES ($1, $2, $3, $4) RETURNING *";
+    "INSERT INTO inventario.tipo_insumos (nombre, controlado, descripcion) VALUES ($1, $2, $3) RETURNING *";
   const result = await db.one(query, [
     tipoInsumoDatos.nombre,
     tipoInsumoDatos.controlado,
     tipoInsumoDatos.descripcion,
-    tipoInsumoDatos.vigente,
   ]);
   return result;
 };

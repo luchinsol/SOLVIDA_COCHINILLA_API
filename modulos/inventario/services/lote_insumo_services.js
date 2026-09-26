@@ -35,6 +35,7 @@ const CAMPOS_NO_VALORADOS = [
   'estado_lote_id',
   'estado_lote',
   'creado_en',
+  'modificado_en',
   'unidad_medida_cantidad',
   'unidad_medida_concentracion',
   'codigo_item',

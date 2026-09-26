@@ -17,3 +17,12 @@ export const listarTiposCochinillaRepo = async (activo) => {
     [activo]
   )
 }
+
+export const obtenerTipoCochinillaPorIdRepo = async (id, t = db) => {
+  return await t.oneOrNone(
+    `SELECT *
+     FROM lotes.tipo_cochinilla
+     WHERE tipo_cochinilla_id = $1`,
+    [id]
+  )
+}
