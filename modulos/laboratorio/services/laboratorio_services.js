@@ -14,9 +14,14 @@ import {
   actualizarObservacionesEnLoteRepo,
   actualizarModificadoEnAnalisisRepo,
   obtenerAnalisisActivoPorItemInventarioRepo,
+  obtenerAnalisisActivoPorSolicitudRepo,
   obtenerEnsayoPorIdYAnalisisRepo,
   listarEnsayosPorAnalisisRepo,
   obtenerItemInventarioPorIdParaAnalisisRepo,
+  obtenerMuestraExternaPorIdParaAnalisisRepo,
+  actualizarEstadoMuestraExternaRepo,
+  actualizarEstadoServicioPorMuestraRepo,
+  finalizarServicioSiTodasMuestrasCompletadasRepo,
   obtenerTodosAnalisis,
   obtenerAnalisisPorId,
   obtenerAnalisisNoConformes,
@@ -345,7 +350,35 @@ export const obtenerAnalisisActivoPorItemInventarioService = async (item_inventa
   return limpiarEnsayosAnalisis(analisis)
 }
 
-export const obtenerAnalisisOSolicitudPorItemInventarioService = async (item_inventario_id) => {
+export const obtenerAnalisisOSolicitudPorItemInventarioService = async (origen) => {
+  const solicitudId = Number(origen?.solicitud_id)
+
+  if (Number.isInteger(solicitudId) && solicitudId > 0) {
+    const analisisActivo = await obtenerAnalisisActivoPorSolicitudRepo(solicitudId)
+
+    if (analisisActivo) {
+      return {
+        tipo: 'analisis',
+        data: limpiarAnalisisOSolicitudResponse(limpiarEnsayosAnalisis(analisisActivo))
+      }
+    }
+
+    const solicitudPendiente = await obtenerSolicitudAnalisisPorIdConParametrosRepo(solicitudId)
+
+    if (solicitudPendiente && !solicitudPendiente.atendido) {
+      return {
+        tipo: 'solicitud',
+        data: limpiarAnalisisOSolicitudResponse(solicitudPendiente, {
+          mostrarSolicitudId: true,
+          mostrarCreadoEn: true
+        })
+      }
+    }
+
+    throw new Error('no existe analisis activo ni solicitud pendiente para esa solicitud')
+  }
+
+  const item_inventario_id = origen?.item_inventario_id ?? origen
   const itemInventarioId = Number(item_inventario_id)
 
   if (!Number.isInteger(itemInventarioId) || itemInventarioId <= 0) {
@@ -422,15 +455,10 @@ export const crearAnalisisService = async (datos) => {
   }
 
   const usuarioId = Number(datos.usuario_id)
-  const itemInventarioId = Number(datos.item_inventario_id)
   const solicitudId = Number(datos.solicitud_id)
 
   if (!Number.isInteger(usuarioId) || usuarioId <= 0) {
     throw new Error('usuario_id debe ser un entero positivo')
-  }
-
-  if (!Number.isInteger(itemInventarioId) || itemInventarioId <= 0) {
-    throw new Error('item_inventario_id debe ser un entero positivo')
   }
 
   if (
@@ -469,41 +497,29 @@ export const crearAnalisisService = async (datos) => {
 
   const estadoAnalisisId = 1
 
-  const analisisNormalizado = {
-    usuario_id: usuarioId,
-    observaciones: datos.observaciones.trim(),
-    item_inventario_id: itemInventarioId,
-    estado_analisis_id: estadoAnalisisId,
-    nombre: null,
-    solicitud_id: solicitudId
-  }
-
   return await db.tx(async (t) => {
-    const itemInventario = await obtenerItemInventarioPorIdParaAnalisisRepo(itemInventarioId, t)
-
-    if (!itemInventario) {
-      throw new Error('item_inventario_id no encontrado')
-    }
-
-    const nombreItem = String(itemInventario.nombre_item ?? '').trim().toLowerCase()
-    let prefijo = 'AN-OTR'
-
-    if (nombreItem === 'cochinilla') {
-      prefijo = 'AN-COCH'
-    } else if (nombreItem === 'carmin') {
-      prefijo = 'AN-LK'
-    } else if (nombreItem === 'extracto') {
-      prefijo = 'AN-EXT'
-    }
-
     const solicitud = await obtenerSolicitudAnalisisPorIdConParametrosRepo(solicitudId, t)
 
     if (!solicitud) {
       throw new Error('solicitud de analisis no encontrada')
     }
 
-    if (solicitud.item_inventario_id !== itemInventarioId) {
+    const itemInventarioId = solicitud.item_inventario_id
+    const muestraId = solicitud.muestra_id
+
+    if (!itemInventarioId && !muestraId) {
+      throw new Error('solicitud de analisis no tiene un origen valido')
+    }
+
+    if (
+      datos.item_inventario_id !== undefined
+      && Number(datos.item_inventario_id) !== itemInventarioId
+    ) {
       throw new Error('solicitud de analisis no corresponde al item_inventario')
+    }
+
+    if (datos.muestra_id !== undefined && Number(datos.muestra_id) !== muestraId) {
+      throw new Error('solicitud de analisis no corresponde a la muestra externa')
     }
 
     if (solicitud.atendido) {
@@ -512,6 +528,32 @@ export const crearAnalisisService = async (datos) => {
 
     if (!Array.isArray(solicitud.parametros) || !solicitud.parametros.length) {
       throw new Error('solicitud de analisis no tiene parametros')
+    }
+
+    let prefijo = 'AN-COCH'
+
+    if (itemInventarioId) {
+      const itemInventario = await obtenerItemInventarioPorIdParaAnalisisRepo(itemInventarioId, t)
+
+      if (!itemInventario) {
+        throw new Error('item_inventario_id no encontrado')
+      }
+
+      const nombreItem = String(itemInventario.nombre_item ?? '').trim().toLowerCase()
+      prefijo = nombreItem === 'carmin' ? 'AN-LK' : nombreItem === 'extracto' ? 'AN-EXT' : 'AN-COCH'
+    } else {
+      const muestraExterna = await obtenerMuestraExternaPorIdParaAnalisisRepo(muestraId, t)
+      if (!muestraExterna) throw new Error('muestra externa no encontrada')
+    }
+
+    const analisisNormalizado = {
+      usuario_id: usuarioId,
+      observaciones: datos.observaciones.trim(),
+      item_inventario_id: itemInventarioId,
+      muestra_id: muestraId,
+      estado_analisis_id: estadoAnalisisId,
+      nombre: null,
+      solicitud_id: solicitudId
     }
 
     const tiposEnsayoNormalizados = [...new Set(solicitud.parametros.map((parametro) => {
@@ -562,8 +604,14 @@ export const crearAnalisisService = async (datos) => {
     }
 
     await marcarSolicitudAnalisisAtendidaRepo(solicitudId, t)
-    await actualizarAnalisisActualPorItemInventario(itemInventarioId, analisisCreado.analisis_id, t)
-    await actualizarEstadoLotePorItemInventario(itemInventarioId, 6, t)
+
+    if (itemInventarioId) {
+      await actualizarAnalisisActualPorItemInventario(itemInventarioId, analisisCreado.analisis_id, t)
+      await actualizarEstadoLotePorItemInventario(itemInventarioId, 6, t)
+    } else {
+      await actualizarEstadoMuestraExternaRepo(muestraId, 'en_analisis', t)
+      await actualizarEstadoServicioPorMuestraRepo(muestraId, 'en_analisis', t)
+    }
 
     return {
       ...analisisCreado,
@@ -815,6 +863,7 @@ export const actualizarEnsayosAnalisisService = async (analisis_id, payload) => 
 
     const actualizaciones = []
     let itemInventarioId = null
+    const muestraExternaId = Number(analisisExistente.muestra_id) || null
     let estadoAnalisisFinal = estadoAnalisisId
     const resultadosActuales = {}
     let solicitudReanalisis = null
@@ -1006,13 +1055,7 @@ export const actualizarEnsayosAnalisisService = async (analisis_id, payload) => 
         throw new Error('todos los ensayos deben tener resultados para finalizar el analisis')
       }
 
-      if (conformidades.every((conforme) => conforme === true)) {
-        estadoAnalisisFinal = 2
-      } else if (conformidades.every((conforme) => conforme === false)) {
-        estadoAnalisisFinal = 3
-      } else {
-        estadoAnalisisFinal = 4
-      }
+      estadoAnalisisFinal = conformidades.every((conforme) => conforme === true) ? 2 : 4
     }
 
     const camposAnalisis = {}
@@ -1116,6 +1159,20 @@ export const actualizarEnsayosAnalisisService = async (analisis_id, payload) => 
       }
     }
 
+    if (estadoAnalisisId === 2 && muestraExternaId) {
+      await actualizarEstadoMuestraExternaRepo(
+        muestraExternaId,
+        estadoAnalisisFinal === 2 ? 'en_retencion' : 'en_analisis',
+        t
+      )
+
+      if (estadoAnalisisFinal === 2) {
+        await finalizarServicioSiTodasMuestrasCompletadasRepo(muestraExternaId, t)
+      } else {
+        await actualizarEstadoServicioPorMuestraRepo(muestraExternaId, 'en_analisis', t)
+      }
+    }
+
     return {
       analisis_id: analisisId,
       estado_analisis_id: analisisActualizado?.estado_analisis_id ?? estadoAnalisisFinal ?? null,
@@ -1167,10 +1224,11 @@ export const aprobarODesaprobarAnalisisService = async (analisis_id, payload = {
       throw new Error('analisis no esta en revision')
     }
 
-    const itemInventarioId = Number(analisis.item_inventario_id)
+    const itemInventarioId = Number(analisis.item_inventario_id) || null
+    const muestraExternaId = Number(analisis.muestra_id) || null
 
-    if (!Number.isInteger(itemInventarioId) || itemInventarioId <= 0) {
-      throw new Error('analisis no tiene item_inventario_id valido')
+    if (!itemInventarioId && !muestraExternaId) {
+      throw new Error('analisis no tiene una muestra asociada')
     }
 
     const ensayos = await listarEnsayosPorAnalisisRepo(analisisId, t)
@@ -1221,21 +1279,34 @@ export const aprobarODesaprobarAnalisisService = async (analisis_id, payload = {
       t
     )
 
-    await actualizarResultadosActualesPorItemInventario(itemInventarioId, resultadosActuales, t)
-    await actualizarObservacionesPorItemInventario(itemInventarioId, observacionesLote, t)
-    await actualizarAnalisisActualPorItemInventario(itemInventarioId, analisisId, t)
+    if (itemInventarioId) {
+      await actualizarResultadosActualesPorItemInventario(itemInventarioId, resultadosActuales, t)
+      await actualizarObservacionesPorItemInventario(itemInventarioId, observacionesLote, t)
+      await actualizarAnalisisActualPorItemInventario(itemInventarioId, analisisId, t)
+    }
 
     let solicitudReanalisis = null
 
     if (aprobado) {
-      await actualizarEstadoLotePorItemInventario(itemInventarioId, 1, t)
+      if (itemInventarioId) {
+        await actualizarEstadoLotePorItemInventario(itemInventarioId, 1, t)
+      } else {
+        await actualizarEstadoMuestraExternaRepo(muestraExternaId, 'en_retencion', t)
+        await finalizarServicioSiTodasMuestrasCompletadasRepo(muestraExternaId, t)
+      }
     } else {
-      await actualizarEstadoLotePorItemInventario(itemInventarioId, 3, t)
+      if (itemInventarioId) {
+        await actualizarEstadoLotePorItemInventario(itemInventarioId, 3, t)
+      } else {
+        await actualizarEstadoMuestraExternaRepo(muestraExternaId, 'entregada_laboratorio', t)
+        await actualizarEstadoServicioPorMuestraRepo(muestraExternaId, 'en_analisis', t)
+      }
 
       if (ensayosNoConformes.length) {
         solicitudReanalisis = await crearSolicitudAnalisisLaboratorioRepo(
           {
             item_inventario_id: itemInventarioId,
+            muestra_id: muestraExternaId,
             usuario_id: Number(analisis.usuario_id),
             observacion_laboratorio: observacionesFinales
           },
@@ -1252,7 +1323,10 @@ export const aprobarODesaprobarAnalisisService = async (analisis_id, payload = {
       analisis_id: analisisId,
       aprobado,
       estado_analisis_id: analisisActualizado?.estado_analisis_id ?? 2,
-      estado_lote_id: aprobado ? 1 : 3,
+      estado_lote_id: itemInventarioId ? (aprobado ? 1 : 3) : null,
+      estado_muestra: muestraExternaId
+        ? (aprobado ? 'en_retencion' : 'entregada_laboratorio')
+        : null,
       observaciones_lote: observacionesLote,
       solicitud_reanalisis: solicitudReanalisis,
       mensaje_gerencia_enviado: Boolean(mensajeGerencia),

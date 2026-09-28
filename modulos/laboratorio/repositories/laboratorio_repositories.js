@@ -187,11 +187,99 @@ export const obtenerAnalisisActivoPorItemInventarioRepo = async (itemInventarioI
   return await db.oneOrNone(query, [itemInventarioId])
 }
 
+export const obtenerAnalisisActivoPorSolicitudRepo = async (solicitudId, t = db) => {
+  const query = `
+    SELECT
+      al.analisis_id::int AS analisis_id,
+      al.usuario_id::int AS usuario_id,
+      NULLIF(TRIM(CONCAT_WS(' ', u.nombres, u.apellidos)), '') AS nombre_usuario,
+      r.nombre AS rol_usuario,
+      al.proceso_extraccion_id::int AS proceso_extraccion_id,
+      al.creado_en,
+      al.observaciones,
+      al.peso_muestra_g,
+      al.item_inventario_id::int AS item_inventario_id,
+      al.muestra_id::int AS muestra_id,
+      COALESCE(ii.nombre_item, 'Muestra externa') AS nombre_item,
+      COALESCE(ii.codigo_item, mel.codigo_muestra) AS codigo_item,
+      mel.nombre_muestra,
+      al.estado_analisis_id::int AS estado_analisis_id,
+      al.modificado_en,
+      al.nombre,
+      al.unidad_medida_masa,
+      al.solicitud_id::int AS solicitud_id,
+      COALESCE(
+        json_agg(
+          json_build_object(
+            'ensayo_id', el.ensayo_id,
+            'tipo_ensayo', el.tipo_ensayo,
+            'humedad', CASE
+              WHEN el.tipo_ensayo = 'humedad' THEN json_build_object(
+                'humedad_id', eh.humedad_id,
+                'peso_ensayo_g', eh.peso_ensayo_g,
+                'resultado', eh.resultado
+              )
+              ELSE NULL
+            END,
+            'acido_carminico', CASE
+              WHEN el.tipo_ensayo = 'acido_carminico' THEN json_build_object(
+                'acido_carminico_id', eac.acido_carminico_id,
+                'peso_ensayo_g', eac.peso_ensayo_g,
+                'absorbancia_nm', eac.absorbancia_nm,
+                'resultado', eac.resultado
+              )
+              ELSE NULL
+            END,
+            'color_cielab', CASE
+              WHEN el.tipo_ensayo = 'color_cielab' THEN json_build_object(
+                'color_id', ecc.color_id,
+                'peso_ensayo_g', ecc.peso_ensayo_g,
+                'resultado_l', ecc.resultado_l,
+                'resultado_a', ecc.resultado_a,
+                'resultado_b', ecc.resultado_b
+              )
+              ELSE NULL
+            END
+          )
+          ORDER BY el.ensayo_id
+        ) FILTER (WHERE el.ensayo_id IS NOT NULL),
+        '[]'::json
+      ) AS ensayos
+    FROM laboratorio.analisis_laboratorio al
+    LEFT JOIN seguridad.usuario u ON u.id = al.usuario_id
+    LEFT JOIN seguridad.rol r ON r.rol_id = u.rol_id
+    LEFT JOIN inventario.item_inventario ii ON ii.item_inventario_id = al.item_inventario_id
+    LEFT JOIN laboratorio.muestra_externa_laboratorio mel ON mel.muestra_id = al.muestra_id
+    LEFT JOIN laboratorio.ensayo_laboratorio el ON el.analisis_id = al.analisis_id
+    LEFT JOIN laboratorio.ensayo_humedad eh ON eh.ensayo_id = el.ensayo_id
+    LEFT JOIN laboratorio.ensayo_acido_carminico eac ON eac.ensayo_id = el.ensayo_id
+    LEFT JOIN laboratorio.ensayo_color_cielab ecc ON ecc.ensayo_id = el.ensayo_id
+    WHERE al.solicitud_id = $1
+      AND al.estado_analisis_id = 1
+    GROUP BY
+      al.analisis_id,
+      u.nombres,
+      u.apellidos,
+      r.nombre,
+      ii.nombre_item,
+      ii.codigo_item,
+      mel.codigo_muestra,
+      mel.nombre_muestra
+    ORDER BY COALESCE(al.modificado_en, al.creado_en) DESC, al.analisis_id DESC
+    LIMIT 1
+  `
+
+  return await t.oneOrNone(query, [solicitudId])
+}
+
 export const contarMuestrasAnalizadasHoy = async () => {
     const query = `
-        SELECT COUNT(DISTINCT item_inventario_id)::int AS total_muestras_analizadas_hoy
+        SELECT COUNT(DISTINCT COALESCE(
+          'inventario-' || item_inventario_id::text,
+          'externa-' || muestra_id::text
+        ))::int AS total_muestras_analizadas_hoy
         FROM laboratorio.analisis_laboratorio
-        WHERE item_inventario_id IS NOT NULL
+        WHERE (item_inventario_id IS NOT NULL OR muestra_id IS NOT NULL)
           AND DATE(COALESCE(modificado_en, creado_en)) = CURRENT_DATE
     `;
 
@@ -218,7 +306,7 @@ export const obtenerAnalisisNoConformes = async () => {
           al.analisis_id::int AS analisis_id,
           al.usuario_id::int AS usuario_id,
           al.observaciones,
-          ii.codigo_item,
+          COALESCE(ii.codigo_item, mel.codigo_muestra) AS codigo_item,
           al.estado_analisis_id::int AS estado_analisis_id,
           TO_CHAR(al.modificado_en::date, 'DD/MM/YYYY') AS modificado_en,
           al.nombre,
@@ -264,6 +352,8 @@ export const obtenerAnalisisNoConformes = async () => {
         FROM laboratorio.analisis_laboratorio al
         LEFT JOIN inventario.item_inventario ii
           ON ii.item_inventario_id = al.item_inventario_id
+        LEFT JOIN laboratorio.muestra_externa_laboratorio mel
+          ON mel.muestra_id = al.muestra_id
         INNER JOIN laboratorio.ensayo_laboratorio el
           ON el.analisis_id = al.analisis_id
         LEFT JOIN laboratorio.ensayo_humedad eh
@@ -281,6 +371,7 @@ export const obtenerAnalisisNoConformes = async () => {
           al.observaciones,
           al.item_inventario_id,
           ii.codigo_item,
+          mel.codigo_muestra,
           al.estado_analisis_id,
           al.modificado_en,
           al.nombre
@@ -380,6 +471,67 @@ export const obtenerItemInventarioPorIdParaAnalisisRepo = async (itemInventarioI
   )
 }
 
+export const obtenerMuestraExternaPorIdParaAnalisisRepo = async (muestraId, t = db) => {
+  return await t.oneOrNone(
+    `SELECT
+       muestra_id::int AS muestra_id,
+       codigo_muestra,
+       nombre_muestra,
+       estado_muestra
+     FROM laboratorio.muestra_externa_laboratorio
+     WHERE muestra_id = $1`,
+    [muestraId]
+  )
+}
+
+export const actualizarEstadoMuestraExternaRepo = async (muestraId, estadoMuestra, t = db) => {
+  return await t.oneOrNone(
+    `UPDATE laboratorio.muestra_externa_laboratorio
+     SET estado_muestra = $2,
+         modificado_en = NOW()
+     WHERE muestra_id = $1
+     RETURNING muestra_id::int AS muestra_id, estado_muestra, modificado_en`,
+    [muestraId, estadoMuestra]
+  )
+}
+
+export const actualizarEstadoServicioPorMuestraRepo = async (muestraId, estadoServicio, t = db) => {
+  return await t.oneOrNone(
+    `UPDATE laboratorio.servicio_analisis sa
+     SET estado = $2,
+         modificado_en = NOW()
+     FROM laboratorio.muestra_externa_laboratorio mel
+     WHERE mel.muestra_id = $1
+       AND sa.servicio_id = mel.servicio_id
+     RETURNING sa.servicio_id::int AS servicio_id, sa.estado, sa.modificado_en`,
+    [muestraId, estadoServicio]
+  )
+}
+
+export const finalizarServicioSiTodasMuestrasCompletadasRepo = async (muestraId, t = db) => {
+  return await t.oneOrNone(
+    `UPDATE laboratorio.servicio_analisis sa
+     SET estado = 'finalizado',
+         modificado_en = NOW()
+     FROM laboratorio.muestra_externa_laboratorio muestra_actual
+     WHERE muestra_actual.muestra_id = $1
+       AND sa.servicio_id = muestra_actual.servicio_id
+       AND NOT EXISTS (
+         SELECT 1
+         FROM laboratorio.muestra_externa_laboratorio pendiente
+         WHERE pendiente.servicio_id = sa.servicio_id
+           AND pendiente.estado_muestra NOT IN (
+             'en_retencion',
+             'transferida_inventario',
+             'devuelta_cliente',
+             'descartada'
+           )
+       )
+     RETURNING sa.servicio_id::int AS servicio_id, sa.estado, sa.modificado_en`,
+    [muestraId]
+  )
+}
+
 export const crearAnalisis = async (datos, t = db) => {
   const query = `
     INSERT INTO laboratorio.analisis_laboratorio
@@ -388,6 +540,7 @@ export const crearAnalisis = async (datos, t = db) => {
       usuario_id,
       observaciones,
       item_inventario_id,
+      muestra_id,
       estado_analisis_id,
       nombre,
       solicitud_id,
@@ -395,7 +548,7 @@ export const crearAnalisis = async (datos, t = db) => {
       modificado_en
     )
     VALUES (
-      $1, $2, $3, $4, $5, $6, $7,
+      $1, $2, $3, $4, $5, $6, $7, $8,
       NOW(),
       NOW()
     )
@@ -407,6 +560,7 @@ export const crearAnalisis = async (datos, t = db) => {
     datos.usuario_id,
     datos.observaciones ?? null,
     datos.item_inventario_id,
+    datos.muestra_id,
     datos.estado_analisis_id,
     datos.nombre,
     datos.solicitud_id
@@ -681,20 +835,21 @@ export const actualizarModificadoEnAnalisisRepo = async (analisisId, t = db) => 
 }
 
 export const crearSolicitudAnalisisLaboratorioRepo = async (
-  { item_inventario_id, usuario_id, observacion_laboratorio = null },
+  { item_inventario_id = null, muestra_id = null, usuario_id, observacion_laboratorio = null },
   t = db
 ) => {
   const query = `
     INSERT INTO laboratorio.solicitud_analisis_laboratorio (
       item_inventario_id,
+      muestra_id,
       usuario_id,
       observacion_laboratorio
     )
-    VALUES ($1, $2, $3)
-    RETURNING solicitud_id::int AS solicitud_id, item_inventario_id::int AS item_inventario_id, usuario_id::int AS usuario_id, observacion_laboratorio, creado_en
+    VALUES ($1, $2, $3, $4)
+    RETURNING solicitud_id::int AS solicitud_id, item_inventario_id::int AS item_inventario_id, muestra_id::int AS muestra_id, usuario_id::int AS usuario_id, observacion_laboratorio, creado_en
   `
 
-  return await t.one(query, [item_inventario_id, usuario_id, observacion_laboratorio])
+  return await t.one(query, [item_inventario_id, muestra_id, usuario_id, observacion_laboratorio])
 }
 
 export const crearSolicitudParametroLaboratorioRepo = async (

@@ -1,20 +1,21 @@
 import db from '../../../config/database.js'
 
 export const crearSolicitudAnalisisLaboratorioRepo = async (
-  { item_inventario_id, usuario_id, observacion_laboratorio = null },
+  { item_inventario_id = null, muestra_id = null, usuario_id, observacion_laboratorio = null },
   t = db
 ) => {
   const query = `
     INSERT INTO laboratorio.solicitud_analisis_laboratorio (
       item_inventario_id,
+      muestra_id,
       usuario_id,
       observacion_laboratorio
     )
-    VALUES ($1, $2, $3)
-    RETURNING solicitud_id::int AS solicitud_id, item_inventario_id::int AS item_inventario_id, usuario_id::int AS usuario_id, observacion_laboratorio, creado_en, COALESCE(atendido, false) AS atendido
+    VALUES ($1, $2, $3, $4)
+    RETURNING solicitud_id::int AS solicitud_id, item_inventario_id::int AS item_inventario_id, muestra_id::int AS muestra_id, usuario_id::int AS usuario_id, observacion_laboratorio, creado_en, COALESCE(atendido, false) AS atendido
   `
 
-  return await t.one(query, [item_inventario_id, usuario_id, observacion_laboratorio])
+  return await t.one(query, [item_inventario_id, muestra_id, usuario_id, observacion_laboratorio])
 }
 
 export const crearSolicitudParametroLaboratorioRepo = async (
@@ -102,7 +103,14 @@ export const obtenerSolicitudAnalisisPorIdConParametrosRepo = async (solicitudId
     SELECT
       sal.solicitud_id::int AS solicitud_id,
       sal.item_inventario_id::int AS item_inventario_id,
+      sal.muestra_id::int AS muestra_id,
+      COALESCE(ii.nombre_item, 'Muestra externa') AS nombre_item,
+      COALESCE(ii.codigo_item, mel.codigo_muestra) AS codigo_item,
+      mel.nombre_muestra,
+      sa.codigo_recibo,
       sal.usuario_id::int AS usuario_id,
+      NULLIF(TRIM(CONCAT_WS(' ', u.nombres, u.apellidos)), '') AS nombre_usuario,
+      r.nombre AS rol_usuario,
       sal.observacion_laboratorio,
       sal.creado_en,
       COALESCE(sal.atendido, false) AS atendido,
@@ -119,11 +127,30 @@ export const obtenerSolicitudAnalisisPorIdConParametrosRepo = async (solicitudId
     FROM laboratorio.solicitud_analisis_laboratorio sal
     LEFT JOIN laboratorio.solicitud_parametro_laboratorio spl
       ON spl.solicitud_id = sal.solicitud_id
+    LEFT JOIN inventario.item_inventario ii
+      ON ii.item_inventario_id = sal.item_inventario_id
+    LEFT JOIN laboratorio.muestra_externa_laboratorio mel
+      ON mel.muestra_id = sal.muestra_id
+    LEFT JOIN laboratorio.servicio_analisis sa
+      ON sa.servicio_id = mel.servicio_id
+    LEFT JOIN seguridad.usuario u
+      ON u.id = sal.usuario_id
+    LEFT JOIN seguridad.rol r
+      ON r.rol_id = u.rol_id
     WHERE sal.solicitud_id = $1
     GROUP BY
       sal.solicitud_id,
       sal.item_inventario_id,
+      sal.muestra_id,
+      ii.nombre_item,
+      ii.codigo_item,
+      mel.codigo_muestra,
+      mel.nombre_muestra,
+      sa.codigo_recibo,
       sal.usuario_id,
+      u.nombres,
+      u.apellidos,
+      r.nombre,
       sal.observacion_laboratorio,
       sal.creado_en,
       sal.atendido

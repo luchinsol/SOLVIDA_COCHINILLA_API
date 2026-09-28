@@ -140,17 +140,20 @@ export const listarMuestrasPendientesLaboratorioRepo = async (filters = {}) => {
       ? 'ASC'
       : 'DESC'
 
-  return await db.any(
-    `SELECT
+  const muestrasInternas = `SELECT
        ii.item_inventario_id::int AS item_inventario_id,
+       NULL::int AS muestra_id,
+       'inventario'::text AS origen,
        ii.codigo_item,
        COALESCE(lc.nombre_lote, lco.codigo_lote, e.nombre_extracto) AS nombre_lote,
        COALESCE(lc.estado_lote_id, lco.estado_lote_id, e.estado_lote_id)::int AS estado_lote_id,
        COALESCE(elc.nombre, elco.nombre, ee.nombre) AS estado,
+       solicitud.solicitud_id::int AS solicitud_id,
        TO_CHAR(
          COALESCE(lc.modificado_en, lco.modificado_en, e.modificado_en)::date,
          'DD/MM/YYYY'
-       ) AS fecha
+       ) AS fecha,
+       COALESCE(lc.modificado_en, lco.modificado_en, e.modificado_en) AS fecha_orden
      FROM inventario.item_inventario ii
      LEFT JOIN lotes.lote_carmin lc
        ON ii.item_inventario_id = lc.item_inventario_id
@@ -166,17 +169,73 @@ export const listarMuestrasPendientesLaboratorioRepo = async (filters = {}) => {
        ON e.estado_lote_id = ee.estado_lote_id
      LEFT JOIN laboratorio.analisis_laboratorio al_actual
        ON al_actual.analisis_id = COALESCE(lc.analisis_actual_id, lco.analisis_actual_id)
-     WHERE ${conditions.join(' AND ')}
-     ORDER BY COALESCE(lc.modificado_en, lco.modificado_en, e.modificado_en) ${orderDirection},
-              ii.item_inventario_id ${orderDirection}`,
+     LEFT JOIN LATERAL (
+       SELECT sal.solicitud_id
+       FROM laboratorio.solicitud_analisis_laboratorio sal
+       WHERE sal.item_inventario_id = ii.item_inventario_id
+       ORDER BY sal.creado_en DESC, sal.solicitud_id DESC
+       LIMIT 1
+     ) solicitud ON true
+     WHERE ${conditions.join(' AND ')}`
+
+  const incluirExternas = !filters.producto
+    && (!filters.estado_lote_id || [2, 6].includes(filters.estado_lote_id))
+
+  const muestrasExternas = incluirExternas
+    ? `UNION ALL
+       SELECT
+         NULL::int AS item_inventario_id,
+         mel.muestra_id::int AS muestra_id,
+         'muestra_externa'::text AS origen,
+         mel.codigo_muestra AS codigo_item,
+         COALESCE(NULLIF(mel.lote_externo, ''), mel.nombre_muestra) AS nombre_lote,
+         CASE WHEN al.analisis_id IS NULL THEN 2 ELSE 6 END::int AS estado_lote_id,
+         CASE WHEN al.analisis_id IS NULL THEN 'Por analizar' ELSE 'En análisis' END AS estado,
+         sal.solicitud_id::int AS solicitud_id,
+         TO_CHAR(COALESCE(al.modificado_en, sal.creado_en)::date, 'DD/MM/YYYY') AS fecha,
+         COALESCE(al.modificado_en, sal.creado_en) AS fecha_orden
+       FROM laboratorio.solicitud_analisis_laboratorio sal
+       INNER JOIN laboratorio.muestra_externa_laboratorio mel
+         ON mel.muestra_id = sal.muestra_id
+       LEFT JOIN LATERAL (
+         SELECT analisis_id, modificado_en, estado_analisis_id
+         FROM laboratorio.analisis_laboratorio
+         WHERE solicitud_id = sal.solicitud_id
+           AND estado_analisis_id = 1
+         ORDER BY COALESCE(modificado_en, creado_en) DESC, analisis_id DESC
+         LIMIT 1
+       ) al ON true
+       WHERE (COALESCE(sal.atendido, false) = false OR al.analisis_id IS NOT NULL)
+         AND mel.estado_muestra NOT IN ('transferida_inventario', 'devuelta_cliente', 'descartada')
+         ${filters.estado_lote_id === 2 ? 'AND al.analisis_id IS NULL' : ''}
+         ${filters.estado_lote_id === 6 ? 'AND al.estado_analisis_id = 1' : ''}`
+    : ''
+
+  return await db.any(
+    `SELECT
+       item_inventario_id,
+       muestra_id,
+       origen,
+       codigo_item,
+       nombre_lote,
+       estado_lote_id,
+       estado,
+       solicitud_id,
+       fecha
+     FROM (
+       ${muestrasInternas}
+       ${muestrasExternas}
+     ) muestras
+     ORDER BY fecha_orden ${orderDirection}, codigo_item ${orderDirection}`,
     values
   )
 }
 
 export const contarMuestrasPendientesLaboratorioRepo = async () => {
   return await db.one(
-    `SELECT COUNT(*)::int AS total_muestras_pendientes
-     FROM inventario.item_inventario ii
+    `WITH internas AS (
+       SELECT ii.item_inventario_id
+       FROM inventario.item_inventario ii
      LEFT JOIN lotes.lote_carmin lc
        ON ii.item_inventario_id = lc.item_inventario_id
      LEFT JOIN lotes.lote_cochinilla lco
@@ -190,14 +249,27 @@ export const contarMuestrasPendientesLaboratorioRepo = async () => {
        AND (
          COALESCE(lc.estado_lote_id, lco.estado_lote_id, e.estado_lote_id) <> 6
          OR al_actual.estado_analisis_id IS DISTINCT FROM 4
-       )`
+       )
+     ), externas AS (
+       SELECT sal.solicitud_id
+       FROM laboratorio.solicitud_analisis_laboratorio sal
+       INNER JOIN laboratorio.muestra_externa_laboratorio mel
+         ON mel.muestra_id = sal.muestra_id
+       WHERE COALESCE(sal.atendido, false) = false
+         AND mel.estado_muestra NOT IN ('transferida_inventario', 'devuelta_cliente', 'descartada')
+     )
+     SELECT (
+       (SELECT COUNT(*) FROM internas) +
+       (SELECT COUNT(*) FROM externas)
+     )::int AS total_muestras_pendientes`
   )
 }
 
 export const contarMuestrasEnAnalisisRepo = async () => {
   return await db.one(
-    `SELECT COUNT(*)::int AS total_muestras_en_analisis
-     FROM inventario.item_inventario ii
+    `WITH internas AS (
+       SELECT ii.item_inventario_id
+       FROM inventario.item_inventario ii
      LEFT JOIN lotes.lote_carmin lc
        ON ii.item_inventario_id = lc.item_inventario_id
      LEFT JOIN lotes.lote_cochinilla lco
@@ -208,7 +280,17 @@ export const contarMuestrasEnAnalisisRepo = async () => {
        ON al_actual.analisis_id = COALESCE(lc.analisis_actual_id, lco.analisis_actual_id)
      WHERE LOWER(ii.nombre_item) IN ('carmin', 'cochinilla', 'extracto')
        AND COALESCE(lc.estado_lote_id, lco.estado_lote_id, e.estado_lote_id) = 6
-       AND al_actual.estado_analisis_id IS DISTINCT FROM 4`
+       AND al_actual.estado_analisis_id = 1
+     ), externas AS (
+       SELECT al.analisis_id
+       FROM laboratorio.analisis_laboratorio al
+       WHERE al.muestra_id IS NOT NULL
+         AND al.estado_analisis_id = 1
+     )
+     SELECT (
+       (SELECT COUNT(*) FROM internas) +
+       (SELECT COUNT(*) FROM externas)
+     )::int AS total_muestras_en_analisis`
   )
 }
 

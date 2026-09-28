@@ -58,7 +58,7 @@ export const obtenerAnalisisActivoPorItemInventarioController = async (req, res)
 
 export const obtenerAnalisisOSolicitudPorItemInventarioController = async (req, res) => {
   try {
-    const resultado = await obtenerAnalisisOSolicitudPorItemInventarioService(req.query.item_inventario_id)
+    const resultado = await obtenerAnalisisOSolicitudPorItemInventarioService(req.query)
     res.json(resultado)
   } catch (error) {
     if (
@@ -124,6 +124,8 @@ export const crearAnalisisController = async (req, res) => {
       error.message.includes('solicitud_id debe ser') ||
       error.message.includes('solicitud de analisis no encontrada') ||
       error.message.includes('solicitud de analisis no corresponde') ||
+      error.message.includes('solicitud de analisis no tiene un origen valido') ||
+      error.message.includes('muestra externa no encontrada') ||
       error.message.includes('solicitud de analisis ya fue atendida') ||
       error.message.includes('solicitud de analisis no tiene parametros') ||
       error.message.includes('peso_muestra_g no se recibe') ||
